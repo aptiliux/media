@@ -1,0 +1,31 @@
+<ui>
+  <menubar name="MenuBar">
+    <menu name="FileMenu" action="File">
+      <menuitem name="FileExport" action="Export"/>
+      <menuitem name="FileNew" action="NewProject" />
+      <menuitem name="FileSave" action="Save" />
+      <menuitem name="FileQuit" action="Quit"/>
+    </menu>
+    <menu name="EditMenu" action="Edit">
+      <menuitem name="EditDelete" action="Delete"/>
+    </menu>
+    <menu name="TrackMenu" action="Track">
+      <menuitem name="TrackNew" action="NewTrack"/>
+      <menuitem name="TrackRename" action="Rename" />
+    </menu>
+    <menu name="HelpMenu" action="Help">
+      <menuitem name="HelpAbout" action="About"/>
+    </menu>
+  </menubar>
+  <toolbar name="Toolbar">
+    <toolitem name="New" action="NewTrack"/>
+    <separator/>
+    <toolitem name="Rewind" action="Rewind"/>
+    <toolitem name="Play" action="Play"/>
+    <toolitem name="Record" action="Record"/>
+  </toolbar>
+  <accelerator name="Rewind" action="Rewind"/>
+  <accelerator name="Play" action="Play"/>
+  <accelerator name="Record" action="Record"/>
+</ui>
+

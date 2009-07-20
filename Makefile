@@ -1,34 +1,57 @@
-# Makefile for Lombard Video Editor
+default: all
 
-OUTPUT_FILE = lom
+BUILD_ROOT = 1
+
+MARINA_SOURCES = project.vala
+
+MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
+
+FILLMORE = fill
+
+FILLMORE_SOURCES = \
+	audioengine.vala \
+	fillmore.vala \
+	header_area.vala \
+	project.vala \
+	region.vala \
+	timeline.vala \
+	track.vala \
+	trackinformation.vala \
+	util.vala
+
+FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
+
+FILLMORE_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0
+
+$(FILLMORE): $(FILLMORE_FILES) Makefile
+	valac $(VFLAGS) $(FILLMORE_LIBS) $(FILLMORE_FILES) -o $(FILLMORE)
+
+LOMBARD = lom
 
 LOMBARD_SOURCES = \
+    clip.vala \
+    track.vala \
 	ui_app.vala \
     ui_timeline.vala \
     ui_track.vala \
     ui_clip.vala \
-    clip.vala \
-    track.vala \
     util.vala
 
-MARINA_SOURCES = project.vala
-
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
-MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
 
-LIBS =  --pkg gdk-x11-2.0 \
-        --pkg gee-1.0 \
-        --pkg gstreamer-0.10 \
-        --pkg gstreamer-pbutils-0.10 \
-        --pkg gstreamer-interfaces-0.10 \
-        --pkg gtk+-2.0 \
-        --pkg glib-2.0
+LOMBARD_LIBS =  --pkg gdk-x11-2.0 \
+		        --pkg gee-1.0 \
+		        --pkg gstreamer-0.10 \
+		        --pkg gstreamer-pbutils-0.10 \
+				--pkg gstreamer-interfaces-0.10 \
+				--pkg gtk+-2.0 \
+				--pkg glib-2.0
 
-all: $(OUTPUT_FILE)
+$(LOMBARD): $(LOMBARD_FILES) $(MARINA_FILES) Makefile
+	valac $(VFLAGS) $(LOMBARD_LIBS) $(LOMBARD_FILES) $(MARINA_FILES) -o $(LOMBARD)
 
-$(OUTPUT_FILE): $(LOMBARD_FILES) $(MARINA_FILES) Makefile
-	valac $(LIBS) $(LOMBARD_FILES) $(MARINA_FILES) -o $(OUTPUT_FILE)
+all: $(FILLMORE) $(LOMBARD)
 
 clean:
-	rm $(OUTPUT_FILE)
+	rm -f $(FILLMORE) $(LOMBARD)
 
