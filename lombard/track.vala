@@ -1,0 +1,644 @@
+/* Copyright 2009 Yorba Foundation
+ *
+ * This software is licensed under the GNU Lesser General Public License
+ * (version 2.1 or later).  See the COPYING file in this distribution. 
+ */
+
+using Gee;
+
+public enum MediaType {
+    AUDIO,
+    VIDEO
+}
+
+abstract class Track {
+    protected Project project;
+    protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
+    
+    protected Gst.Bin composition;
+    
+    public signal void clip_added(Clip clip);
+    public signal void clip_removed(Clip clip);
+    
+    public Track(Project project) {
+        this.project = project;
+        
+        composition = (Gst.Bin) make_element("gnlcomposition");
+        
+        Gst.Element default_source = make_element("gnlsource");
+        Gst.Bin default_source_bin = (Gst.Bin) default_source;
+        if (!default_source_bin.add(empty_element()))
+            error("can't add empty element");
+
+        // If we set the priority to 0xffffffff, then Gnonlin will treat this source as
+        // a default and we won't be able to seek past the end of the last region.
+        // We want to be able to seek into empty space, so we use a fixed priority instead.
+        default_source.set("priority", 1);
+        default_source.set("start", 0 * Gst.SECOND);
+        default_source.set("duration", 1000000 * Gst.SECOND);
+        default_source.set("media-start", 0 * Gst.SECOND);
+        default_source.set("media-duration", 1000000 * Gst.SECOND);
+        if (!composition.add(default_source))
+            error("can't add default source");
+        
+        project.pipeline.add(composition);
+        composition.pad_added += on_pad_added;
+    }
+
+    protected abstract string name();
+
+    protected abstract Gst.Element empty_element();
+
+    // return a sink to link the gnlcomposition to
+    protected abstract Gst.Pad get_destination_sink();
+
+    protected virtual void check(Clip clip) { }
+
+    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+        Gst.Pad sink = get_destination_sink();
+        if (sink != null && pad.link(sink) != Gst.PadLinkReturn.OK)
+            error("can't link composition output");
+    }
+    
+    public int get_num_clips() {
+        return clips.size;
+    }
+
+    public int64 get_time_from_pos(int pos, bool after) {
+        if (after)
+            return clips[pos].start + clips[pos].length;
+        else
+            return clips[pos].start;
+    }
+
+    public int get_clip_from_time(int64 time) {
+        for (int i = 0; i < clips.size; i++) {
+            if (time >= clips[i].start &&
+                time < clips[i].end)
+                return i;
+        }
+        return -1;
+    }
+    
+    public bool snap_clip(Clip c, int64 span) {
+        foreach (Clip cl in clips) {
+            if (c.snap(cl, span))
+                return true;
+        }
+        return false;
+    }
+    
+    public bool snap_coord(out int64 coord, int64 span) {
+        foreach (Clip c in clips) {
+            if (c.snap_coord(out coord, span))
+                return true;
+        }
+        return false;
+    }
+    
+    public int get_insert_index(int64 time) {
+        int end_ret = 0;
+        for (int i = 0; i < clips.size; i++) {
+            Clip c = clips[i];
+
+            
+            if (time >= c.start) {
+                if (time < c.start + c.length/2)
+                    return i;
+                else if (time < c.start + c.length)
+                    return i + 1;
+                else
+                    end_ret ++;
+            }
+        }
+        return end_ret;
+    }
+
+    // This is called to find the first gap after a start time
+    public Gap find_first_gap(int64 start) {
+        int64 new_start = 0;
+        int64 new_end = int64.MAX;
+        
+        foreach (Clip c in clips) {
+            if (c.start > new_start &&
+                c.start > start) {
+                new_end = c.start;
+                break;
+            }
+            new_start = c.end;
+        }
+        return new Gap(new_start, new_end);
+    }
+
+    // This is always called with the assumption that we are not on a clip
+    public int get_gap_index(int64 time) {
+        int i = 0;
+        while (i < clips.size) {
+            if (time <= clips[i].start)
+                break;
+            i++;
+        }
+        return i;
+    }
+    
+    // If we are not on a valid gap (as in, a space between two clips or between the start
+    // and the first clip), we return an empty (and invalid) gap
+    public void find_containing_gap(int64 time, out Gap g) {
+        g = new Gap(0, 0);
+        
+        int index = get_gap_index(time);
+        if (index < clips.size) {
+            g.start = index > 0 ? clips[index - 1].end : 0;
+            g.end = clips[index].start;
+        }
+    }
+    
+    public int find_overlapping_clip(int64 start, int64 length) {
+        for (int i = 0; i < clips.size; i++) {
+            Clip c = clips[i];
+            if (c.overlap_pos(start, length))
+                return i;
+        }
+        return -1;
+    }
+
+    public int find_nearest_clip_edge(int64 time, out bool after) {
+        int limit = clips.size * 2;
+        int64 prev_time = clips[0].start;
+        
+        for (int i = 1; i < limit; i++) {
+            Clip c = clips[i / 2];
+            int64 t;
+            
+            if (i % 2 == 0)
+                t = c.start;
+            else
+                t = c.end;
+                
+            if (t > time) {
+                if (t - time < time - prev_time) {
+                    after = ((i % 2) != 0);
+                    return i / 2;
+                } else {
+                    after = ((i % 2) == 0);
+                    return (i - 1) / 2;
+                }
+            }
+            prev_time = t;
+        }
+    
+        after = true;
+        return clips.size - 1;
+    }
+    
+    public void do_clip_overwrite(Clip c) {
+        int start_index = get_clip_from_time(c.start);
+        int end_index = get_clip_from_time(c.end);
+        
+        if (end_index >= 0) {
+            int64 diff = c.end - clips[end_index].start;
+            if (end_index == start_index) {
+                if (diff > 0) {
+                    Clip cl = new Clip(clips[end_index].clipfile, clips[end_index].type, 
+                                    clips[end_index].name, c.end, 
+                                    clips[end_index].media_start + diff,
+                                    clips[end_index].length - diff);
+                    put(end_index + 1, cl);
+                }
+            } else {
+                clips[end_index].set_media_start(clips[end_index].media_start + 
+                                                        diff);
+                clips[end_index].set_duration(clips[end_index].length - 
+                                                        diff);
+                clips[end_index].set_start(c.end);
+            }
+        }
+        if (start_index >= 0) {
+            clips[start_index].set_duration(c.start - clips[start_index].start);
+        }
+
+        int i = 0;
+        while (i < clips.size) {
+            if (clips[i].start >= c.start &&
+                clips[i].end <= c.end)
+                remove_clip(i);
+            else
+                i++;
+        }        
+    }    
+    
+    public void add_clip_at(Clip c, int64 pos, bool overwrite) {
+        c.set_start(pos);
+        if (overwrite)
+            do_clip_overwrite(c);    
+        
+        clips.insert(get_insert_index(c.start), c);    
+        project.reseek();
+    }
+
+    // This function adds a new clip to the timeline; in that it adds it to
+    // the Gnonlin composition and also adds a new ClipView object
+    public void add_new_clip(Clip c, int64 pos, bool overwrite) {
+        composition.add(c.file_source);
+        add_clip_at(c, pos, overwrite);
+        clip_added(c);
+    }
+
+    public void ripple_delete(int64 length, int64 clip_start, int64 clip_length) {
+        if (find_overlapping_clip(clip_start, clip_length) != -1)
+            return;
+        shift_clips(get_insert_index(clip_start), -length);
+    }
+
+    public void ripple_paste(int64 length, int64 position) {
+        int index = get_clip_from_time(position);
+        
+        if (index < 0 ||
+            position == clips[index].start) {
+            index = get_gap_index(position);
+            shift_clips(index, length);
+        }
+        project.reseek();
+    }
+
+    /*
+     * This function can be called with a clip that already has a clipview
+     * object in the timeline.  If so, we don't want to add another one, so we
+     * check for this and change the function call accordingly
+    */
+    public int do_clip_paste(Clip clip, int64 position, bool over, bool new_clip) {
+        if (over ||
+            find_overlapping_clip(position, clip.length) == -1) {
+            
+             if (new_clip)
+                add_new_clip(clip, position, true);
+             else
+                add_clip_at(clip, position, true);
+                
+             return 0;
+        } else {
+            int pos = get_clip_from_time(position);
+            if (pos != -1 &&
+                position != clips[pos].start) {
+                return -1;
+            }
+            
+            pos = get_insert_index(position);
+            
+            if (new_clip)
+                insert(pos, clip, position);
+            else
+                insert_at(pos, clip, position);
+
+            return 1;
+        }
+    }
+    
+    public bool get_framerate(out Fraction rate) {
+        if (clips.size == 0) {
+            rate.numerator = 2997;
+            rate.denominator = 100;
+            return true;
+        }
+        return clips[0].clipfile.get_frame_rate(out rate);
+    }
+    
+    public Clip? get_clip(int i) {
+        if (i < 0 || i >= clips.size)
+            error("get_clip: Invalid index! %d (%d)", i, clips.size);
+        return clips[i];
+    }
+
+    public int get_clip_index(Clip c) {
+        for (int i = 0; i < clips.size; i++) {
+            if (clips[i] == c)
+                return i;
+        }
+        return -1;
+    }
+    
+    public Clip? get_clip_by_position(int64 pos) {
+        int length = clips.size;
+        
+        for (int i = length - 1; i >= 0; i--)
+            if (clips[i].start < pos)
+                return pos >= clips[i].end ? null : clips[i];
+        return null;
+    }
+    
+    public int64 get_length() {
+        return clips.size == 0 ? 0 : clips[clips.size - 1].start + clips[clips.size - 1].length;
+    }
+
+    /* We need to set the start position of each clip
+     * as this works around a current Gnonlin bug where
+     * if you arrange clips a few times, the current
+     * position will become corrupted.
+     */
+    public void shift_clips(int index, int64 shift) {
+        for (int i = 0; i < clips.size; i++)
+            clips[i].set_start(i >= index ? clips[i].start + shift
+                                          : clips[i].start);
+    }
+    
+    void insert_at(int i, Clip clip, int64 pos) {
+        clip.set_start(pos);
+        clips.insert(i, clip);
+        
+        shift_clips(i + 1, clip.length);
+        project.reseek();
+    }
+    
+    public void insert(int index, Clip clip, int64 pos) {
+        check(clip);
+
+        // I reversed the following two lines as shift_clips sets information on
+        // clips that aren't yet in the composition otherwise, which causes behavior
+        // like the position in the composition being incorrect when we start playing.
+        // This also fixes the lockup problem we were having.
+        composition.add(clip.file_source);            
+        insert_at(index, clip, pos);
+        
+        clip_added(clip);        
+    }
+    
+    public void put(int index, Clip c) {
+        check(c);
+    
+        composition.add(c.file_source);
+        clips.insert(index, c);
+        
+        project.reseek();
+        clip_added(c);
+    }
+    
+    public void append_at_time(Clip c, int64 time) {
+        insert(clips.size, c, time);
+    }
+    
+    void remove_clip_at(int index) {
+        int64 length = clips[index].length;
+        clips.remove_at(index);
+        shift_clips(index, -length);
+    }
+    
+    public void delete_clip(Clip clip, bool ripple) {
+        int index = get_clip_index(clip);
+        
+        remove_clip_at(index);
+        if (!ripple) shift_clips(index, clip.length);
+        
+        composition.remove(clip.file_source);
+        clip_removed(clip);
+    }
+    
+    public void remove_clip(int index) {
+        clip_removed(clips[index]);
+        composition.remove(clips[index].file_source);
+        clips.remove_at(index);
+    }
+    
+    public void delete_gap(Gap g) {
+        shift_clips(get_gap_index(g.start), -(g.end - g.start));
+        project.reseek();
+    }
+    
+    public void remove_clip_from_array(int pos) {
+        clips.remove_at(pos);
+    }
+    
+    /*
+     * Shift the clips after index, insert the clip that was at index
+     * at dest, and set its position correctly.
+     * The do_shift bool is there since copy-drag rotations don't need shifts
+     * as the clip to be inserted originates on top of another clip
+    */
+    public void rotate_clip(Clip c, int index, int dest, bool after) {
+        shift_clips(index, -c.length);
+        
+        if (after)
+            insert_at(dest + 1, c, clips[dest].start + clips[dest].length);
+        else {
+            int64 prev_time = clips[dest].start;
+            insert_at(dest, c, prev_time);
+        }
+        project.reseek();
+    }
+    
+    public void delete_all_clips() {
+        uint size = clips.size;
+        for (int i = 0; i < size; i++) { 
+            delete_clip(clips[0], false);
+        }
+        project.go(0);
+    }
+    
+    public void revert_to_original(Clip c) {    
+        int index = get_clip_index(c);
+        if (index == -1)
+            error("revert_to_original: Clip not in track array!");
+            
+        shift_clips(index + 1, c.clipfile.length - c.length);       
+    
+        c.set_duration(c.clipfile.length);
+        c.set_media_start(0);
+
+        project.go(c.start);
+    }
+    
+    public void split_at(int64 position) {
+        Clip c = get_clip_by_position(position);
+        if (c == null)
+            return;
+        
+        Clip cn = new Clip(c.clipfile, c.type, c.name, position,
+                           (position - c.start) + c.media_start, c.start + c.length - position);
+        
+        c.set_duration(position - c.start);                     
+        
+        int index = get_clip_index(c) + 1;
+        shift_clips(index, -cn.length);
+        insert(index, cn, position);  
+    }  
+    
+    public void trim(Clip c, int64 position, bool left) {
+        int index = get_clip_index(c);
+        int64 pos_diff;
+        
+        if (left) {
+            pos_diff = position - c.start;
+            c.set_media_start(c.media_start + pos_diff);
+        } else pos_diff = c.end - position;
+        
+        shift_clips(index + 1, -pos_diff);
+        c.set_duration(c.length - pos_diff);
+    }
+    
+    public int64 previous_edit(int64 pos) {
+        for (int i = clips.size - 1; i >= 0 ; --i) {
+            Clip c = clips[i];
+            if (c.start + c.length < pos)
+                return c.start + c.length;            
+            if (c.start < pos)
+                return c.start;
+        }
+        return 0;
+    }
+
+    public int64 next_edit(int64 pos) {
+        foreach (Clip c in clips)
+            if (c.start > pos)
+                return c.start;
+        return get_length();
+    }
+    
+    public void save(FileStream f) {
+        f.printf("  <track name=\"%s\">\n", name());
+        for (int i = 0; i < clips.size; i++)
+            clips[i].save(f);
+        f.puts("  </track>\n");
+    }
+}
+
+class VideoTrack : Track {
+    Gst.Element color_converter;
+    Gst.Element sink;
+    
+    Gtk.Widget output_widget;
+    
+    public VideoTrack(Project project) {
+        base(project);
+        
+        color_converter = make_element("ffmpegcolorspace");
+        sink = make_element("xvimagesink");
+        sink.set("force-aspect-ratio", true);
+        
+        project.pipeline.add_many(color_converter, sink);
+        if (!color_converter.link(sink))
+            error("can't link color_converter");
+    }
+
+    protected override string name() { return "video"; }
+    
+    protected override Gst.Element empty_element() {
+        Gst.Element blackness = make_element("videotestsrc");
+        blackness.set("pattern", 2);     // 2 == GST_VIDEO_TEST_SRC_BLACK
+        return blackness;
+    }
+    
+    protected override Gst.Pad get_destination_sink() {
+        return color_converter.get_static_pad("sink");
+    }
+    
+    protected override void check(Clip clip) {
+        if (clips.size > 0) {
+            Fraction rate1;
+            Fraction rate2 = Fraction(0, 0);
+            if (!clip.clipfile.get_frame_rate(out rate1) || 
+                !clips[0].clipfile.get_frame_rate(out rate2))
+                error("can't get frame rate");
+            if (!rate1.equal(rate2))
+                error("can't insert clip with different frame rate");
+        }
+    }
+    
+    void on_element_message(Gst.Bus bus, Gst.Message message) {
+        if (!message.structure.has_name("prepare-xwindow-id"))
+            return;
+        
+        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
+        Gst.XOverlay overlay = (Gst.XOverlay) sink;
+        overlay.set_xwindow_id(xid);
+        
+        // Once we've connected our video sink to a widget, it's best to turn off GTK
+        // double buffering for the widget; otherwise the video image flickers as it's resized.
+        output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
+    }
+
+    public void set_output_widget(Gtk.Widget widget) {
+        output_widget = widget;
+        
+        Gst.Bus bus = project.pipeline.get_bus();
+        
+        // We need to wait for the prepare-xwindow-id element message, which tells us when it's
+        // time to set the X window ID.  We must respond to this message synchronously.
+        // If we used an asynchronous signal (enabled via gst_bus_add_signal_watch) then the
+        // xvimagesink would create its own output window which would flash briefly
+        // onto the display.
+        
+        bus.enable_sync_message_emission();
+        bus.sync_message["element"] += on_element_message;
+
+        // We can now progress to the PAUSED state.
+        // We can only do this if we aren't currently loading a project
+        if (project.loader == null)
+            project.pipeline.set_state(Gst.State.PAUSED);
+    }
+    
+    /* It would be nice if we could query or seek in frames using GST_FORMAT_DEFAULT, or ask
+     * GStreamer to convert frame->time and time->frame for us using gst_element_query_convert().
+     * Unfortunately there are several reasons we can't.
+     * 1) It appears that position queries using GST_FORMAT_DEFAULT are broken since GstBaseSink
+     *    won't pass them upstream.
+     * 2) Some codecs (e.g. theoradec) will convert between time and frames, but
+     *    others (e.g. ffmpegdec, dvdec) haven't implemented this conversion.
+     * 3) Even when a codec will perform conversions, its frame->time and time->frame functions may
+     *    not be perfect inverses; see the comments in time_to_frame(), below.
+     *
+     * So instead we must convert manually using the frame rate.
+     *
+     * TODO:   We should file GStreamer bugs for all of these.
+     */
+    
+    int64 frame_to_time(int frame) {
+        Fraction rate;
+        if (!get_framerate(out rate))
+            return 0;
+
+        return (int64) Gst.util_uint64_scale(frame, Gst.SECOND * rate.denominator, rate.numerator);
+    }
+    
+    int time_to_frame(int64 time) {
+        Fraction rate;
+        if (!get_framerate(out rate))
+            return 0;
+        return time_to_frame_with_rate(time, rate);
+    }
+    
+    public int get_current_frame(int64 time) {
+        return time_to_frame(time);
+    }
+    
+    public int64 previous_frame(int64 position) {
+        int frame = time_to_frame(position);
+        return frame_to_time(frame - 1);
+    }
+    
+    public int64 next_frame(int64 position) {
+        int frame = time_to_frame(position);
+        return frame_to_time(frame + 1);
+    }
+}
+
+class AudioTrack : Track {
+    Gst.Element sink;
+    
+    public AudioTrack(Project project) {
+        base(project);
+        
+        sink = make_element("gconfaudiosink");
+        project.pipeline.add(sink);
+    }
+
+    protected override string name() { return "audio"; }
+    
+    protected override Gst.Element empty_element() {
+        Gst.Element silence = make_element("audiotestsrc");
+        silence.set("wave", 4);     // 4 is silence
+        return silence;
+    }
+    
+    protected override Gst.Pad get_destination_sink() {
+        return sink.get_static_pad("sink");
+    }
+}
