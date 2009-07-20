@@ -73,15 +73,14 @@ class TrackView : Gtk.Fixed {
         if (timeline.control_pressed) {
             window.set_cursor(plus_cursor);
             
-            if (track.get_clip_index(timeline.drag_source_clip.clip) == -1) {
-                track.add_clip_at(timeline.drag_source_clip.clip, 
-                                        timeline.drag_source_clip.clip.start, false);
-                timeline.selected_clip.ghost = false;
-            }
-            
             track.add_new_clip(timeline.drag_source_clip.clip.copy(), 
                                 timeline.drag_source_clip.clip.start, false);
-            timeline.drag_source_clip.clip.set_start(init_drag_time); 
+
+            if (track.get_clip_index(timeline.drag_source_clip.clip) == -1) {
+                track.add_clip_at(timeline.drag_source_clip.clip, 
+                                        init_drag_time, false);
+                timeline.drag_source_clip.ghost = false;
+            }
         } else {
             window.set_cursor(hand_cursor);
 
