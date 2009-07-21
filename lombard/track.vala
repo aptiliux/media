@@ -12,7 +12,7 @@ public enum MediaType {
 }
 
 abstract class Track {
-    protected Project project;
+    protected Model.Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
     
     protected Gst.Bin composition;
@@ -20,7 +20,7 @@ abstract class Track {
     public signal void clip_added(Clip clip);
     public signal void clip_removed(Clip clip);
     
-    public Track(Project project) {
+    public Track(Model.Project project) {
         this.project = project;
         
         composition = (Gst.Bin) make_element("gnlcomposition");
@@ -506,7 +506,7 @@ class VideoTrack : Track {
     
     Gtk.Widget output_widget;
     
-    public VideoTrack(Project project) {
+    public VideoTrack(Model.Project project) {
         base(project);
         
         color_converter = make_element("ffmpegcolorspace");
@@ -623,7 +623,7 @@ class VideoTrack : Track {
 class AudioTrack : Track {
     Gst.Element sink;
     
-    public AudioTrack(Project project) {
+    public AudioTrack(Model.Project project) {
         base(project);
         
         sink = make_element("gconfaudiosink");

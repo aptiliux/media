@@ -9,7 +9,7 @@ using Gee;
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
-    Project project;
+    Model.Project project;
     TimeLine timeline;
     StatusBar status_bar;
     
@@ -163,10 +163,14 @@ class App : Gtk.Window {
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         
-        project = new Project();
+        project = new Model.Project();
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
         project.load_success += on_load_success;
+        project.get_main_video_track += on_get_main_video_track;
+
+        project.add_track(new VideoTrack(project));
+        project.add_track(new AudioTrack(project));
         
         timeline = new TimeLine(project);
         timeline.selection_changed += on_selection_changed;
@@ -254,6 +258,10 @@ class App : Gtk.Window {
         on_zoom_to_project();
     }
     
+    public void on_get_main_video_track(out VideoTrack? track) {
+        track = (VideoTrack) project.tracks[0];
+    }
+        
     // Loader code
     
     public void load_file(string name) {
@@ -288,13 +296,7 @@ class App : Gtk.Window {
         
         d.set_select_multiple(true);
         if (d.run() == Gtk.ResponseType.ACCEPT) {
-            // The call to copy() below is a hack which allows us to build either in Vala 0.7.3
-            // (in which get_filenames() is incorrectly declared as returning an unowned value)
-            // or in Vala 0.7.4 (where its declaration is correct).  We can remove it once we
-            // no longer need compatibility with 0.7.3.
-            GLib.SList<string> filenames = d.get_filenames().copy();
-            
-            foreach (string s in filenames) {
+            foreach (string s in d.get_filenames()) {
                 string str;
                 try {
                     str = GLib.Filename.from_uri(s);
@@ -394,7 +396,11 @@ class App : Gtk.Window {
     }
     
     public void on_revert_to_original() {
-        project.revert_to_original(timeline.get_selected_clip());
+        Clip clip = timeline.get_selected_clip();
+        Track? track = track_from_clip_file(clip.clipfile);
+        if (track != null) {
+            track.revert_to_original(clip);
+        }
     }
   
     public void on_clip_properties() {
@@ -418,7 +424,17 @@ class App : Gtk.Window {
             project.append(fetcher.clipfile);
         }
     }
-    
+
+    Track? track_from_clip_file(ClipFile cf) {
+        if (cf.video_caps != null) {
+            return project.find_video_track();
+        } else if (cf.audio_caps != null) {
+            return project.find_audio_track();
+        } else {
+            return null;
+        }
+    }
+        
     public override void drag_data_received(Gdk.DragContext context, int x, int y,
                                             Gtk.SelectionData selection_data, uint drag_info,
                                             uint time) {

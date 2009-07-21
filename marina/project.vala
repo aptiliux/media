@@ -1,10 +1,8 @@
-using Gee;
-
+namespace Model {
 class Project {
     public Gst.Pipeline pipeline;
-    public VideoTrack video_track;
-    public AudioTrack audio_track;
-    
+
+    public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
     ClipFile[] clipfiles = new ClipFile[0];
 
     public string project_file;
@@ -19,6 +17,7 @@ class Project {
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
     public signal void load_success();
+    public signal void get_main_video_track(out VideoTrack? track);
     
     public Project() {
         pipeline = new Gst.Pipeline("pipeline");
@@ -27,11 +26,6 @@ class Project {
         bus.add_signal_watch();
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-        
-        video_track = new VideoTrack(this);
-        audio_track = new AudioTrack(this);
-        video_track.clip_removed += on_clip_removed;
-        audio_track.clip_removed += on_clip_removed;
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
@@ -49,17 +43,27 @@ class Project {
     }
     
     public int64 get_length() {
-        return int64.max(video_track.get_length(), audio_track.get_length());
+        int64 max = 0;
+        foreach (Track track in tracks) {
+            max = int64.max(max, track.get_length());
+        }
+        return max;
     }
     
     public void snap_clip(Clip c, int64 span) {
-        if (!video_track.snap_clip(c, span))
-            audio_track.snap_clip(c, span);  
+        foreach (Track track in tracks) {
+            if (track.snap_clip(c, span)) {
+                break;
+            }
+        }
     }
     
     public void snap_coord(out int64 coord, int64 span) {
-        if (!video_track.snap_coord(out coord, span))
-            audio_track.snap_coord(out coord, span);
+        foreach (Track track in tracks) {
+            if (track.snap_coord(out coord, span)) {
+                break;
+            }
+        }
     }
     
     public bool delete_gap(Track t, Gap g, bool single) {
@@ -67,16 +71,17 @@ class Project {
             t.delete_gap(g);
             return true;
         } else {
-            Track other;
-            if (t == video_track)
-                other = audio_track;
-            else
-                other = video_track;
+            Gap temp = g;
+            foreach (Track track in tracks) {
+                if (track != t) {
+                    temp = temp.intersect(track.find_first_gap(temp.start));
+                }
+            }
 
-            Gap temp = g.intersect(other.find_first_gap(g.start));
             if (!temp.is_empty()) {
-                video_track.delete_gap(temp);
-                audio_track.delete_gap(temp);
+                foreach (Track track in tracks) {
+                    track.delete_gap(temp);
+                }
                 return true;
             }
             return false;
@@ -87,60 +92,83 @@ class Project {
         string name = isolate_filename(clipfile.filename);
         int64 insert_time = 0;
         
-        if (clipfile.video_caps != null &&
-            clipfile.audio_caps != null) {
-            insert_time = int64.max(video_track.get_length(), audio_track.get_length());
-        } else if (clipfile.video_caps != null)
-            insert_time = video_track.get_length();
-        else if (clipfile.audio_caps != null)
-            insert_time = audio_track.get_length();
+        foreach (Track temp_track in tracks) {
+            insert_time = int64.max(insert_time, temp_track.get_length());
+        }
         
         if (clipfile.video_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
-            video_track.append_at_time(clip, insert_time);
+            Track? track = find_video_track();
+            if (track != null) {
+                track.append_at_time(clip, insert_time);
+            }
         }
         if (clipfile.audio_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.AUDIO, name, 0, 0, clipfile.length);
-            audio_track.append_at_time(clip, insert_time);
+            Track? track = find_audio_track();
+            if (track != null) {
+                track.append_at_time(clip, insert_time);
+            }
         }
     }
 
     public void on_clip_removed(Track t, Clip clip) {
         reseek();
     }
-    
-    public void set_output_widget(Gtk.Widget widget) { video_track.set_output_widget(widget); }
+
+    public void set_output_widget(Gtk.Widget widget) {
+        VideoTrack? video_track = null;
+        get_main_video_track(out video_track);
+        if (video_track != null) {
+            video_track.set_output_widget(widget); 
+        }
+    }
     
     public void split_at_playhead() {
-        video_track.split_at(position);
-        audio_track.split_at(position);
+        foreach (Track track in tracks) {
+            track.split_at(position);
+        }
     }
     
     public bool can_trim(out bool left) {
-        Clip video = video_track.get_clip_by_position(position);
-        Clip audio = audio_track.get_clip_by_position(position);
+        Clip first_clip = null;
         
         // When trimming multiple clips, we allow trimming left only if both clips already start
         // at the same position, and trimming right only if both clips already end at the same
         // position.
-        
-        if (video != null && audio != null) {
-            if (video.start != audio.start) {
-                if (video.end != audio.end)
-                    return false;   // no trim possible
-                left = false;
-                return true;
-            }
-            if (video.end != audio.end) {
-                left = true;
-                return true;
+
+        int64 start = 0;
+        int64 end = 0;
+        bool start_same = true;
+        bool end_same = true;
+        foreach (Track track in tracks) {
+            Clip clip = track.get_clip_by_position(position);
+            if (first_clip != null && clip != null) {
+                start_same = start_same && start == clip.start;
+                end_same = end_same && end == clip.end;
+            } else if (clip != null) {
+                first_clip = clip;
+                start = first_clip.start;
+                end = first_clip.end;
             }
         }
-        
-        Clip either = video != null ? video : audio;
-        if (either == null)
+
+        if (first_clip == null) {
             return false;
-        left = (position - either.start < either.length / 2);
+        }
+        
+        if (start_same && !end_same) {
+            left = true;
+            return true;
+        }
+        
+        if (!start_same && end_same) {
+            left = false;
+            return true;
+        }
+        
+        // which half of the clip are we closer to?
+        left = (position - first_clip.start < first_clip.length / 2);
         return true;
     }
     
@@ -148,25 +176,18 @@ class Project {
         bool left;
         if (!can_trim(out left))
             return;
-            
-        Clip video = video_track.get_clip_by_position(position);
-        if (video != null)
-            video_track.trim(video, position, left);
-            
-        Clip audio = audio_track.get_clip_by_position(position);
-        if (audio != null)
-            audio_track.trim(audio, position, left);
-            
-        if (left) {
-            Clip either = video != null ? video : audio;
-            go(either.start);
+
+        Clip first_clip = null;
+        foreach (Track track in tracks) {
+            Clip clip = track.get_clip_by_position(position);
+            if (clip != null) {
+                track.trim(clip, position, left);
+            }
         }
-    }
-    
-    public void revert_to_original(Clip c) {
-        if (c.type == MediaType.VIDEO)
-            video_track.revert_to_original(c);
-        else audio_track.revert_to_original(c);
+            
+        if (left && first_clip != null) {
+            go(first_clip.start);
+        }
     }
     
     public bool is_playing() {
@@ -174,12 +195,26 @@ class Project {
     }
     
     public bool playhead_on_clip() {
-        return video_track.get_clip_by_position(position) != null ||
-               audio_track.get_clip_by_position(position) != null;
+        foreach (Track track in tracks) {
+            if (track.get_clip_by_position(position) != null) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public int get_current_frame() {
-        return video_track.get_current_frame(position);
+        VideoTrack? video_track = null;
+        get_main_video_track(out video_track);
+        if (video_track != null) {
+            return video_track.get_current_frame(position);
+        }
+        return 0;
+    }
+    
+    public void add_track(Track track) {
+        track.clip_removed += on_clip_removed;
+        tracks.add(track);
     }
     
     public void add_clipfile(ClipFile clipfile) {
@@ -193,6 +228,25 @@ class Project {
         return null;
     }
     
+    // TODO this will move to the Video project class
+    public Track? find_video_track() {
+        foreach (Track track in tracks) {
+            if (track is VideoTrack) {
+                return track;
+            }
+        }
+        return null;
+    }
+    
+    // TODO this should go away all together when the XML loading gets fixed up
+    public Track? find_audio_track() {
+        foreach (Track track in tracks) {
+            if (track is AudioTrack) {
+                return track;
+            }
+        }
+        return null;
+    }
     bool on_callback() {
         if (!playing) {
             callback_id = 0;
@@ -261,34 +315,41 @@ class Project {
         if (playing)
             start_pos -= 1 * Gst.SECOND;
         
-        int64 p1 = video_track.previous_edit(start_pos);
-        int64 p2 = audio_track.previous_edit(start_pos);
-        go(int64.max(p1, p2));
+        int64 new_position = 0;
+        foreach (Track track in tracks) {
+            new_position = int64.max(new_position, track.previous_edit(start_pos));
+        }
+        go(new_position);
     }
     
     public void go_next() {
-        if (video_track.get_length() > position &&
-            audio_track.get_length() > position) {
-            int64 n1 = video_track.next_edit(position);
-            int64 n2 = audio_track.next_edit(position);
-            
-            go(int64.min(n1, n2));
-            
-        } else if (video_track.get_length() > position) {
-            go(video_track.next_edit(position));    
-        } else if (audio_track.get_length() > position) {
-            go(audio_track.next_edit(position));
-        } else {
-            go(0);
+        int64 new_position = 0;
+        foreach (Track track in tracks) {
+            if (track.get_length() > position) {
+                if (new_position != 0) {
+                    new_position = int64.min(new_position, track.next_edit(position));
+                } else {
+                    new_position = track.next_edit(position);
+                }
+            }
         }
+        go(new_position);
     }
     
     public void go_previous_frame() {
-        go(video_track.previous_frame(position));
+        VideoTrack? video_track = null;
+        get_main_video_track(out video_track);
+        if (video_track != null) {
+            go(video_track.previous_frame(position));
+        }
     }
     
     public void go_next_frame() {
-        go(video_track.next_frame(position));
+        VideoTrack? video_track = null;
+        get_main_video_track(out video_track);
+        if (video_track != null) {
+            go(video_track.next_frame(position));
+        }
     }
     
     public int64 get_position() {
@@ -296,9 +357,12 @@ class Project {
     }
     
     public bool get_framerate_fraction(out Fraction rate) {
-        if (!video_track.get_framerate(out rate))
-            return false;
-        return true;
+        bool return_value = false;
+        foreach (Track track in tracks) {
+            if (track.get_framerate(out rate))
+                return_value = true;
+        }
+        return return_value;
     }
     
     public int get_framerate() {
@@ -318,8 +382,9 @@ class Project {
     }
     
     public void clear() {
-        video_track.delete_all_clips();
-        audio_track.delete_all_clips();
+        foreach (Track track in tracks) {
+            track.delete_all_clips();
+        }
         clipfiles = new ClipFile[0];
         set_name(null);
     }
@@ -381,14 +446,15 @@ class Project {
         FileStream f = FileStream.open(project_file, "w");
         
         f.printf("<lombard version=\"%f\">\n", App.VERSION);
-        video_track.save(f);
-        audio_track.save(f);
+        foreach (Track track in tracks) {
+            track.save(f);
+        }
         f.printf("</lombard>\n"); 
     }
 }
 
 class ProjectLoader {
-    Project project;
+    Model.Project project;
 
     string text;
     ulong text_len;
@@ -397,11 +463,11 @@ class ProjectLoader {
     Track track;
     string error;
 
-    HashSet<ClipFetcher> pending = new HashSet<ClipFetcher>();
+    Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
     
     public signal void load_complete(string? error);
     
-    public ProjectLoader(Project project) {
+    public ProjectLoader(Model.Project project) {
         this.project = project;
     }
     
@@ -423,10 +489,10 @@ class ProjectLoader {
                 throw new MarkupError.INVALID_CONTENT("expected name attribute");
             switch (attr_values[0]) {
                 case "video":
-                    track = project.video_track;
+                    track = project.find_video_track();
                     break;
                 case "audio":
-                    track = project.audio_track;
+                    track = project.find_audio_track();
                     break;
                 default:
                     throw new MarkupError.INVALID_CONTENT("unknown track");
@@ -468,7 +534,8 @@ class ProjectLoader {
             if (clip_name == null)
                 clip_name = isolate_filename(clipfile.filename);
             Clip clip = new Clip(clipfile, 
-                                 track == project.video_track ? MediaType.VIDEO : MediaType.AUDIO, 
+                                 track == project.find_video_track() ? 
+                                    MediaType.VIDEO : MediaType.AUDIO, 
                                  clip_name, 0, media_start, duration);
             
             if (track == null)
@@ -546,4 +613,4 @@ class ProjectLoader {
             load_complete(error);
     }
 }
-
+}

@@ -243,7 +243,7 @@ class Clip {
         
         file_source = make_element("gnlfilesource");
         file_source.set("location", clipfile.filename);
-        
+
         set_media_start(media_start);
         set_duration(duration);
         set_start(start);

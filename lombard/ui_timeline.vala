@@ -34,9 +34,9 @@ class Ruler : Gtk.DrawingArea {
 }
 
 class StatusBar : Gtk.DrawingArea {
-    Project project;
+    Model.Project project;
     
-    public StatusBar(Project p) {
+    public StatusBar(Model.Project p) {
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
         modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
         set_size_request(0, TimeLine.BAR_HEIGHT);
@@ -68,11 +68,10 @@ class StatusBar : Gtk.DrawingArea {
 }
 
 class TimeLine : Gtk.EventBox {
-    public Project project;
+    public Model.Project project;
     
     Ruler ruler;
-    TrackView video_track_view;
-    TrackView audio_track_view;
+    ArrayList<TrackView> tracks = new ArrayList<TrackView>();
     Gtk.VBox vbox;
     
     public ClipView drag_source_clip;
@@ -113,20 +112,20 @@ class TimeLine : Gtk.EventBox {
     
     public GapView gap_view;
 
-    public TimeLine(Project p) {
+    public TimeLine(Model.Project p) {
         project = p;
         
         vbox = new Gtk.VBox(false, 0);
         ruler = new Ruler(this);
         vbox.pack_start(ruler, false, false, 0);
         
-        video_track_view = new TrackView(project.video_track, this);
-        audio_track_view = new TrackView(project.audio_track, this);
+        foreach (Track track in project.tracks) {
+            tracks.add(new TrackView(track, this));
+        }
         
         project.position_changed += on_position_changed;
-        
-        vbox.pack_start(video_track_view, false, false, 0);
-        vbox.pack_start(audio_track_view, false, false, 0);
+        vbox.pack_start(find_video_track_view(), false, false, 0);
+        vbox.pack_start(find_audio_track_view(), false, false, 0);
         add(vbox);
         
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
@@ -213,8 +212,9 @@ class TimeLine : Gtk.EventBox {
     
     public void zoom (float inc) {
         calculate_pixel_step(inc);
-        video_track_view.resize();
-        audio_track_view.resize();
+        foreach (TrackView track in tracks) {
+            track.resize();
+        }
         project.position_changed();
         queue_draw();
     }
@@ -247,11 +247,12 @@ class TimeLine : Gtk.EventBox {
             selected_clip.trackview.track.delete_clip(selected_clip.clip, ripple);
             
             if (ripple) {
-                TrackView other = selected_clip.trackview == video_track_view ? audio_track_view :
-                                        video_track_view;
-                                        
-                other.track.ripple_delete(selected_clip.clip.length, 
+                foreach (TrackView track in tracks) {
+                    if (selected_clip.trackview != track) {
+                        track.track.ripple_delete(selected_clip.clip.length, 
                                             selected_clip.clip.start, selected_clip.clip.length);
+                    }
+                }
             }
             selected_clip.trackview.clear_drag();
             select_clip(null);
@@ -283,8 +284,8 @@ class TimeLine : Gtk.EventBox {
     }
     
     public int do_paste(Clip c, int64 pos, bool over, bool new_clip) {
-        TrackView view = c.type == MediaType.VIDEO ? video_track_view 
-                                                                : audio_track_view;
+        TrackView view = c.type == MediaType.VIDEO ? 
+            find_video_track_view() : find_audio_track_view();
         int do_ripple = view.track.do_clip_paste(c, pos, over, new_clip);
         
         if (do_ripple == -1) {
@@ -292,7 +293,7 @@ class TimeLine : Gtk.EventBox {
             d.run();
             d.destroy();
         } else if (do_ripple == 1) {
-            TrackView other = (view == video_track_view) ? audio_track_view : video_track_view;
+            TrackView other = (view == tracks[0]) ? tracks[1] : tracks[0];
             other.track.ripple_paste(c.length, pos);
         }
         queue_draw();
@@ -376,17 +377,12 @@ class TimeLine : Gtk.EventBox {
                       xpos, allocation.height);
         
         if (!shift_pressed) {
-            if (video_track_view.dragging &&
-                video_track_view.drag_intersect) {
-                Gdk.draw_line(window, style.white_gc, 
-                                video_track_view.drag_x_coord, 0, 
-                                video_track_view.drag_x_coord, allocation.height);
-            }
-            if (audio_track_view.dragging &&
-                audio_track_view.drag_intersect) {
-                Gdk.draw_line(window, style.white_gc,
-                                audio_track_view.drag_x_coord, 0,
-                                audio_track_view.drag_x_coord, allocation.height);    
+            foreach (TrackView track in tracks) {
+                if (track.dragging && track.drag_intersect) {
+                    Gdk.draw_line(window, style.white_gc, 
+                                track.drag_x_coord, 0, 
+                                track.drag_x_coord, allocation.height);
+                }
             }
         }
         
@@ -553,5 +549,25 @@ class TimeLine : Gtk.EventBox {
         d.show_all();
         d.run();
         d.destroy();
+    }
+    
+    TrackView? find_video_track_view() {
+        foreach (TrackView track in tracks) {
+            if (track.track is VideoTrack) {
+                return track;
+            }
+        }
+        
+        return null;
+    }
+    
+    TrackView? find_audio_track_view() {
+        foreach (TrackView track in tracks) {
+            if (track.track is AudioTrack) {
+                return track;
+            }
+        }
+        
+        return null;
     }
 }
