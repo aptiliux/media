@@ -34,9 +34,9 @@ class Ruler : Gtk.DrawingArea {
 }
 
 class StatusBar : Gtk.DrawingArea {
-    Model.Project project;
+    Model.VideoProject project;
     
-    public StatusBar(Model.Project p) {
+    public StatusBar(Model.VideoProject p) {
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
         modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
         set_size_request(0, TimeLine.BAR_HEIGHT);
@@ -68,7 +68,7 @@ class StatusBar : Gtk.DrawingArea {
 }
 
 class TimeLine : Gtk.EventBox {
-    public Model.Project project;
+    public Model.VideoProject project;
     
     Ruler ruler;
     ArrayList<TrackView> tracks = new ArrayList<TrackView>();
@@ -112,7 +112,7 @@ class TimeLine : Gtk.EventBox {
     
     public GapView gap_view;
 
-    public TimeLine(Model.Project p) {
+    public TimeLine(Model.VideoProject p) {
         project = p;
         
         vbox = new Gtk.VBox(false, 0);

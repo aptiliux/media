@@ -9,7 +9,7 @@ using Gee;
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
-    Model.Project project;
+    Model.VideoProject project;
     TimeLine timeline;
     StatusBar status_bar;
     
@@ -163,11 +163,10 @@ class App : Gtk.Window {
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         
-        project = new Model.Project();
+        project = new Model.VideoProject();
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
         project.load_success += on_load_success;
-        project.get_main_video_track += on_get_main_video_track;
 
         project.add_track(new VideoTrack(project));
         project.add_track(new AudioTrack(project));
@@ -258,10 +257,6 @@ class App : Gtk.Window {
         on_zoom_to_project();
     }
     
-    public void on_get_main_video_track(out VideoTrack? track) {
-        track = (VideoTrack) project.tracks[0];
-    }
-        
     // Loader code
     
     public void load_file(string name) {

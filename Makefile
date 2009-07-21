@@ -29,20 +29,21 @@ $(FILLMORE): $(FILLMORE_FILES) Makefile
 LOMBARD = lom
 
 LOMBARD_SOURCES = \
-    clip.vala \
-    track.vala \
+	clip.vala \
+	track.vala \
 	ui_app.vala \
-    ui_timeline.vala \
-    ui_track.vala \
-    ui_clip.vala \
-    util.vala
+	ui_timeline.vala \
+	ui_track.vala \
+	ui_clip.vala \
+	util.vala \
+	video_project.vala
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
 
 LOMBARD_LIBS =  --pkg gdk-x11-2.0 \
-		        --pkg gee-1.0 \
-		        --pkg gstreamer-0.10 \
-		        --pkg gstreamer-pbutils-0.10 \
+				--pkg gee-1.0 \
+				--pkg gstreamer-0.10 \
+				--pkg gstreamer-pbutils-0.10 \
 				--pkg gstreamer-interfaces-0.10 \
 				--pkg gtk+-2.0 \
 				--pkg glib-2.0

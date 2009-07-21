@@ -17,7 +17,6 @@ class Project {
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
     public signal void load_success();
-    public signal void get_main_video_track(out VideoTrack? track);
     
     public Project() {
         pipeline = new Gst.Pipeline("pipeline");
@@ -88,21 +87,7 @@ class Project {
         }
     }
 
-    public void append(ClipFile clipfile) {
-        string name = isolate_filename(clipfile.filename);
-        int64 insert_time = 0;
-        
-        foreach (Track temp_track in tracks) {
-            insert_time = int64.max(insert_time, temp_track.get_length());
-        }
-        
-        if (clipfile.video_caps != null) {
-            Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
-            Track? track = find_video_track();
-            if (track != null) {
-                track.append_at_time(clip, insert_time);
-            }
-        }
+    protected virtual void do_append(ClipFile clipfile, string name, int64 insert_time) {
         if (clipfile.audio_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.AUDIO, name, 0, 0, clipfile.length);
             Track? track = find_audio_track();
@@ -111,19 +96,22 @@ class Project {
             }
         }
     }
+    
+    public void append(ClipFile clipfile) {
+        string name = isolate_filename(clipfile.filename);
+        int64 insert_time = 0;
+        
+        foreach (Track temp_track in tracks) {
+            insert_time = int64.max(insert_time, temp_track.get_length());
+        }
+        do_append(clipfile, name, insert_time);        
+    }
 
     public void on_clip_removed(Track t, Clip clip) {
         reseek();
     }
 
-    public void set_output_widget(Gtk.Widget widget) {
-        VideoTrack? video_track = null;
-        get_main_video_track(out video_track);
-        if (video_track != null) {
-            video_track.set_output_widget(widget); 
-        }
-    }
-    
+   
     public void split_at_playhead() {
         foreach (Track track in tracks) {
             track.split_at(position);
@@ -203,15 +191,6 @@ class Project {
         return false;
     }
     
-    public int get_current_frame() {
-        VideoTrack? video_track = null;
-        get_main_video_track(out video_track);
-        if (video_track != null) {
-            return video_track.get_current_frame(position);
-        }
-        return 0;
-    }
-    
     public void add_track(Track track) {
         track.clip_removed += on_clip_removed;
         tracks.add(track);
@@ -228,11 +207,11 @@ class Project {
         return null;
     }
     
-    // TODO this will move to the Video project class
-    public Track? find_video_track() {
+    // TODO this should go away all together when the XML loading gets fixed up
+    public VideoTrack? find_video_track() {
         foreach (Track track in tracks) {
             if (track is VideoTrack) {
-                return track;
+                return track as VideoTrack;
             }
         }
         return null;
@@ -336,44 +315,8 @@ class Project {
         go(new_position);
     }
     
-    public void go_previous_frame() {
-        VideoTrack? video_track = null;
-        get_main_video_track(out video_track);
-        if (video_track != null) {
-            go(video_track.previous_frame(position));
-        }
-    }
-    
-    public void go_next_frame() {
-        VideoTrack? video_track = null;
-        get_main_video_track(out video_track);
-        if (video_track != null) {
-            go(video_track.next_frame(position));
-        }
-    }
-    
     public int64 get_position() {
         return position;
-    }
-    
-    public bool get_framerate_fraction(out Fraction rate) {
-        bool return_value = false;
-        foreach (Track track in tracks) {
-            if (track.get_framerate(out rate))
-                return_value = true;
-        }
-        return return_value;
-    }
-    
-    public int get_framerate() {
-        Fraction r;
-        if (!get_framerate_fraction(out r))
-            return 0;
-        
-        if (r.numerator == 2997 &&
-            r.denominator == 100)
-            return 30;
-        return r.numerator / r.denominator;
     }
     
     public void set_name(string? filename) {
