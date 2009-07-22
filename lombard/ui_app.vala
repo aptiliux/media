@@ -168,8 +168,8 @@ class App : Gtk.Window {
         project.load_error += on_load_error;
         project.load_success += on_load_success;
 
-        project.add_track(new VideoTrack(project));
-        project.add_track(new AudioTrack(project));
+        project.add_track(new Model.VideoTrack(project));
+        project.add_track(new Model.AudioTrack(project));
         
         timeline = new TimeLine(project);
         timeline.selection_changed += on_selection_changed;
@@ -392,7 +392,7 @@ class App : Gtk.Window {
     
     public void on_revert_to_original() {
         Clip clip = timeline.get_selected_clip();
-        Track? track = track_from_clip_file(clip.clipfile);
+        Model.Track? track = track_from_clip_file(clip.clipfile);
         if (track != null) {
             track.revert_to_original(clip);
         }
@@ -420,7 +420,7 @@ class App : Gtk.Window {
         }
     }
 
-    Track? track_from_clip_file(ClipFile cf) {
+    Model.Track? track_from_clip_file(ClipFile cf) {
         if (cf.video_caps != null) {
             return project.find_video_track();
         } else if (cf.audio_caps != null) {

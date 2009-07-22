@@ -5,7 +5,7 @@
  */
 
 class TrackView : Gtk.Fixed {
-    public Track track;
+    public Model.Track track;
     public TimeLine timeline;
     
     const int MIN_DRAG = 5;
@@ -27,7 +27,7 @@ class TrackView : Gtk.Fixed {
     Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
     Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.PLUS);
     
-    public TrackView(Track track, TimeLine t) {
+    public TrackView(Model.Track track, TimeLine t) {
         this.track = track;
         timeline = t;
         
@@ -41,7 +41,7 @@ class TrackView : Gtk.Fixed {
         requisition.width += TimeLine.BORDER;    // right margin
     }
     
-    public void on_clip_added(Track t, Clip clip) {
+    public void on_clip_added(Model.Track t, Clip clip) {
         ClipView view = new ClipView(clip, this);      
         put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
         view.show();
@@ -65,7 +65,7 @@ class TrackView : Gtk.Fixed {
         }
     }
     
-    public void on_clip_removed(Track t, Clip clip) {
+    public void on_clip_removed(Model.Track t, Clip clip) {
         remove(clip.view);
     }
 

@@ -49,8 +49,8 @@ class ClipView : Gtk.DrawingArea {
         clip.moved += on_clip_moved;
 
         Gdk.Color.parse("000", out color_black);
-        Gdk.Color.parse(clip.type == MediaType.VIDEO ? "#d82" : "#84a", out color_selected);
-        Gdk.Color.parse(clip.type == MediaType.VIDEO ? "#da5" : "#b9d", out color_normal);
+        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", out color_selected);
+        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", out color_normal);
         
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
               

@@ -2,7 +2,8 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_SOURCES = project.vala
+MARINA_SOURCES =	project.vala \
+					track.vala
 
 MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
 
@@ -30,13 +31,13 @@ LOMBARD = lom
 
 LOMBARD_SOURCES = \
 	clip.vala \
-	track.vala \
 	ui_app.vala \
 	ui_timeline.vala \
 	ui_track.vala \
 	ui_clip.vala \
 	util.vala \
-	video_project.vala
+	video_project.vala \
+	video_track.vala
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
 

@@ -119,7 +119,7 @@ class TimeLine : Gtk.EventBox {
         ruler = new Ruler(this);
         vbox.pack_start(ruler, false, false, 0);
         
-        foreach (Track track in project.tracks) {
+        foreach (Model.Track track in project.tracks) {
             tracks.add(new TrackView(track, this));
         }
         
@@ -284,7 +284,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public int do_paste(Clip c, int64 pos, bool over, bool new_clip) {
-        TrackView view = c.type == MediaType.VIDEO ? 
+        TrackView view = c.type == Model.MediaType.VIDEO ? 
             find_video_track_view() : find_audio_track_view();
         int do_ripple = view.track.do_clip_paste(c, pos, over, new_clip);
         
@@ -503,7 +503,7 @@ class TimeLine : Gtk.EventBox {
             add_label_to_table(t, "%s".printf(time.to_string()), 1, row++, 5, 0);
         }
     
-        if (selected_clip.clip.clipfile.has_caps_structure(MediaType.VIDEO)) {   
+        if (selected_clip.clip.clipfile.has_caps_structure(Model.MediaType.VIDEO)) {   
             add_label_to_table(t, "<b>Video</b>", 0, row++, 5, 0);
 
             int w, h;
@@ -527,7 +527,7 @@ class TimeLine : Gtk.EventBox {
             }
         }
 
-        if (selected_clip.clip.clipfile.has_caps_structure(MediaType.AUDIO)) {
+        if (selected_clip.clip.clipfile.has_caps_structure(Model.MediaType.AUDIO)) {
             add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0);
            
             int rate;
@@ -553,7 +553,7 @@ class TimeLine : Gtk.EventBox {
     
     TrackView? find_video_track_view() {
         foreach (TrackView track in tracks) {
-            if (track.track is VideoTrack) {
+            if (track.track is Model.VideoTrack) {
                 return track;
             }
         }
@@ -563,7 +563,7 @@ class TimeLine : Gtk.EventBox {
     
     TrackView? find_audio_track_view() {
         foreach (TrackView track in tracks) {
-            if (track.track is AudioTrack) {
+            if (track.track is Model.AudioTrack) {
                 return track;
             }
         }

@@ -34,24 +34,24 @@ class ClipFile {
         this.length = length;
     }
     
-    public bool has_caps_structure(MediaType m) {
-        if (m == MediaType.AUDIO) {
+    public bool has_caps_structure(Model.MediaType m) {
+        if (m == Model.MediaType.AUDIO) {
             if (audio_caps == null || audio_caps.get_size() < 1)
                 return false;
-        } else if (m == MediaType.VIDEO) {
+        } else if (m == Model.MediaType.VIDEO) {
             if (video_caps == null || video_caps.get_size() < 1)
                 return false;
         }
         return true;
     }
 
-    bool get_caps_structure(MediaType m, out Gst.Structure s) {
+    bool get_caps_structure(Model.MediaType m, out Gst.Structure s) {
         
         if (!has_caps_structure(m))
             return false;
-        if (m == MediaType.AUDIO) {
+        if (m == Model.MediaType.AUDIO) {
             s = audio_caps.get_structure(0);
-        } else if (m == MediaType.VIDEO) {
+        } else if (m == Model.MediaType.VIDEO) {
             s = video_caps.get_structure(0);
         }
         return true;
@@ -59,7 +59,7 @@ class ClipFile {
     
     public bool get_frame_rate(out Fraction rate) {
         Gst.Structure structure;
-        if (!get_caps_structure(MediaType.VIDEO, out structure))
+        if (!get_caps_structure(Model.MediaType.VIDEO, out structure))
             return false;
         return structure.get_fraction("framerate", out rate.numerator, out rate.denominator);
     }
@@ -67,7 +67,7 @@ class ClipFile {
     public bool get_dimensions(out int w, out int h) {
         Gst.Structure s;
         
-        if (!get_caps_structure(MediaType.VIDEO, out s))
+        if (!get_caps_structure(Model.MediaType.VIDEO, out s))
             return false;
         
         return s.get_int("width", out w) && s.get_int("height", out h);
@@ -75,7 +75,7 @@ class ClipFile {
     
     public bool get_sample_rate(out int rate) {
         Gst.Structure s;
-        if (!get_caps_structure(MediaType.AUDIO, out s))
+        if (!get_caps_structure(Model.MediaType.AUDIO, out s))
             return false;
         
         return s.get_int("rate", out rate);
@@ -83,7 +83,7 @@ class ClipFile {
     
     public bool get_num_channels(out int channels) {
         Gst.Structure s;
-        if (!get_caps_structure(MediaType.AUDIO, out s))
+        if (!get_caps_structure(Model.MediaType.AUDIO, out s))
             return false;
         
         return s.get_int("channels", out channels);        
@@ -214,7 +214,7 @@ class ClipFetcher {
 
 class Clip {
     public ClipFile clipfile;
-    public MediaType type;
+    public Model.MediaType type;
     
     public string name;
     public int64 start;
@@ -233,7 +233,7 @@ class Clip {
     
     public signal void moved();
     
-    public Clip(ClipFile clipfile, MediaType t, string name,
+    public Clip(ClipFile clipfile, Model.MediaType t, string name,
                 int64 start, int64 media_start, int64 duration) {
         this.clipfile = clipfile;
         this.type = t;
@@ -248,7 +248,7 @@ class Clip {
         set_duration(duration);
         set_start(start);
         
-        if (type == MediaType.AUDIO)
+        if (type == Model.MediaType.AUDIO)
             file_source.set("caps", Gst.Caps.from_string("audio/x-raw-int"));
     }
     
