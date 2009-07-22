@@ -159,6 +159,11 @@ int time_to_frame_with_rate(int64 time, Fraction rate) {
     return time >= frame_to_time_with_rate(frame + 1, rate) ? frame + 1 : frame;
 }
 
+bool is_ntsc_rate(Fraction r) {
+    return r.numerator == 2997 && r.denominator == 100 ||
+           r.numerator == 30000 && r.denominator == 1001;
+}
+
 Time frame_to_time(int frame, Fraction rate) {
     int frame_rate = 0;
    
@@ -167,7 +172,7 @@ Time frame_to_time(int frame, Fraction rate) {
     t.drop_code = false;   
     if (rate.denominator == 1)
         frame_rate = rate.numerator;
-    else if (rate.numerator == 2997 && rate.denominator == 100) {
+    else if (is_ntsc_rate(rate)) {
         t.drop_code = true;
         frame_rate = 30;
 
@@ -179,7 +184,7 @@ Time frame_to_time(int frame, Fraction rate) {
         int minute_in_block = (frame % FRAMES_PER_10_MINUTES - 2) / FRAMES_PER_MINUTE;
         int minutes = 10 * block + minute_in_block;
         frame += 2 * minutes - 2 * block;   // skip 2 frames per minute, except every 10 minutes
-    } else error("can't handle fractional frame rate");
+    } else error("can't handle fractional frame rate: %d/%d", rate.numerator, rate.denominator);
    
     t.frame = frame % frame_rate;
     

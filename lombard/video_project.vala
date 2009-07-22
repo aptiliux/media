@@ -65,8 +65,7 @@ class VideoProject : Project {
         if (!get_framerate_fraction(out r))
             return 0;
         
-        if (r.numerator == 2997 &&
-            r.denominator == 100)
+        if (is_ntsc_rate(r))
             return 30;
         return r.numerator / r.denominator;
     }
