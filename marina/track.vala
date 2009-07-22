@@ -62,10 +62,6 @@ abstract class Track {
             error("can't link composition output");
     }
     
-    public int get_num_clips() {
-        return clips.size;
-    }
-
     public int64 get_time_from_pos(int pos, bool after) {
         if (after)
             return clips[pos].start + clips[pos].length;
@@ -385,18 +381,19 @@ abstract class Track {
     }
     
     public void delete_clip(Clip clip, bool ripple) {
+        composition.remove(clip.file_source);
+        clip.file_source.set_state(Gst.State.NULL);
         int index = get_clip_index(clip);
         
         remove_clip_at(index);
         if (!ripple) shift_clips(index, clip.length);
         
-        composition.remove(clip.file_source);
         clip_removed(clip);
     }
     
     public void remove_clip(int index) {
-        clip_removed(clips[index]);
         composition.remove(clips[index].file_source);
+        clip_removed(clips[index]);
         clips.remove_at(index);
     }
     

@@ -36,7 +36,7 @@ class App : Gtk.Window {
     
     string project_filename;
     
-    HashSet<ClipFetcher> pending = new HashSet<ClipFetcher>();
+    HashSet<Model.ClipFetcher> pending = new HashSet<Model.ClipFetcher>();
     
     public static const double VERSION = 0.01;
     public static const string NAME = "lombard";
@@ -263,7 +263,7 @@ class App : Gtk.Window {
         if (get_file_extension(name) == PROJECT_FILE_EXTENSION)
             load_project(name);
         else {
-            ClipFile cf = project.find_clipfile(name);
+            Model.ClipFile cf = project.find_clipfile(name);
             if (cf != null)
                 project.append(cf);
             else create_clip_fetcher(name);
@@ -391,7 +391,7 @@ class App : Gtk.Window {
     }
     
     public void on_revert_to_original() {
-        Clip clip = timeline.get_selected_clip();
+        Model.Clip clip = timeline.get_selected_clip();
         Model.Track? track = track_from_clip_file(clip.clipfile);
         if (track != null) {
             track.revert_to_original(clip);
@@ -410,7 +410,7 @@ class App : Gtk.Window {
         update_menu();
     }
     
-    void on_fetcher_ready(ClipFetcher fetcher) {
+    void on_fetcher_ready(Model.ClipFetcher fetcher) {
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
             do_error_dialog(fetcher.error_string);         
@@ -420,7 +420,7 @@ class App : Gtk.Window {
         }
     }
 
-    Model.Track? track_from_clip_file(ClipFile cf) {
+    Model.Track? track_from_clip_file(Model.ClipFile cf) {
         if (cf.video_caps != null) {
             return project.find_video_track();
         } else if (cf.audio_caps != null) {
@@ -446,7 +446,7 @@ class App : Gtk.Window {
     }
     
     void create_clip_fetcher(string filename) {
-        ClipFetcher fetcher = new ClipFetcher(filename);
+        Model.ClipFetcher fetcher = new Model.ClipFetcher(filename);
         fetcher.ready += on_fetcher_ready;
         pending.add(fetcher);
     }

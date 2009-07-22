@@ -41,7 +41,7 @@ class TrackView : Gtk.Fixed {
         requisition.width += TimeLine.BORDER;    // right margin
     }
     
-    public void on_clip_added(Model.Track t, Clip clip) {
+    public void on_clip_added(Model.Track t, Model.Clip clip) {
         ClipView view = new ClipView(clip, this);      
         put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
         view.show();
@@ -57,16 +57,25 @@ class TrackView : Gtk.Fixed {
     }
     
     public void resize() {
-        int limit = track.get_num_clips();
-        
-        for(int i = 0; i < limit; i++) {
-            Clip c = track.get_clip(i);
-            c.view.on_clip_moved();
-        }
+        foreach (Gtk.Widget w in get_children()) {
+            ClipView view = w as ClipView;
+            if (view != null) {
+                view.on_clip_moved();
+            }
+        }            
     }
-    
-    public void on_clip_removed(Model.Track t, Clip clip) {
-        remove(clip.view);
+
+    public void on_clip_removed(Model.Clip clip) {
+    // TODO revisit the dragging mechanism.  It would be good to have the clip
+    // responsible for moving itself and removing itself rather than delegating
+    // to the timeline and to the TrackView
+        foreach (Gtk.Widget w in get_children()) {
+            ClipView view = w as ClipView;
+            if (view.clip == clip) {
+                remove(view);
+				return;
+            }
+        }
     }
 
     public void update_drag_clip() {  
@@ -115,6 +124,13 @@ class TrackView : Gtk.Fixed {
             timeline.gap_view = null;
         }
     }  
+
+    Gtk.Widget? find_child(double x, double y) {
+        foreach (Gtk.Widget w in get_children())
+            if (w.allocation.x <= x && x < w.allocation.x + w.allocation.width)
+                return w;
+        return null;
+    }
     
     public override bool button_press_event(Gdk.EventButton e) {
         if (e.type != Gdk.EventType.BUTTON_PRESS &&
@@ -124,20 +140,17 @@ class TrackView : Gtk.Fixed {
         
         if (e.button == 1 ||
             e.button == 3) {
-            int x = (int) e.x;        
-            
-            int64 time = timeline.xpos_to_time(x);
-            int clip_index = track.find_overlapping_clip(time, 0);        
-
-            if (clip_index >= 0) {
-                ClipView w = track.get_clip(clip_index).view;
-                timeline.select_clip(w);
+            int x = (int) e.x;
+            ClipView? clip_view = find_child(e.x, e.y) as ClipView;
+            if (clip_view != null) {
+                timeline.select_clip(clip_view);
                 init_drag_x = x;
-                drag_offset = x - w.allocation.x;
-                init_drag_time = w.clip.start;
+                drag_offset = x - clip_view.allocation.x;
+                init_drag_time = clip_view.clip.start;
                 dragging = false;  // not dragging until we've moved MIN_DRAG pixels
             } else {
-                Gap g;
+                int64 time = timeline.xpos_to_time(x);
+                Model.Gap g;
                 track.find_containing_gap(time, out g);
                 if (g.end > g.start) {
                     timeline.gap_view = new GapView(g.start, g.end - g.start, this);
@@ -233,7 +246,7 @@ class TrackView : Gtk.Fixed {
         }
     }
     
-    public void do_clip_move(Clip clip, int x) {
+    public void do_clip_move(Model.Clip clip, int x) {
         curr_drag_x = x - drag_offset + timeline.BORDER;
         timeline.selected_clip.clip.set_start(timeline.xpos_to_time(curr_drag_x));
         

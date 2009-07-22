@@ -7,13 +7,13 @@
 class GapView : Gtk.DrawingArea {
     public TrackView trackview;
     
-    public Gap gap;
+    public Model.Gap gap;
     Gdk.Color fill_color;
     
     public GapView(int64 start, int64 length, TrackView owner) {
         trackview = owner;
         
-        gap = new Gap(start, start + length);         
+        gap = new Model.Gap(start, start + length);         
         
         Gdk.Color.parse("#777", out fill_color);
         
@@ -32,7 +32,7 @@ class GapView : Gtk.DrawingArea {
 }
 
 class ClipView : Gtk.DrawingArea {
-    public Clip clip;
+    public Model.Clip clip;
     public TrackView trackview;
     public bool ghost;
 
@@ -40,10 +40,9 @@ class ClipView : Gtk.DrawingArea {
     Gdk.Color color_normal;
     Gdk.Color color_selected;
     
-    public ClipView(Clip clip, TrackView owner) {
+    public ClipView(Model.Clip clip, TrackView owner) {
         this.clip = clip;
         trackview = owner;
-        clip.view = this;
         ghost = false;
         
         clip.moved += on_clip_moved;

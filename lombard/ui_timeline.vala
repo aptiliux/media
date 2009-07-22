@@ -76,7 +76,7 @@ class TimeLine : Gtk.EventBox {
     
     public ClipView drag_source_clip;
     public ClipView selected_clip;
-    public Clip clipboard_clip = null;
+    public Model.Clip clipboard_clip = null;
     
     public Gtk.Menu context_menu;
     
@@ -234,7 +234,7 @@ class TimeLine : Gtk.EventBox {
         return selected_clip != null;
     }
     
-    public Clip get_selected_clip() {
+    public Model.Clip get_selected_clip() {
         return selected_clip.clip;
     }
     
@@ -283,7 +283,7 @@ class TimeLine : Gtk.EventBox {
         do_paste(clipboard_clip.copy(), project.position, over, true);
     }
     
-    public int do_paste(Clip c, int64 pos, bool over, bool new_clip) {
+    public int do_paste(Model.Clip c, int64 pos, bool over, bool new_clip) {
         TrackView view = c.type == Model.MediaType.VIDEO ? 
             find_video_track_view() : find_audio_track_view();
         int do_ripple = view.track.do_clip_paste(c, pos, over, new_clip);
