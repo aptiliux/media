@@ -2,7 +2,8 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_SOURCES =	project.vala \
+MARINA_SOURCES =	clip.vala \
+					project.vala \
 					track.vala
 
 MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
@@ -30,7 +31,6 @@ $(FILLMORE): $(FILLMORE_FILES) Makefile
 LOMBARD = lom
 
 LOMBARD_SOURCES = \
-	clip.vala \
 	ui_app.vala \
 	ui_timeline.vala \
 	ui_track.vala \
