@@ -19,6 +19,7 @@ class App : Gtk.Window {
     double prev_adjustment_lower;
     double prev_adjustment_upper;
     
+    Gtk.Action export_action;
     Gtk.Action delete_action;
     Gtk.Action delete_lift_action;
     Gtk.Action cut_action;
@@ -49,6 +50,7 @@ class App : Gtk.Window {
         { "Save", Gtk.STOCK_SAVE, null, null, null, on_save },
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", null, null, on_save_as },
         { "Play", Gtk.STOCK_MEDIA_PLAY, "_Play / Pause", "space", null, on_play_pause },
+        { "Export", null, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, Gtk.main_quit },
 
         { "Edit", null, "_Edit", null, null, null },
@@ -89,6 +91,8 @@ class App : Gtk.Window {
       <menuitem name="FileSaveAs" action="SaveAs"/>
       <separator/>
       <menuitem name="FilePlay" action="Play"/>
+      <separator/>
+      <menuitem name="FileExport" action="Export"/>
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
@@ -144,6 +148,7 @@ class App : Gtk.Window {
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
         
+        export_action = group.get_action("Export");
         delete_action = group.get_action("Delete");
         delete_lift_action = group.get_action("DeleteLift");
         cut_action = group.get_action("Cut");
@@ -162,8 +167,8 @@ class App : Gtk.Window {
         manager.add_ui_from_string(ui, -1);
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
-        
-        project = new Model.VideoProject();
+
+        project = new Model.VideoProject(project_filename);
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
         project.load_success += on_load_success;
@@ -173,6 +178,7 @@ class App : Gtk.Window {
         
         timeline = new TimeLine(project);
         timeline.selection_changed += on_selection_changed;
+        timeline.track_changed += on_track_changed;
         project.position_changed += on_position_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         
@@ -208,8 +214,7 @@ class App : Gtk.Window {
     }
     
     void on_drawing_realize() {
-        if (project_filename != null)
-            project.load(project_filename);
+        project.load(project_filename);
         project.set_output_widget(drawing_area);
     }
     
@@ -410,6 +415,10 @@ class App : Gtk.Window {
         update_menu();
     }
     
+    public void on_track_changed() {
+        update_menu();
+    }
+    
     void on_fetcher_ready(Model.ClipFetcher fetcher) {
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
@@ -472,6 +481,8 @@ class App : Gtk.Window {
         trim_to_playhead_action.set_sensitive(project.can_trim(out dir));
         
         zoom_to_project_action.set_sensitive(project.get_length() != 0);
+    
+        export_action.set_sensitive(project.can_export());
     }
     
     public void on_selection_changed() { update_menu(); }
@@ -555,6 +566,31 @@ class App : Gtk.Window {
         if (project.is_playing())
             project.pause();
         else project.play();
+    }
+    
+    void on_export() {
+        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Export", this, 
+                                                                Gtk.FileChooserAction.SAVE,
+                                                                Gtk.STOCK_CANCEL, 
+                                                                Gtk.ResponseType.CANCEL,
+                                                                Gtk.STOCK_SAVE, 
+                                                                Gtk.ResponseType.ACCEPT, null);
+            
+        Gtk.FileFilter filter = new Gtk.FileFilter();
+        filter.set_name("Ogg Files");
+        filter.add_pattern("*.ogg");
+        
+        d.add_filter(filter);
+        
+        if (d.run() == Gtk.ResponseType.ACCEPT) {
+            string filename = append_extension(d.get_filename(), "ogg");
+
+            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(filename)) {
+                new ExportDialog(filename, this, project);
+                project.start_export(filename);
+            }
+        }
+        d.destroy();
     }
     
     // Edit commands

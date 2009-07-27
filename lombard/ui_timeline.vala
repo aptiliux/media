@@ -6,6 +6,74 @@
 
 using Gee;
 
+class ExportDialog : Gtk.Window {
+    Gtk.ProgressBar progress_bar;
+    Gtk.Button cancel_button;
+    Model.Project project;
+    
+    public ExportDialog(string filename, Gtk.Window parent, Model.Project p) {
+        project = p;
+        
+        progress_bar = new Gtk.ProgressBar();
+        Gtk.Label l = new Gtk.Label("Exporting: %s".printf(filename));
+        
+        l.set_line_wrap(true);
+        l.set_line_wrap_mode(Pango.WrapMode.WORD);
+        
+        Gtk.VBox vbox = new Gtk.VBox(true, 0);
+        Gtk.HBox hbox = new Gtk.HBox(true, 0);
+        vbox.pack_start(l, false, false, 0);
+        vbox.pack_start(progress_bar, false, false, 0);
+        
+        Gtk.HButtonBox button_area = new Gtk.HButtonBox();
+        button_area.set("layout-style", Gtk.ButtonBoxStyle.CENTER); 
+        
+        cancel_button = new Gtk.Button.from_stock(Gtk.STOCK_CANCEL);
+        cancel_button.clicked += on_cancel_clicked;
+        
+        button_area.add(cancel_button);
+
+        vbox.pack_start(button_area, false, false, 0);
+        hbox.pack_start(vbox, false, false, 0);
+        add(hbox);
+        
+        destroy += on_destroy;
+        
+        p.export_fraction_updated += fraction_updated;
+        
+        set_border_width(8); 
+        set_resizable(false);
+        set_transient_for(parent);
+        set_modal(true);
+        set_title("Export");
+        
+        show_all();
+    }
+    
+    void on_destroy() {
+        destroy();
+        project.cancel_export();
+    }
+    
+    void on_cancel_clicked() {
+        destroy();
+        project.cancel_export();
+    }
+    
+    void fraction_updated(double p) {
+        if (p >= 1.0)
+            destroy();
+        else {
+            progress_bar.set_fraction(p);
+            
+            show();
+            progress_bar.queue_draw();
+            queue_draw();
+            this.window.process_updates(true);
+        }
+    }
+}
+
 class Ruler : Gtk.DrawingArea {
     TimeLine timeline;
     
@@ -109,6 +177,7 @@ class TimeLine : Gtk.EventBox {
     public int64 pixel_snap_time;
     
     public signal void selection_changed();
+    public signal void track_changed();
     
     public GapView gap_view;
 

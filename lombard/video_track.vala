@@ -7,22 +7,19 @@
 
 namespace Model {
 class VideoTrack : Track {
-
-    Gst.Element color_converter;
-    Gst.Element sink;
     
     Gtk.Widget output_widget;
     
     public VideoTrack(Model.Project project) {
         base(project);
         
-        color_converter = make_element("ffmpegcolorspace");
+        converter = make_element("ffmpegcolorspace");
         sink = make_element("xvimagesink");
         sink.set("force-aspect-ratio", true);
         
-        project.pipeline.add_many(color_converter, sink);
-        if (!color_converter.link(sink))
-            error("can't link color_converter");
+        project.pipeline.add_many(converter, sink);
+        if (!converter.link(sink))
+            error("can't link converter with video sink!");
     }
 
     protected override string name() { return "video"; }
@@ -32,9 +29,10 @@ class VideoTrack : Track {
         blackness.set("pattern", 2);     // 2 == GST_VIDEO_TEST_SRC_BLACK
         return blackness;
     }
-    
-    protected override Gst.Pad get_destination_sink() {
-        return color_converter.get_static_pad("sink");
+
+    protected override void get_export_sink() {
+        export_sink = make_element("theoraenc");
+        project.pipeline.add(export_sink);
     }
     
     protected override void check(Clip clip) {
@@ -78,6 +76,7 @@ class VideoTrack : Track {
 
         // We can now progress to the PAUSED state.
         // We can only do this if we aren't currently loading a project
+        
         if (project.loader == null)
             project.pipeline.set_state(Gst.State.PAUSED);
     }

@@ -7,6 +7,22 @@
 
 namespace Model {
 class Project {
+    enum PlayState {
+        NORMAL,
+        START_EXPORT_NULL,
+        START_EXPORT_PAUSED,
+        EXPORTING,
+        CANCEL_EXPORT
+    }
+    
+    PlayState play_state = PlayState.NORMAL;
+    
+    Gst.Element file_sink;
+    Gst.Element mux;
+    
+    Gst.Bus bus;
+    Gst.State gstreamer_state = Gst.State.NULL;
+    
     public Gst.Pipeline pipeline;
 
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
@@ -19,19 +35,31 @@ class Project {
     public int64 position;  // current play position in ns
     uint callback_id;
     
+    public signal void export_fraction_updated(double d);
     public signal void position_changed();
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
     public signal void load_success();
     
-    public Project() {
+    public Project(string? filename) {
         pipeline = new Gst.Pipeline("pipeline");
-        Gst.Bus bus = pipeline.get_bus();
+        pipeline.set_auto_flush_bus(false);
+        
+        bus = pipeline.get_bus();
 
         bus.add_signal_watch();
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
+        bus.message["eos"] += on_eos;        
+    }
+    
+    // We initialize this message here because there are problems
+    // with getting state changes on an asynchronous load from the
+    // command line, so we wait until the load is complete before
+    // allowing them to be sent
+    void bus_init() {
+        bus.message["state-changed"] += on_state_change; 
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
@@ -117,7 +145,6 @@ class Project {
     public void on_clip_removed(Track t, Clip clip) {
         reseek();
     }
-
    
     public void split_at_playhead() {
         foreach (Track track in tracks) {
@@ -233,22 +260,29 @@ class Project {
         }
         return null;
     }
+    
     bool on_callback() {
-        if (!playing) {
+        if (play_state == PlayState.NORMAL &&
+            !playing) {
             callback_id = 0;
             return false;
         }
 
         Gst.Format format = Gst.Format.TIME;
-        int64 time;
+        int64 time = 0;
         if (pipeline.query_position(ref format, out time) && format == Gst.Format.TIME) {
-            position = time;
             
-            if (position >= get_length()) {
-                go(get_length());
-                pause();
+            if (play_state == PlayState.NORMAL) {
+                position = time;
+                
+                if (position >= get_length()) {
+                    go(get_length());
+                    pause();
+                }
+                position_changed();
+            } else if (play_state == PlayState.EXPORTING) {
+                export_fraction_updated(time / (double) get_length());
             }
-            position_changed();
         }
         return true;
     }
@@ -339,20 +373,113 @@ class Project {
         set_name(null);
     }
     
+    public bool can_export() {
+        return find_video_track().get_length() != 0 ||
+               find_audio_track().get_length() != 0;
+    }
+    
+    public void start_export(string filename) {
+        file_sink = make_element("filesink");
+        mux = make_element("oggmux");
+        
+        file_sink.set("location", filename);
+        play_state = PlayState.START_EXPORT_NULL;    
+        
+        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);               
+        pipeline.set_state(Gst.State.NULL);
+    }
+    
+    public void cancel_export() {
+        play_state = PlayState.CANCEL_EXPORT;
+        pipeline.set_state(Gst.State.NULL);
+    }
+    
+    void do_null_state_export() {
+        play_state = PlayState.START_EXPORT_PAUSED;
+
+        pipeline.add_many(mux, file_sink);
+        
+        find_video_track().start_export(mux);
+        find_audio_track().start_export(mux);
+       
+        mux.link(file_sink);
+
+        pipeline.set_state(Gst.State.PAUSED);
+    }
+    
+    void do_paused_state_export() {
+        play_state = PlayState.EXPORTING;
+              
+        if (callback_id == 0)
+            callback_id = Timeout.add(50, on_callback);
+        
+        pipeline.set_state(Gst.State.PLAYING);        
+    }
+    
+    void end_export(bool deleted) {
+        if (deleted) {
+            string str;
+            file_sink.get("location", out str);
+            GLib.FileUtils.remove(str);
+        } else
+            export_fraction_updated(1.0);
+        play_state = PlayState.NORMAL;
+        
+        find_video_track().end_export(mux);
+        find_audio_track().end_export(mux);
+        
+        pipeline.remove_many(mux, file_sink);
+        
+        callback_id = 0;
+        pipeline.set_state(Gst.State.PAUSED);
+    }
+    
+    void on_eos(Gst.Bus bus, Gst.Message message) {
+        if (play_state == PlayState.EXPORTING)
+            pipeline.set_state(Gst.State.NULL);
+    }
+    
     void on_state_change(Gst.Bus bus, Gst.Message message) {
-        if (loader == null)
-            return;
         if (message.src != pipeline)
             return;
             
         Gst.State old_state;
         Gst.State new_state;
         Gst.State pending;
-        
+
         message.parse_state_changed(out old_state, out new_state, out pending);
-        if (new_state != Gst.State.PAUSED)
+
+        if (new_state == gstreamer_state)
             return;
-        go (0);
+        
+        gstreamer_state = new_state;
+        switch (play_state) {
+            case PlayState.NORMAL:
+                if (new_state != Gst.State.PAUSED)
+                    return;
+                go(position);
+                return;
+            case PlayState.START_EXPORT_NULL:
+                if (new_state != Gst.State.NULL)
+                    return;
+                do_null_state_export();
+                return;
+            case PlayState.START_EXPORT_PAUSED:
+                if (new_state != Gst.State.PAUSED)
+                    return;
+                do_paused_state_export();
+                return;
+            case PlayState.EXPORTING:
+                if (new_state != Gst.State.NULL)
+                    return;
+                end_export(false);
+                return;
+            case PlayState.CANCEL_EXPORT:
+                if (new_state != Gst.State.NULL)
+                    return;
+                end_export(true);
+                return;
+        }
     }
     
     void on_load_complete(string? error) {
@@ -365,11 +492,9 @@ class Project {
             // state during an asynchronous load.  We wait until the loading is done, switch states,
             // and then, to get the image of the first frame, we set up a callback 
             // which seeks to position 0
-            Gst.Bus bus = pipeline.get_bus();
-            
-            bus.add_signal_watch();
-            bus.message["state-changed"] += on_state_change;
-            pipeline.set_state(Gst.State.PAUSED);        
+           
+            bus_init();
+            pipeline.set_state(Gst.State.PAUSED);
         
             load_success();
         }
@@ -378,7 +503,12 @@ class Project {
     // Load a project file.  The load is asynchronous: it may continue after this method returns.
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
-    public void load(string fname) {
+    public void load(string? fname) {
+        if (fname == null) {
+            bus_init();
+            return;
+        }
+        
         if (loader != null) {
             load_error("already loading a project");
             return;

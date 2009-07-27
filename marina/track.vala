@@ -12,7 +12,6 @@ public enum MediaType {
     VIDEO
 }
 
-
 abstract class Track {
     protected Model.Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
@@ -21,13 +20,18 @@ abstract class Track {
     
     public signal void clip_added(Clip clip);
     public signal void clip_removed(Clip clip);
+
+    protected Gst.Element default_source;
+    protected Gst.Element converter;
+    protected Gst.Element sink;    
+    protected Gst.Element export_sink;
     
     public Track(Model.Project project) {
         this.project = project;
         
         composition = (Gst.Bin) make_element("gnlcomposition");
         
-        Gst.Element default_source = make_element("gnlsource");
+        default_source = make_element("gnlsource");
         Gst.Bin default_source_bin = (Gst.Bin) default_source;
         if (!default_source_bin.add(empty_element()))
             error("can't add empty element");
@@ -40,25 +44,66 @@ abstract class Track {
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-start", 0 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
+        
         if (!composition.add(default_source))
             error("can't add default source");
         
         project.pipeline.add(composition);
         composition.pad_added += on_pad_added;
+        composition.pad_removed += on_pad_removed;
     }
 
     protected abstract string name();
 
     protected abstract Gst.Element empty_element();
 
-    // return a sink to link the gnlcomposition to
-    protected abstract Gst.Pad get_destination_sink();
+    protected abstract void get_export_sink();
+
+    public void start_export(Gst.Element mux) {        
+        if (get_length() == 0) {
+            converter.unlink(sink);
+            project.pipeline.remove_many(composition, converter, sink);
+        } else {
+            converter.unlink(sink);
+            
+            if (!project.pipeline.remove(sink))
+                error("couldn't remove");        
+            
+            get_export_sink();
+            converter.link(export_sink);
+            export_sink.link(mux);
+            
+            default_source.set("duration", project.get_length());
+            default_source.set("media-duration", project.get_length());
+        }
+    }
+    
+    public void end_export(Gst.Element mux) {
+        if (get_length() == 0) {
+            project.pipeline.add_many(composition, converter, sink);
+            converter.link(sink);        
+        } else {
+            export_sink.unlink(mux);
+
+            converter.unlink(export_sink);
+            project.pipeline.remove(export_sink);
+                  
+            project.pipeline.add(sink);
+            converter.link(sink);
+        }
+
+        default_source.set("duration", 1000000 * Gst.SECOND);
+        default_source.set("media-duration", 1000000 * Gst.SECOND);
+    }
 
     protected virtual void check(Clip clip) { }
 
+    void on_pad_removed (Gst.Bin bin, Gst.Pad pad) {
+        pad.unlink(converter.get_static_pad("sink"));
+    }
+
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
-        Gst.Pad sink = get_destination_sink();
-        if (sink != null && pad.link(sink) != Gst.PadLinkReturn.OK)
+      if (converter != null && pad.link(converter.get_static_pad("sink")) != Gst.PadLinkReturn.OK)
             error("can't link composition output");
     }
     
@@ -98,8 +143,7 @@ abstract class Track {
         int end_ret = 0;
         for (int i = 0; i < clips.size; i++) {
             Clip c = clips[i];
-
-            
+       
             if (time >= c.start) {
                 if (time < c.start + c.length/2)
                     return i;
@@ -500,13 +544,16 @@ abstract class Track {
 }
 
 class AudioTrack : Track {
-    Gst.Element sink;
-    
-    public AudioTrack(Model.Project project) {
+    public AudioTrack(Project project) {
         base(project);
         
+        // We need an audioconvert element to convert from integer to floating point
+        converter = make_element("audioconvert");
         sink = make_element("gconfaudiosink");
-        project.pipeline.add(sink);
+        project.pipeline.add_many(converter, sink);
+    
+        if (!converter.link(sink))
+            error("Cannot link converter with audio sink!");
     }
 
     protected override string name() { return "audio"; }
@@ -517,8 +564,9 @@ class AudioTrack : Track {
         return silence;
     }
     
-    protected override Gst.Pad get_destination_sink() {
-        return sink.get_static_pad("sink");
+    protected override void get_export_sink() {
+        export_sink = make_element("vorbisenc");
+        project.pipeline.add(export_sink);
     }
 }
 }

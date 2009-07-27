@@ -126,6 +126,7 @@ class ClipFetcher {
         
         Gst.Element filesrc = make_element("filesrc");
         filesrc.set("location", filename);
+        
         Gst.Bin decodebin = (Gst.Bin) make_element("decodebin");
         fakesink = make_element("fakesink");
         pipeline = new Gst.Pipeline("pipeline");

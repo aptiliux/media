@@ -49,6 +49,7 @@ class TrackView : Gtk.Fixed {
         if (timeline.control_pressed) {
             timeline.selected_clip = view;
         }
+        timeline.track_changed();
     }
     
     public void set_clip_pos(ClipView view) {
@@ -73,9 +74,10 @@ class TrackView : Gtk.Fixed {
             ClipView view = w as ClipView;
             if (view.clip == clip) {
                 remove(view);
-				return;
+                return;
             }
         }
+        timeline.track_changed();
     }
 
     public void update_drag_clip() {  

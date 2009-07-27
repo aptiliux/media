@@ -7,8 +7,8 @@
 namespace Model {
 class VideoProject : Project {
 
-    public VideoProject() {
-        base();
+    public VideoProject(string? filename) {
+        base(filename);
     }
     
     protected override void do_append(ClipFile clipfile, string name, int64 insert_time) {
