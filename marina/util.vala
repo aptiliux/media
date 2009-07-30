@@ -142,71 +142,6 @@ Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
     return r;
 }
 
-// GStreamer utility functions
-
-int64 frame_to_time_with_rate(int frame, Fraction rate) {
-    int64 time = (int64) Gst.util_uint64_scale(frame, Gst.SECOND * rate.denominator, rate.numerator);
-    return time;
-}
-
-int time_to_frame_with_rate(int64 time, Fraction rate) {
-    int frame = (int) Gst.util_uint64_scale(time, rate.numerator, Gst.SECOND * rate.denominator);
-        
-    /* We need frame_to_time_with_rate and time_to_frame_with_rate to be inverse functions, so that
-     * time_to_frame(frame_to_time_with_rate(f)) = f for all f.  With the simple calculation
-     * above the functions might not be inverses due to rounding error, so we
-     * need the following check. */
-    return time >= frame_to_time_with_rate(frame + 1, rate) ? frame + 1 : frame;
-}
-
-bool is_ntsc_rate(Fraction r) {
-    return r.numerator == 2997 && r.denominator == 100 ||
-           r.numerator == 30000 && r.denominator == 1001;
-}
-
-Time frame_to_time(int frame, Fraction rate) {
-    int frame_rate = 0;
-   
-    Time t = {};
-    
-    t.drop_code = false;   
-    if (rate.denominator == 1)
-        frame_rate = rate.numerator;
-    else if (is_ntsc_rate(rate)) {
-        t.drop_code = true;
-        frame_rate = 30;
-
-        // We can't declare these as const int due to a Vala compiler bug.
-        int FRAMES_PER_MINUTE = 30 * 60 - 2;
-        int FRAMES_PER_10_MINUTES = 10 * FRAMES_PER_MINUTE + 2;
-       
-        int block = frame / FRAMES_PER_10_MINUTES;  // number of 10-minute blocks elapsed
-        int minute_in_block = (frame % FRAMES_PER_10_MINUTES - 2) / FRAMES_PER_MINUTE;
-        int minutes = 10 * block + minute_in_block;
-        frame += 2 * minutes - 2 * block;   // skip 2 frames per minute, except every 10 minutes
-    } else error("can't handle fractional frame rate: %d/%d", rate.numerator, rate.denominator);
-   
-    t.frame = frame % frame_rate;
-    
-    int64 secs = frame / frame_rate;
-    t.hour = (int) secs / 3600;
-    t.minute = ((int) secs % 3600) / 60;   
-    t.second = ((int) secs % 3600) % 60;
-    
-    return t;
-}
-
-string frame_to_string(int frame, Fraction rate) {    
-    return frame_to_time(frame, rate).to_string();
-}
-
-Gst.Element make_element(string name) {
-    Gst.Element e = Gst.ElementFactory.make(name, null);
-    if (e == null)
-        error("can't create element: %s", name);
-    return e;
-}
-
 
 /////////////////////////////////////////////////////////////////////////////
 //                    Rectangle drawing stuff                              //
@@ -272,9 +207,7 @@ void draw_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled,
         cairo_window.set_line_width(LINE_WIDTH);
         cairo_window.stroke();
     }
-
 }
-
 
 void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                                   int x0, int y0, int width, int height) {
@@ -331,9 +264,7 @@ void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool fille
         cairo_window.set_line_width(LINE_WIDTH);
         cairo_window.stroke();
     }
-
 }
-
 
 void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                                  int x0, int y0, int width, int height) {
@@ -409,3 +340,67 @@ void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled,
     }
 }
 
+// GStreamer utility functions
+
+bool is_ntsc_rate(Fraction r) {
+    return r.numerator == 2997 && r.denominator == 100 ||
+           r.numerator == 30000 && r.denominator == 1001;
+}
+
+int64 frame_to_time_with_rate(int frame, Fraction rate) {
+    int64 time = (int64) Gst.util_uint64_scale(frame, Gst.SECOND * rate.denominator, rate.numerator);
+    return time;
+}
+
+int time_to_frame_with_rate(int64 time, Fraction rate) {
+    int frame = (int) Gst.util_uint64_scale(time, rate.numerator, Gst.SECOND * rate.denominator);
+        
+    /* We need frame_to_time_with_rate and time_to_frame_with_rate to be inverse functions, so that
+     * time_to_frame(frame_to_time_with_rate(f)) = f for all f.  With the simple calculation
+     * above the functions might not be inverses due to rounding error, so we
+     * need the following check. */
+    return time >= frame_to_time_with_rate(frame + 1, rate) ? frame + 1 : frame;
+}
+
+Time frame_to_time(int frame, Fraction rate) {
+    int frame_rate = 0;
+   
+    Time t = {};
+    
+    t.drop_code = false;   
+    if (rate.denominator == 1)
+        frame_rate = rate.numerator;
+    else if (rate.numerator == 2997 && rate.denominator == 100) {
+        t.drop_code = true;
+        frame_rate = 30;
+
+        // We can't declare these as const int due to a Vala compiler bug.
+        int FRAMES_PER_MINUTE = 30 * 60 - 2;
+        int FRAMES_PER_10_MINUTES = 10 * FRAMES_PER_MINUTE + 2;
+       
+        int block = frame / FRAMES_PER_10_MINUTES;  // number of 10-minute blocks elapsed
+        int minute_in_block = (frame % FRAMES_PER_10_MINUTES - 2) / FRAMES_PER_MINUTE;
+        int minutes = 10 * block + minute_in_block;
+        frame += 2 * minutes - 2 * block;   // skip 2 frames per minute, except every 10 minutes
+    } else error("can't handle fractional frame rate");
+   
+    t.frame = frame % frame_rate;
+    
+    int64 secs = frame / frame_rate;
+    t.hour = (int) secs / 3600;
+    t.minute = ((int) secs % 3600) / 60;   
+    t.second = ((int) secs % 3600) % 60;
+    
+    return t;
+}
+
+string frame_to_string(int frame, Fraction rate) {    
+    return frame_to_time(frame, rate).to_string();
+}
+
+Gst.Element make_element(string name) {
+    Gst.Element e = Gst.ElementFactory.make(name, null);
+    if (e == null)
+        error("can't create element: %s", name);
+    return e;
+}

@@ -325,4 +325,12 @@ class Clip {
             clipfile.filename, name, start, media_start, length);
     }
 }
+
+class FetcherCompletion {
+    public FetcherCompletion() {
+    }
+    
+    public virtual void complete(ClipFetcher fetcher) {
+    }
+}
 }

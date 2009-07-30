@@ -11,6 +11,10 @@ class VideoProject : Project {
         base(filename);
     }
     
+    public override double get_version() {
+        return 0.01;
+    }
+    
     protected override void do_append(ClipFile clipfile, string name, int64 insert_time) {
         if (clipfile.video_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
@@ -52,12 +56,12 @@ class VideoProject : Project {
     }
 
     public bool get_framerate_fraction(out Fraction rate) {
-        bool return_value = false;
         foreach (Track track in tracks) {
-            if (track.get_framerate(out rate))
-                return_value = true;
+            VideoTrack video_track = track as VideoTrack;
+            if (video_track.get_framerate(out rate))
+                return true;
         }
-        return return_value;
+        return false;
     }
     
     public int get_framerate() {

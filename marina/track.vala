@@ -13,21 +13,27 @@ public enum MediaType {
 }
 
 abstract class Track {
-    protected Model.Project project;
+    protected Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
+    public string display_name;
+    bool is_selected;
     
     protected Gst.Bin composition;
     
     public signal void clip_added(Clip clip);
     public signal void clip_removed(Clip clip);
 
+    public signal void track_renamed(Track track);
+    public signal void track_selection_changed(Track track);
+
     protected Gst.Element default_source;
     protected Gst.Element converter;
     protected Gst.Element sink;    
     protected Gst.Element export_sink;
     
-    public Track(Model.Project project) {
+    public Track(Project project, string display_name) {
         this.project = project;
+        this.display_name = display_name;
         
         composition = (Gst.Bin) make_element("gnlcomposition");
         
@@ -47,7 +53,7 @@ abstract class Track {
         
         if (!composition.add(default_source))
             error("can't add default source");
-        
+  
         project.pipeline.add(composition);
         composition.pad_added += on_pad_added;
         composition.pad_removed += on_pad_removed;
@@ -58,20 +64,16 @@ abstract class Track {
     protected abstract Gst.Element empty_element();
 
     protected abstract void get_export_sink();
+    protected abstract Gst.Pad get_destination_sink(Gst.Pad pad);
+    protected abstract void link_for_export(Gst.Element mux);
+    protected abstract void link_for_playback(Gst.Element mux);
 
     public void start_export(Gst.Element mux) {        
         if (get_length() == 0) {
             converter.unlink(sink);
             project.pipeline.remove_many(composition, converter, sink);
         } else {
-            converter.unlink(sink);
-            
-            if (!project.pipeline.remove(sink))
-                error("couldn't remove");        
-            
-            get_export_sink();
-            converter.link(export_sink);
-            export_sink.link(mux);
+            link_for_export(mux);
             
             default_source.set("duration", project.get_length());
             default_source.set("media-duration", project.get_length());
@@ -83,13 +85,7 @@ abstract class Track {
             project.pipeline.add_many(composition, converter, sink);
             converter.link(sink);        
         } else {
-            export_sink.unlink(mux);
-
-            converter.unlink(export_sink);
-            project.pipeline.remove(export_sink);
-                  
-            project.pipeline.add(sink);
-            converter.link(sink);
+            link_for_playback(mux);        
         }
 
         default_source.set("duration", 1000000 * Gst.SECOND);
@@ -103,7 +99,8 @@ abstract class Track {
     }
 
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
-      if (converter != null && pad.link(converter.get_static_pad("sink")) != Gst.PadLinkReturn.OK)
+        Gst.Pad destination_sink = get_destination_sink(pad);
+        if (pad.link(destination_sink) != Gst.PadLinkReturn.OK)
             error("can't link composition output");
     }
     
@@ -336,15 +333,6 @@ abstract class Track {
         }
     }
     
-    public bool get_framerate(out Fraction rate) {
-        if (clips.size == 0) {
-            rate.numerator = 2997;
-            rate.denominator = 100;
-            return true;
-        }
-        return clips[0].clipfile.get_frame_rate(out rate);
-    }
-    
     public Clip? get_clip(int i) {
         if (i < 0 || i >= clips.size)
             error("get_clip: Invalid index! %d (%d)", i, clips.size);
@@ -406,7 +394,7 @@ abstract class Track {
     
     public void put(int index, Clip c) {
         check(c);
-    
+
         composition.add(c.file_source);
         clips.insert(index, c);
         
@@ -541,32 +529,96 @@ abstract class Track {
             clips[i].save(f);
         f.puts("  </track>\n");
     }
+    
+    public string get_display_name() {
+        return display_name;
+    }
+    
+    public void set_display_name(string new_display_name) {
+        if (display_name != new_display_name) {
+            display_name = new_display_name;
+            track_renamed(this);
+        }
+    }
+    
+    public void set_selected(bool is_selected) {
+        if (this.is_selected != is_selected) {
+            this.is_selected = is_selected;
+            track_selection_changed(this);
+        }
+    }
+    
+    public bool get_is_selected() {
+        return is_selected;
+    }
 }
 
 class AudioTrack : Track {
-    public AudioTrack(Project project) {
-        base(project);
-        
+    public AudioTrack(Project project, string display_name) {
+        base(project, display_name);
+
         // We need an audioconvert element to convert from integer to floating point
         converter = make_element("audioconvert");
-        sink = make_element("gconfaudiosink");
-        project.pipeline.add_many(converter, sink);
-    
-        if (!converter.link(sink))
-            error("Cannot link converter with audio sink!");
+        if (!project.pipeline.add(converter)) {
+            error("could not add converter");
+        }
     }
 
     protected override string name() { return "audio"; }
     
     protected override Gst.Element empty_element() {
-        Gst.Element silence = make_element("audiotestsrc");
-        silence.set("wave", 4);     // 4 is silence
-        return silence;
+        return project.get_audio_silence();
+    }
+ 
+    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
+        // create a new pad for the audio_convert.link to link with
+        Gst.Pad adder_pad = project.adder.get_compatible_pad(pad, pad.get_caps());
+        
+        if (!converter.link(project.adder)) {
+            // TODO this call reports a failure.  However with this link moved to constructor,
+            // multiple tracks in fillmore don't play back.  So . . . for the moment,
+            // silently ignore the error.
+            // error("could not link converter with adder");
+        }
+        return converter.get_compatible_pad(pad, pad.get_caps());
     }
     
     protected override void get_export_sink() {
         export_sink = make_element("vorbisenc");
         project.pipeline.add(export_sink);
+    }
+
+    protected override void link_for_export(Gst.Element mux) {
+        project.capsfilter.unlink(project.audio_sink);
+        
+        if (!project.pipeline.remove(project.audio_sink))
+            error("couldn't remove for audio");
+        get_export_sink();
+        
+        if (!project.capsfilter.link(export_sink)) {
+            error("could not link capsfilter to export_sink");
+        }
+        
+        if (!export_sink.link(mux)) {
+            error("could not link export sink to mux");
+        }
+    }
+    
+    protected override void link_for_playback(Gst.Element mux) {
+        export_sink.unlink(mux);
+        project.capsfilter.unlink(export_sink);
+
+        if (!project.pipeline.remove(export_sink)) {
+            error("could not remove export_sink");
+        }
+
+        if (!project.pipeline.add(project.audio_sink)) {
+            error("could not add audio_sink to pipeline");
+        }
+
+        if (!project.capsfilter.link(project.audio_sink)) {
+            error("could not link capsfilter to audio_sink");
+        }
     }
 }
 }

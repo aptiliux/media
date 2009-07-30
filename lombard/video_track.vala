@@ -11,7 +11,7 @@ class VideoTrack : Track {
     Gtk.Widget output_widget;
     
     public VideoTrack(Model.Project project) {
-        base(project);
+        base(project, "Video Track");
         
         converter = make_element("ffmpegcolorspace");
         sink = make_element("xvimagesink");
@@ -30,6 +30,10 @@ class VideoTrack : Track {
         return blackness;
     }
 
+    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
+        return converter.get_static_pad("sink");
+    }
+    
     protected override void get_export_sink() {
         export_sink = make_element("theoraenc");
         project.pipeline.add(export_sink);
@@ -123,6 +127,36 @@ class VideoTrack : Track {
     public int64 next_frame(int64 position) {
         int frame = time_to_frame(position);
         return frame_to_time(frame + 1);
+    }
+
+    public bool get_framerate(out Fraction rate) {
+        if (clips.size == 0) {
+            rate.numerator = 2997;
+            rate.denominator = 100;
+            return true;
+        }
+        return clips[0].clipfile.get_frame_rate(out rate);
+    }
+
+    public override void link_for_export(Gst.Element mux) {
+        converter.unlink(sink);
+        
+        if (!project.pipeline.remove(sink))
+            error("couldn't remove for video");
+        get_export_sink();
+        converter.link(export_sink);
+        export_sink.link(mux);
+    
+    }
+    
+    public override void link_for_playback(Gst.Element mux) {
+        export_sink.unlink(mux);
+
+        converter.unlink(export_sink);
+        project.pipeline.remove(export_sink);
+              
+        project.pipeline.add(sink);
+        converter.link(sink);
     }
 }
     

@@ -74,10 +74,10 @@ class TrackView : Gtk.Fixed {
             ClipView view = w as ClipView;
             if (view.clip == clip) {
                 remove(view);
+                timeline.track_changed();
                 return;
             }
         }
-        timeline.track_changed();
     }
 
     public void update_drag_clip() {  
@@ -187,10 +187,12 @@ class TrackView : Gtk.Fixed {
                 if (timeline.control_pressed) {
                     if (timeline.do_paste(timeline.selected_clip.clip, 
                             drag_clip_destination == -1 ? 
-                           (drag_x_coord < TimeLine.BORDER ? 0: timeline.selected_clip.clip.start) : 
-                            track.get_time_from_pos(drag_clip_destination, drag_after_destination),
-                             timeline.shift_pressed, false) == -1) {
-                            remove(timeline.selected_clip);               
+                                (drag_x_coord < TimeLine.BORDER ?
+                                    0 : timeline.selected_clip.clip.start) : 
+                                track.get_time_from_pos(drag_clip_destination,
+                                    drag_after_destination),
+                            timeline.shift_pressed, false) == -1) {
+                        remove(timeline.selected_clip);               
                     }
                 } else {
                     if (drag_intersect &&

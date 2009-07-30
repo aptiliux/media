@@ -4,28 +4,28 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-
 namespace Model {
-class Project {
-    enum PlayState {
-        NORMAL,
-        START_EXPORT_NULL,
-        START_EXPORT_PAUSED,
-        EXPORTING,
-        CANCEL_EXPORT
-    }
+enum PlayState {
+    STOPPED,
+    PRE_PLAY, PLAYING,
+    PRE_RECORD, RECORDING, POST_RECORD,
+    PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT
+}
     
-    PlayState play_state = PlayState.NORMAL;
+abstract class Project {
+    protected Gst.State gst_state;
+    protected PlayState play_state = PlayState.STOPPED;
     
     Gst.Element file_sink;
     Gst.Element mux;
     
-    Gst.Bus bus;
-    Gst.State gstreamer_state = Gst.State.NULL;
-    
     public Gst.Pipeline pipeline;
+    public Gst.Element audio_sink;
+    public Gst.Element adder;
+    public Gst.Element capsfilter;
 
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
+    Gee.HashSet<Model.ClipFetcher> pending = new Gee.HashSet<Model.ClipFetcher>();
     ClipFile[] clipfiles = new ClipFile[0];
 
     public string project_file;
@@ -34,6 +34,7 @@ class Project {
     public bool playing;
     public int64 position;  // current play position in ns
     uint callback_id;
+    FetcherCompletion fetcher_completion;
     
     public signal void export_fraction_updated(double d);
     public signal void position_changed();
@@ -41,12 +42,30 @@ class Project {
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
     public signal void load_success();
+    public signal void track_added(Track track);
+    public signal void error_occurred(string error_message);
     
     public Project(string? filename) {
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
-        
-        bus = pipeline.get_bus();
+
+        Gst.Element silence = get_audio_silence();
+
+        adder = make_element("adder");
+
+        capsfilter = make_element("capsfilter");
+        capsfilter.set("caps", get_project_audio_caps());
+
+        audio_sink = make_element("gconfaudiosink");
+        Gst.Element audio_convert = make_element("audioconvert");
+
+        pipeline.add_many(silence, audio_convert, adder, capsfilter, audio_sink);
+
+        if (!silence.link_many(audio_convert, adder, capsfilter, audio_sink)) {
+            error("silence: couldn't link");
+        }
+
+        Gst.Bus bus = pipeline.get_bus();
 
         bus.add_signal_watch();
         bus.message["error"] += on_error;
@@ -59,6 +78,7 @@ class Project {
     // command line, so we wait until the load is complete before
     // allowing them to be sent
     void bus_init() {
+        Gst.Bus bus = pipeline.get_bus();
         bus.message["state-changed"] += on_state_change; 
     }
     
@@ -74,6 +94,25 @@ class Project {
         string text;
         message.parse_error(out error, out text);
         warning(text);
+    }
+    
+    protected virtual bool do_state_changed(Gst.State state, PlayState play_state) {
+        if (gst_state == Gst.State.PAUSED) {
+            if (play_state == PlayState.PRE_PLAY) {
+                do_play(PlayState.PLAYING);
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    protected void do_play(PlayState new_state) {
+        assert(gst_state == Gst.State.PAUSED);
+
+        seek(Gst.SeekFlags.FLUSH, position);
+
+        play_state = new_state;
+        set_gst_state(Gst.State.PLAYING);
     }
     
     public int64 get_length() {
@@ -228,6 +267,7 @@ class Project {
     public void add_track(Track track) {
         track.clip_removed += on_clip_removed;
         tracks.add(track);
+        track_added(track);
     }
     
     public void add_clipfile(ClipFile clipfile) {
@@ -262,7 +302,7 @@ class Project {
     }
     
     bool on_callback() {
-        if (play_state == PlayState.NORMAL &&
+        if (play_state == PlayState.STOPPED &&
             !playing) {
             callback_id = 0;
             return false;
@@ -272,7 +312,7 @@ class Project {
         int64 time = 0;
         if (pipeline.query_position(ref format, out time) && format == Gst.Format.TIME) {
             
-            if (play_state == PlayState.NORMAL) {
+            if (play_state == PlayState.STOPPED) {
                 position = time;
                 
                 if (position >= get_length()) {
@@ -290,8 +330,8 @@ class Project {
     public void play() {
         if (playing)
             return;
-            
-        pipeline.set_state(Gst.State.PLAYING);
+
+        set_gst_state(Gst.State.PLAYING);
         if (callback_id == 0)
             callback_id = Timeout.add(50, on_callback);
         playing = true;
@@ -301,7 +341,7 @@ class Project {
         if (!playing)
             return;
             
-        pipeline.set_state(Gst.State.PAUSED);
+        set_gst_state(Gst.State.PAUSED);
         playing = false;
     }
 
@@ -383,19 +423,23 @@ class Project {
         mux = make_element("oggmux");
         
         file_sink.set("location", filename);
-        play_state = PlayState.START_EXPORT_NULL;    
+        play_state = PlayState.PRE_EXPORT_NULL;    
         
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);               
         pipeline.set_state(Gst.State.NULL);
     }
     
-    public void cancel_export() {
+    public void on_export_cancel() {
         play_state = PlayState.CANCEL_EXPORT;
         pipeline.set_state(Gst.State.NULL);
     }
     
+    public void on_export_complete() {
+        set_gst_state(Gst.State.NULL);
+    }
+    
     void do_null_state_export() {
-        play_state = PlayState.START_EXPORT_PAUSED;
+        play_state = PlayState.PRE_EXPORT;
 
         pipeline.add_many(mux, file_sink);
         
@@ -423,7 +467,7 @@ class Project {
             GLib.FileUtils.remove(str);
         } else
             export_fraction_updated(1.0);
-        play_state = PlayState.NORMAL;
+        play_state = PlayState.STOPPED;
         
         find_video_track().end_export(mux);
         find_audio_track().end_export(mux);
@@ -449,22 +493,22 @@ class Project {
 
         message.parse_state_changed(out old_state, out new_state, out pending);
 
-        if (new_state == gstreamer_state)
+        if (new_state == gst_state)
             return;
         
-        gstreamer_state = new_state;
+        gst_state = new_state;
         switch (play_state) {
-            case PlayState.NORMAL:
+            case PlayState.STOPPED:
                 if (new_state != Gst.State.PAUSED)
                     return;
                 go(position);
                 return;
-            case PlayState.START_EXPORT_NULL:
+            case PlayState.PRE_EXPORT_NULL:
                 if (new_state != Gst.State.NULL)
                     return;
                 do_null_state_export();
                 return;
-            case PlayState.START_EXPORT_PAUSED:
+            case PlayState.PRE_EXPORT:
                 if (new_state != Gst.State.PAUSED)
                     return;
                 do_paused_state_export();
@@ -525,12 +569,58 @@ class Project {
 
         FileStream f = FileStream.open(project_file, "w");
         
-        f.printf("<lombard version=\"%f\">\n", App.VERSION);
+        f.printf("<lombard version=\"%f\">\n", get_version());
         foreach (Track track in tracks) {
             track.save(f);
         }
         f.printf("</lombard>\n"); 
     }
+
+   protected void set_gst_state(Gst.State state) {
+        if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE)
+            error("can't set state");
+    }
+
+    void seek(Gst.SeekFlags flags, int64 pos) {
+        // We do *not* check the return value of seek_simple here: it will often
+        // be false when seeking into a GnlSource which we have not yet played,
+        // even though the seek appears to work fine in that case.
+        pipeline.seek_simple(Gst.Format.TIME, flags, pos);
+    }
+
+    public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {
+        Model.ClipFetcher fetcher = new Model.ClipFetcher(filename);
+        this.fetcher_completion = fetcher_completion;
+        fetcher.ready += on_fetcher_ready;
+        pending.add(fetcher);
+    }
+
+    void on_fetcher_ready(Model.ClipFetcher fetcher) {
+        pending.remove(fetcher);
+        if (fetcher.error_string != null) {
+            error_occurred(fetcher.error_string);         
+        } else {
+            add_clipfile(fetcher.clipfile);
+            fetcher_completion.complete(fetcher);
+        }
+    }
+    
+    public Gst.Caps get_project_audio_caps() {
+        return Gst.Caps.from_string(
+            "audio/x-raw-float,rate=48000,channels=2,width=32");
+    }
+    
+    public Gst.Element get_audio_silence() {
+        Gst.Element silence = make_element("audiotestsrc");
+        silence.set("wave", 4);     // 4 is silence
+        Gst.Caps audio_cap = get_project_audio_caps();
+        foreach (Gst.Pad pad in silence.pads) {
+            pad.set_caps(audio_cap);
+        }
+        return silence;
+    }
+
+    public abstract double get_version();
 }
 
 class ProjectLoader {
@@ -653,10 +743,10 @@ class ProjectLoader {
                 throw new MarkupError.INVALID_CONTENT("Corrupted header!");
             }
          
-            if (App.VERSION < attr_values[0].to_double())
+            if (project.get_version() < attr_values[0].to_double())
                 throw new MarkupError.INVALID_CONTENT(
                     "Version mismatch! (File Version: %f, App Version: %f)",
-                    App.VERSION, attr_values[0].to_double());
+                    project.get_version(), attr_values[0].to_double());
                     
             loaded_file_header = true;
         } else if (name == "clip")
@@ -694,3 +784,4 @@ class ProjectLoader {
     }
 }
 }
+

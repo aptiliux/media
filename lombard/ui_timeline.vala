@@ -9,11 +9,11 @@ using Gee;
 class ExportDialog : Gtk.Window {
     Gtk.ProgressBar progress_bar;
     Gtk.Button cancel_button;
-    Model.Project project;
     
-    public ExportDialog(string filename, Gtk.Window parent, Model.Project p) {
-        project = p;
-        
+    public signal void export_cancel();
+    public signal void export_complete();
+
+    public ExportDialog(string filename, Gtk.Window parent) {
         progress_bar = new Gtk.ProgressBar();
         Gtk.Label l = new Gtk.Label("Exporting: %s".printf(filename));
         
@@ -39,7 +39,6 @@ class ExportDialog : Gtk.Window {
         
         destroy += on_destroy;
         
-        p.export_fraction_updated += fraction_updated;
         
         set_border_width(8); 
         set_resizable(false);
@@ -50,22 +49,25 @@ class ExportDialog : Gtk.Window {
         show_all();
     }
     
-    void on_destroy() {
-        destroy();
-        project.cancel_export();
-    }
-    
     void on_cancel_clicked() {
         destroy();
-        project.cancel_export();
+        export_cancel();
     }
     
-    void fraction_updated(double p) {
-        if (p >= 1.0)
+    void on_destroy() {
+        destroy();
+        if (progress_bar.get_fraction() < 1.0) {
+            export_cancel();
+        }
+    }
+    
+    public void on_fraction_updated(double p) {
+        if (p >= 1.0) {
+            progress_bar.set_fraction(1.0);
+            export_complete();
             destroy();
-        else {
+        } else {
             progress_bar.set_fraction(p);
-            
             show();
             progress_bar.queue_draw();
             queue_draw();

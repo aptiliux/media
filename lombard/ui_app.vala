@@ -6,6 +6,21 @@
 
 using Gee;
 
+class LombardFetcherCompletion : Model.FetcherCompletion {
+    Model.Project project;
+    
+    public LombardFetcherCompletion(Model.Project project) {
+        base();
+        this.project = project;
+    }
+    
+    public override void complete(Model.ClipFetcher fetch) {
+        base.complete(fetch);
+        project.add_clipfile(fetch.clipfile);
+        project.append(fetch.clipfile);
+    }
+}
+
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
@@ -37,9 +52,6 @@ class App : Gtk.Window {
     
     string project_filename;
     
-    HashSet<Model.ClipFetcher> pending = new HashSet<Model.ClipFetcher>();
-    
-    public static const double VERSION = 0.01;
     public static const string NAME = "lombard";
     public static const string PROJECT_FILE_EXTENSION = "lom";
     public static const string PROJECT_FILE_FILTER = "*.lom";   
@@ -172,9 +184,10 @@ class App : Gtk.Window {
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
         project.load_success += on_load_success;
+        project.error_occurred += do_error_dialog;
 
         project.add_track(new Model.VideoTrack(project));
-        project.add_track(new Model.AudioTrack(project));
+        project.add_track(new Model.AudioTrack(project, "Audio Track"));
         
         timeline = new TimeLine(project);
         timeline.selection_changed += on_selection_changed;
@@ -271,7 +284,7 @@ class App : Gtk.Window {
             Model.ClipFile cf = project.find_clipfile(name);
             if (cf != null)
                 project.append(cf);
-            else create_clip_fetcher(name);
+            else project.create_clip_fetcher(new LombardFetcherCompletion(project), name);
         }
     }
     
@@ -419,16 +432,6 @@ class App : Gtk.Window {
         update_menu();
     }
     
-    void on_fetcher_ready(Model.ClipFetcher fetcher) {
-        pending.remove(fetcher);
-        if (fetcher.error_string != null) {
-            do_error_dialog(fetcher.error_string);         
-        } else {
-            project.add_clipfile(fetcher.clipfile);
-            project.append(fetcher.clipfile);
-        }
-    }
-
     Model.Track? track_from_clip_file(Model.ClipFile cf) {
         if (cf.video_caps != null) {
             return project.find_video_track();
@@ -454,12 +457,6 @@ class App : Gtk.Window {
         present();
     }
     
-    void create_clip_fetcher(string filename) {
-        Model.ClipFetcher fetcher = new Model.ClipFetcher(filename);
-        fetcher.ready += on_fetcher_ready;
-        pending.add(fetcher);
-    }
-
     void update_menu() {
         bool b = timeline.is_clip_selected();
         
@@ -586,7 +583,10 @@ class App : Gtk.Window {
             string filename = append_extension(d.get_filename(), "ogg");
 
             if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(filename)) {
-                new ExportDialog(filename, this, project);
+                ExportDialog export_dialog = new ExportDialog(filename, this);
+                export_dialog.export_cancel += project.on_export_cancel;
+                project.export_fraction_updated += export_dialog.on_fraction_updated;
+                export_dialog.export_complete += project.on_export_complete;
                 project.start_export(filename);
             }
         }

@@ -21,12 +21,12 @@ class Ruler : Gtk.DrawingArea {
 }
 
 class RegionView : Gtk.DrawingArea {
-    public Region region;
+    public Model.Clip region;
     public TrackView track_view;
     
-    public RegionView(Region r) {
-        region = r;
-        region.view = this;
+    public RegionView(Model.Clip clip) {
+        region = clip;
+        clip.moved += update;
     }
     
     construct {
@@ -49,21 +49,36 @@ class RegionView : Gtk.DrawingArea {
     }
 }
 
+class FillmoreFetcherCompletion : Model.FetcherCompletion {
+    int64 time;
+    
+    public signal void fetch_complete(Model.ClipFile clip_file, int64 time);
+    public FillmoreFetcherCompletion(int64 time) {
+        base();
+        this.time = time;
+    }
+    
+    public override void complete(Model.ClipFetcher fetch) {
+        base.complete(fetch);
+        fetch_complete(fetch.clipfile, time);
+    }
+}
+
 class TrackView : Gtk.Fixed {
-    Track track;
+    Model.Track track;
     public TimeLine timeline;
     
-    Region drag;
+    Model.Clip drag;
     int drag_region_x;
     int drag_mouse_x;
     
     public const int width = 500;
     public const int height = 50;
     
-    public TrackView(Track t) {
+    public TrackView(Model.Track t) {
         track = t;
-        track.region_added += on_region_added;
-        track.region_removed += on_region_removed;
+        track.clip_added += on_region_added;
+        track.clip_removed += on_region_removed;
     }
     
     static const Gtk.TargetEntry[] entries = {
@@ -83,7 +98,7 @@ class TrackView : Gtk.Fixed {
         rv.set_size_request(TimeLine.time_to_xpos(rv.region.length), height);
     }
     
-    public void on_region_added(Track t, Region r) {
+    public void on_region_added(Model.Clip r) {
         RegionView rv = new RegionView(r);
         rv.track_view = this;
         update_size(rv);
@@ -91,10 +106,19 @@ class TrackView : Gtk.Fixed {
         rv.show();
     }
     
-    public void on_region_removed(Track t, Region r) {
-        remove(r.view);
-        timeline.region_view_removed(r.view);
-        r.view = null;
+    public void on_region_removed(Model.Clip r) {
+    // TODO revisit the dragging mechanism.  It would be good to have the clip
+    // responsible for moving itself and removing itself rather than delegating
+    // to the timeline and to the TrackView.  Also, these classes may want to move
+    // to the common code
+        foreach (Gtk.Widget w in get_children()) {
+            RegionView view = w as RegionView;
+            if (view.region == r) {
+                timeline.region_view_removed(view);
+                remove(view);
+                return;
+            }
+        }
     }
     
     public void update(RegionView rv) {
@@ -111,10 +135,25 @@ class TrackView : Gtk.Fixed {
             try {
                 filename = GLib.Filename.from_uri(s);
             } catch (GLib.ConvertError e) { continue; }
-            track.add(new Region(filename, TimeLine.xpos_to_time(x), false));
+
+            Model.ClipFile cf = timeline.project.find_clipfile(filename);
+            if (cf != null) {
+                on_clip_file_ready(cf, timeline.xpos_to_time(x));
+            } else {
+                FillmoreFetcherCompletion clip_fetcher_complete = 
+                    new FillmoreFetcherCompletion(timeline.xpos_to_time(x));
+                clip_fetcher_complete.fetch_complete += on_clip_file_ready;
+                timeline.project.create_clip_fetcher(clip_fetcher_complete, filename);
+            }
         }
     }
-    
+
+    private void on_clip_file_ready(Model.ClipFile clip_file, int64 time) {
+        track.append_at_time(new Model.Clip(clip_file, Model.MediaType.AUDIO, 
+            isolate_filename(clip_file.filename), 
+            time, 0, clip_file.length), time);
+    }
+
     public void on_button_press(Gdk.EventButton event) {
         timeline.recorder.select(track);
         
@@ -134,7 +173,7 @@ class TrackView : Gtk.Fixed {
     public void on_motion_notify(Gdk.EventMotion event) {
         if (drag != null) {
             int new_x = drag_region_x + (int) event.x - drag_mouse_x;
-            drag.move(TimeLine.xpos_to_time(new_x));
+            drag.set_start(TimeLine.xpos_to_time(new_x));
         }
     }
     
@@ -144,7 +183,7 @@ class TrackView : Gtk.Fixed {
 }
 
 class TimeLine : Gtk.EventBox {
-    Project project;
+    public Model.Project project;
     public Recorder recorder;
     
     Gtk.VBox vbox;
@@ -163,6 +202,7 @@ class TimeLine : Gtk.EventBox {
         this.project = recorder.project;
         this.recorder = recorder;
         
+        project.position_changed += update;
         project.track_added += add_track;
         
         vbox = new Gtk.VBox(false, 0);
@@ -171,8 +211,8 @@ class TimeLine : Gtk.EventBox {
         vbox.pack_start(separator(), false, false, 0);
         add(vbox);
         
-        foreach (Track track in project.tracks)
-            add_track(project, track);
+        foreach (Model.Track track in project.tracks)
+            add_track(track);
         
         set_flags(Gtk.WidgetFlags.CAN_FOCUS);
         modify_bg(Gtk.StateType.NORMAL, background_color);
@@ -187,7 +227,7 @@ class TimeLine : Gtk.EventBox {
         return separator;
     }
     
-    public void add_track(Project project, Track track) {
+    public void add_track(Model.Track track) {
         TrackView track_view = new TrackView(track);
         track_view.timeline = this;
         vbox.pack_start(track_view, false, false, track_margin);
@@ -204,14 +244,14 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void update() {
-        if (project.playing() || project.recording())
-            recorder.scroll_toward_center(time_to_xpos(project.audio_engine.position));
+        if (project.is_playing())// || project.recording())
+            recorder.scroll_toward_center(time_to_xpos(project.position));
         queue_draw();
     }
     
     public override bool expose_event (Gdk.EventExpose event) {
         base.expose_event(event);
-        int xpos = time_to_xpos(project.audio_engine.position);
+        int xpos = time_to_xpos(project.position);
         Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, 500);
         return true;
     }
@@ -246,7 +286,7 @@ class TimeLine : Gtk.EventBox {
     public override bool button_press_event (Gdk.EventButton event) {
         if (ruler.allocation.y <= event.y &&
                 event.y < ruler.allocation.y + ruler.allocation.height) {
-            project.audio_engine.set_position(xpos_to_time((int) event.x));
+            project.go(xpos_to_time((int) event.x));
             return false;
         }
         

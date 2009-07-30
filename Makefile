@@ -4,29 +4,26 @@ BUILD_ROOT = 1
 
 MARINA_SOURCES =	clip.vala \
 					project.vala \
-					track.vala
+					track.vala \
+					util.vala
 
 MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
 
 FILLMORE = fill
 
 FILLMORE_SOURCES = \
-	audioengine.vala \
+	audio_project.vala \
 	fillmore.vala \
 	header_area.vala \
-	project.vala \
-	region.vala \
 	timeline.vala \
-	track.vala \
-	trackinformation.vala \
-	util.vala
+	trackinformation.vala
 
 FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
 
 FILLMORE_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0
 
-$(FILLMORE): $(FILLMORE_FILES) Makefile
-	valac $(VFLAGS) $(FILLMORE_LIBS) $(FILLMORE_FILES) -o $(FILLMORE)
+$(FILLMORE): $(FILLMORE_FILES) $(MARINA_FILES) Makefile
+	valac $(VFLAGS) $(FILLMORE_LIBS) $(FILLMORE_FILES) $(MARINA_FILES) -o $(FILLMORE)
 
 LOMBARD = lom
 
@@ -35,7 +32,6 @@ LOMBARD_SOURCES = \
 	ui_timeline.vala \
 	ui_track.vala \
 	ui_clip.vala \
-	util.vala \
 	video_project.vala \
 	video_track.vala
 

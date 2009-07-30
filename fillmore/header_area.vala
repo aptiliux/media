@@ -5,24 +5,24 @@
  */
 
 class TrackHeader : Gtk.EventBox {
-    Track track;
+    Model.Track track;
     HeaderArea header_area;
     Gtk.Label track_label;
     
     public const int width = 100;
     
-    public TrackHeader(Track track, HeaderArea area) {
+    public TrackHeader(Model.Track track, HeaderArea area) {
         this.track = track;
         this.header_area = area;
-        this.track.header = this;
         
-        track.track_renamed +=  on_track_renamed;
+        track.track_renamed += on_track_renamed;
+        track.track_selection_changed += on_track_selection_changed;
         
         set_size_request(width, TrackView.height + TimeLine.track_margin * 2);
         modify_bg(Gtk.StateType.NORMAL, header_area.background_color);
         modify_bg(Gtk.StateType.SELECTED, parse_color("#68a"));
         
-        track_label = new Gtk.Label(track.name);
+        track_label = new Gtk.Label(track.display_name);
         track_label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(track_label, true, true, 0);
@@ -30,7 +30,11 @@ class TrackHeader : Gtk.EventBox {
     }
     
     void on_track_renamed() {
-        track_label.set_text(track.name);
+        track_label.set_text(track.display_name);
+    }
+    
+    void on_track_selection_changed(Model.Track track) {
+        set_state(track.get_is_selected() ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL);
     }
     
     public override bool button_press_event(Gdk.EventButton event) {
@@ -40,7 +44,7 @@ class TrackHeader : Gtk.EventBox {
 }
 
 class HeaderArea : Gtk.EventBox {
-    Project project;
+    Model.Project project;
     public Recorder recorder;
     
     Gtk.VBox vbox;
@@ -64,8 +68,8 @@ class HeaderArea : Gtk.EventBox {
 
         vbox.pack_start(separator(), false, false, 0);
         
-        foreach (Track track in project.tracks)
-            add_track(project, track);
+        foreach (Model.Track track in project.tracks)
+            add_track(track);
     }
     
     Gtk.HSeparator separator() {
@@ -74,16 +78,16 @@ class HeaderArea : Gtk.EventBox {
         return separator;
     }
     
-    public void add_track(Project project, Track track) {
+    public void add_track(Model.Track track) {
         TrackHeader header = new TrackHeader(track, this);
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(separator(), false, false, 0);
         vbox.show_all();
     }
     
-    public void select(Track track) {
-        foreach (Track t in project.tracks)
-            t.header.set_state(t == track ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL);
+    public void select(Model.Track track) {
+        foreach (Model.Track t in project.tracks)
+            t.set_selected(t == track);
     }
 }
 

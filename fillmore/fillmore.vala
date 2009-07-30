@@ -4,8 +4,71 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+namespace Model {
+// TODO This class will go away when XML loading is cleaned up
+class VideoTrack : Track {
+
+    public VideoTrack(Model.Project project) {
+        base(project, "Video Track");
+    }
+
+    protected override string name() { return "video"; }
+    
+    protected override Gst.Element empty_element() {
+        return (Gst.Element) null;
+    }
+    
+    protected override void get_export_sink() {
+    }
+
+    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
+        return (Gst.Pad)null;
+    }
+    
+    protected override void check(Clip clip) {
+    }
+    
+    void on_element_message(Gst.Bus bus, Gst.Message message) {
+    }
+
+    public void set_output_widget(Gtk.Widget widget) {
+    }
+    
+    int64 frame_to_time(int frame) {
+        return 0;
+    }
+    
+    int time_to_frame(int64 time) {
+        return 0;
+    }
+    
+    public int get_current_frame(int64 time) {
+        return 0;
+    }
+    
+    public int64 previous_frame(int64 position) {
+        return 0;
+    }
+    
+    public int64 next_frame(int64 position) {
+        return 0;
+    }
+
+    public bool get_framerate(out Fraction rate) {
+        return false;
+    }
+    
+    public override void link_for_export(Gst.Element mux) {
+    }
+    
+    public override void link_for_playback(Gst.Element mux) {
+    }
+
+}
+}
+
 class Recorder : Gtk.Window {
-    public Project project;
+    public Model.AudioProject project;
     
     HeaderArea header_area;
     TimeLine timeline;
@@ -77,9 +140,7 @@ class Recorder : Gtk.Window {
 """;
     
     public Recorder() {
-        project = new Project();
-        project.audio_engine.fire_state_changed += on_state_changed;
-        project.audio_engine.fire_callback_pulse += on_callback_pulse;
+        project = new Model.AudioProject();
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -124,10 +185,15 @@ class Recorder : Gtk.Window {
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
         destroy += on_quit;
-        
+        project.add_track(new Model.AudioTrack(project, get_default_track_name()));
         select(project.tracks[0]);
     }
     
+    public string get_default_track_name() {
+        int i = project.tracks.size + 1;
+        return "track %d".printf(i);
+    }
+   
     Gtk.Widget get_widget(Gtk.UIManager manager, string name) {
         Gtk.Widget widget = manager.get_widget(name);
         if (widget == null)
@@ -135,14 +201,14 @@ class Recorder : Gtk.Window {
         return widget;
     }
     
-    void on_state_changed(PlayState state) {
-        record_action.set_sensitive(state != PlayState.PLAYING);
+    void on_state_changed(Model.PlayState state) {
+        record_action.set_sensitive(state != Model.PlayState.PLAYING);
         
         // While recording, we disable the play button but keep its action enabled
         // so that its shortcut (Space) can be used to stop recording.
-        play_button.set_sensitive(state != PlayState.RECORDING);
+        play_button.set_sensitive(state != Model.PlayState.RECORDING);
         
-        if (state == PlayState.STOPPED) {
+        if (state == Model.PlayState.STOPPED) {
             play_button.set_active(false);
             record_button.set_active(false);
             cursor_pos = -1;
@@ -153,14 +219,16 @@ class Recorder : Gtk.Window {
         delete_action.set_sensitive(new_selection != null);
     }
     
-    public void select(Track track) {
+    public void select(Model.Track track) {
         header_area.select(track);
     }
     
-    public Track? selected_track() {
-        foreach (Track t in project.tracks)
-            if (t.header.state == Gtk.StateType.SELECTED)
-                return t;
+    public Model.Track? selected_track() {
+        foreach (Model.Track track in project.tracks) {
+            if (track.get_is_selected()) {
+                return track;
+            }
+        }
         error("can't find selected track");
         return null;
     }
@@ -197,6 +265,7 @@ class Recorder : Gtk.Window {
     // File menu
     
     void on_export() {
+    /*
         Gtk.FileChooserDialog dialog = new Gtk.FileChooserDialog(
             "Export", this, Gtk.FileChooserAction.SAVE,
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, "_Export", Gtk.ResponseType.ACCEPT);
@@ -204,6 +273,7 @@ class Recorder : Gtk.Window {
         if (dialog.run() == Gtk.ResponseType.ACCEPT)
             project.export(dialog.get_filename());
         dialog.destroy();
+        */
     }
     
     void on_project_new() {
@@ -211,9 +281,9 @@ class Recorder : Gtk.Window {
             "Project location", this, Gtk.FileChooserAction.CREATE_FOLDER,
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
             "_Save", Gtk.ResponseType.ACCEPT);
-        if (dialog.run() == Gtk.ResponseType.ACCEPT) {
-            project.set_project_path(dialog.get_filename());
-        }
+//        if (dialog.run() == Gtk.ResponseType.ACCEPT) {
+//            project.set_project_path(dialog.get_filename());
+//        }
         dialog.destroy();
     }
     
@@ -221,26 +291,26 @@ class Recorder : Gtk.Window {
     }
     
     void on_quit() {
-        project.close();
+        //project.close();
         Gtk.main_quit();
     }
     
     // Edit menu
 
     void on_delete() {
-        Region r = timeline.selected.region;
-        r.track.remove(r);
+        Model.Clip clip = timeline.selected.region;
+        selected_track().delete_clip(clip, false);
     }
     
     // Track menu
 
     void on_track_new() {
         UI.TrackInformation dialog = new UI.TrackInformation();
-        dialog.set_track_name(project.get_default_track_name());
+        dialog.set_track_name(get_default_track_name());
         if (dialog.run() == Gtk.ResponseType.OK) {
             string track_name = dialog.get_track_name();
             if (track_name != "") {
-                project.add_named_track(track_name);
+                project.add_track(new Model.AudioTrack(project, track_name));
             }
         }
         dialog.destroy();
@@ -248,12 +318,13 @@ class Recorder : Gtk.Window {
     
     void on_track_rename() {
         UI.TrackInformation dialog = new UI.TrackInformation();
+        Model.Track track = selected_track();
         dialog.set_title("Rename track");
-        dialog.set_track_name(selected_track().name);
+        dialog.set_track_name(selected_track().display_name);
         if (dialog.run() == Gtk.ResponseType.OK) {
             string track_name = dialog.get_track_name();
             if (track_name != "") {
-                project.rename_track(dialog.get_track_name(), selected_track());
+                track.set_display_name(dialog.get_track_name());
             }
         }
         dialog.destroy();
@@ -263,7 +334,7 @@ class Recorder : Gtk.Window {
     
     void on_about() {
         Gtk.show_about_dialog(this,
-          "version", "0.1",
+          "version", "%1.2lf".printf(project.get_version()),
           "comments", "a multitrack recorder",
           "copyright", "(c) 2009 yorba"
         );
@@ -272,30 +343,25 @@ class Recorder : Gtk.Window {
     // toolbar
     
     void on_rewind() {
-        project.rewind();
+        project.go(0);
         scroll_to_beginning();
     }
     
     void on_play() {
-        if (project.recording())
+        /*if (project.recording())
             project.stop();     // will reset both buttons
-        else if (play_button.get_active())
+        else */
+        if (play_button.get_active())
             project.play();
         else
-            project.stop();
+            project.pause();
     }
     
     void on_record() {
         if (record_button.get_active())
             project.record(selected_track());
         else
-            project.stop();
-    }
-
-    void on_callback_pulse() {
-        if (timeline != null) {
-            timeline.update();
-        }
+            project.pause();
     }
         
     // main
