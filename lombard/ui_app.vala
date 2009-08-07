@@ -48,10 +48,12 @@ class App : Gtk.Window {
     Gtk.Action clip_properties_action;
     Gtk.Action zoom_to_project_action;
     
+    Model.ClipImporter importer;
+    
     bool done_zoom = false;
     
     string project_filename;
-    
+
     public static const string NAME = "lombard";
     public static const string PROJECT_FILE_EXTENSION = "lom";
     public static const string PROJECT_FILE_FILTER = "*.lom";   
@@ -284,8 +286,14 @@ class App : Gtk.Window {
             Model.ClipFile cf = project.find_clipfile(name);
             if (cf != null)
                 project.append(cf);
-            else project.create_clip_fetcher(new LombardFetcherCompletion(project), name);
+            else importer.filenames.add(name);
         }
+    }
+    
+    void create_clip_importer() {
+        importer = new Model.ClipImporter(new LombardFetcherCompletion(project), project);
+        importer.clip_complete += project.on_importer_clip_complete;             
+        importer.importing_started += on_importer_started;       
     }
     
     void on_open() {
@@ -306,7 +314,9 @@ class App : Gtk.Window {
         filter.add_pattern("*");
         
         d.add_filter(filter);
-        
+
+        create_clip_importer();
+
         d.set_select_multiple(true);
         if (d.run() == Gtk.ResponseType.ACCEPT) {
             foreach (string s in d.get_filenames()) {
@@ -319,6 +329,7 @@ class App : Gtk.Window {
             }
         }                                                    
         d.destroy();
+        importer.process_curr_file();
     }
 
     bool confirm_replace(string filename) {
@@ -432,6 +443,10 @@ class App : Gtk.Window {
         update_menu();
     }
     
+    void on_importer_started(Model.ClipImporter i, int num) {
+        new MultiFileProgress(this, num, "Import", i);
+    }
+
     Model.Track? track_from_clip_file(Model.ClipFile cf) {
         if (cf.video_caps != null) {
             return project.find_video_track();
@@ -447,6 +462,9 @@ class App : Gtk.Window {
                                             uint time) {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
+
+        create_clip_importer();          
+
         foreach (string s in a) {
             string filename;
             try {
@@ -454,9 +472,10 @@ class App : Gtk.Window {
             } catch (GLib.ConvertError e) { continue; }
             load_file(filename);
         }
+        importer.process_curr_file();
         present();
     }
-    
+
     void update_menu() {
         bool b = timeline.is_clip_selected();
         
@@ -583,10 +602,7 @@ class App : Gtk.Window {
             string filename = append_extension(d.get_filename(), "ogg");
 
             if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(filename)) {
-                ExportDialog export_dialog = new ExportDialog(filename, this);
-                export_dialog.export_cancel += project.on_export_cancel;
-                project.export_fraction_updated += export_dialog.on_fraction_updated;
-                export_dialog.export_complete += project.on_export_complete;
+                new MultiFileProgress(this, 1, "Export", project);
                 project.start_export(filename);
             }
         }

@@ -40,15 +40,17 @@ class VideoTrack : Track {
     }
     
     protected override void check(Clip clip) {
-        if (clips.size > 0) {
-            Fraction rate1;
-            Fraction rate2 = Fraction(0, 0);
-            if (!clip.clipfile.get_frame_rate(out rate1) || 
-                !clips[0].clipfile.get_frame_rate(out rate2))
-                error("can't get frame rate");
-            if (!rate1.equal(rate2))
-                error("can't insert clip with different frame rate");
-        }
+        Fraction rate1;
+        Fraction rate2;
+        
+        if (!get_framerate(out rate2))
+            error ("Cannot get initial frame rate!");
+        
+        if (!clip.clipfile.get_frame_rate(out rate1))
+            error("can't get frame rate");
+        
+        if (!rate1.equal(rate2))
+            error ("can't insert clip with different frame rate");
     }
     
     void on_element_message(Gst.Bus bus, Gst.Message message) {
@@ -144,9 +146,11 @@ class VideoTrack : Track {
         if (!project.pipeline.remove(sink))
             error("couldn't remove for video");
         get_export_sink();
-        converter.link(export_sink);
-        export_sink.link(mux);
-    
+        
+        if (!converter.link(export_sink))
+            error("video_track.link_for_export: Cannot link converter to export sink!");
+        if (!export_sink.link(mux))
+            error("video_track.link_for_export: Cannot link export_sink to mux!");    
     }
     
     public override void link_for_playback(Gst.Element mux) {
@@ -156,7 +160,9 @@ class VideoTrack : Track {
         project.pipeline.remove(export_sink);
               
         project.pipeline.add(sink);
-        converter.link(sink);
+        
+        if (!converter.link(sink))
+            error("video_track.link_for_playback: Cannot link converter to sink!");
     }
 }
     

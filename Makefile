@@ -3,9 +3,11 @@ default: all
 BUILD_ROOT = 1
 
 MARINA_SOURCES =	clip.vala \
+					import.vala \
 					project.vala \
 					track.vala \
-					util.vala
+					util.vala \
+					MultiFileProgress.vala
 
 MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
 

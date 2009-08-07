@@ -82,6 +82,15 @@ class ClipFile {
         return s.get_int("rate", out rate);
     }
     
+    public bool get_format(out uint32 fourcc) {
+        Gst.Structure s;
+        
+        if (!get_caps_structure(MediaType.VIDEO, out s))
+            return false;
+       
+        return s.get_fourcc("format", out fourcc);
+    }
+    
     public bool get_num_channels(out int channels) {
         Gst.Structure s;
         if (!get_caps_structure(MediaType.AUDIO, out s))
@@ -111,9 +120,11 @@ class ClipFile {
 class ClipFetcher {
     public ClipFile clipfile;
     
-    Gst.Pad video_source;
-    Gst.Pad audio_source;
+    public Gst.Pad video_source;
+    public Gst.Pad audio_source;
     
+    Gst.Element filesrc;
+    Gst.Bin decodebin;
     Gst.Element fakesink;
     Gst.Pipeline pipeline;
     public string error_string;
@@ -124,12 +135,13 @@ class ClipFetcher {
     public ClipFetcher(string filename) {
         clipfile = new ClipFile(filename);
         
-        Gst.Element filesrc = make_element("filesrc");
+        filesrc = make_element("filesrc");
         filesrc.set("location", filename);
         
-        Gst.Bin decodebin = (Gst.Bin) make_element("decodebin");
+        decodebin = (Gst.Bin) make_element("decodebin");
         fakesink = make_element("fakesink");
         pipeline = new Gst.Pipeline("pipeline");
+        pipeline.set_auto_flush_bus(false);
         if (pipeline == null)
             error("can't construct pipeline");
         pipeline.add_many(filesrc, decodebin, fakesink);
@@ -150,14 +162,9 @@ class ClipFetcher {
     
     public string get_filename() { return clipfile.filename; }
     
-    void do_error(string error) {
-        error_string = error;
-        pipeline.set_state(Gst.State.NULL);
-        ready();
-    }
-    
-    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {        
         string caps = pad.caps.to_string();
+        
         if (caps.has_prefix("video"))
             video_source = pad;
         else if (caps.has_prefix("audio"))
@@ -169,6 +176,12 @@ class ClipFetcher {
                 error("can't link pad");
             linked = true;
         }
+    }
+
+    void do_error(string error) {
+        error_string = error;
+        pipeline.set_state(Gst.State.NULL);
+        ready();
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
@@ -194,23 +207,25 @@ class ClipFetcher {
         Gst.State pending;
         
         message.parse_state_changed(out old_state, out new_state, out pending);
-        if (new_state != Gst.State.PAUSED)
+        if (new_state == old_state) 
             return;
-            
-        Gst.Format format = Gst.Format.TIME;
-        if (!pipeline.query_duration(ref format, out clipfile.length) ||
-                format != Gst.Format.TIME) {
-            do_error("Can't fetch length");
-            return;
+        
+        if (new_state == Gst.State.PAUSED) {
+            if (video_source != null)
+                clipfile.video_caps = video_source.caps;
+            if (audio_source != null)
+                clipfile.audio_caps = audio_source.caps;
+  
+            Gst.Format format = Gst.Format.TIME;
+            if (!pipeline.query_duration(ref format, out clipfile.length) ||
+                    format != Gst.Format.TIME) {
+                do_error("Can't fetch length");
+                return;
+            }
+            pipeline.set_state(Gst.State.NULL);                                  
+        } else if (new_state == Gst.State.NULL) {
+            ready();
         }
-        
-        if (video_source != null)
-            clipfile.video_caps = video_source.caps;
-        if (audio_source != null)
-            clipfile.audio_caps = audio_source.caps;
-        
-        pipeline.set_state(Gst.State.NULL);
-        ready();
     }
 }
 

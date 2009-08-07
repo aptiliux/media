@@ -8,7 +8,7 @@ namespace Model {
 class VideoProject : Project {
 
     public VideoProject(string? filename) {
-        base(filename);
+        base(filename);      
     }
     
     public override double get_version() {
@@ -69,7 +69,7 @@ class VideoProject : Project {
         if (!get_framerate_fraction(out r))
             return 0;
         
-        if (is_ntsc_rate(r))
+        if (is_drop_frame_rate(r))
             return 30;
         return r.numerator / r.denominator;
     }

@@ -386,10 +386,10 @@ abstract class Track {
         // clips that aren't yet in the composition otherwise, which causes behavior
         // like the position in the composition being incorrect when we start playing.
         // This also fixes the lockup problem we were having.
-        composition.add(clip.file_source);            
+        composition.add(clip.file_source);         
         insert_at(index, clip, pos);
         
-        clip_added(clip);        
+        clip_added(clip);
     }
     
     public void put(int index, Clip c) {

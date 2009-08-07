@@ -6,76 +6,6 @@
 
 using Gee;
 
-class ExportDialog : Gtk.Window {
-    Gtk.ProgressBar progress_bar;
-    Gtk.Button cancel_button;
-    
-    public signal void export_cancel();
-    public signal void export_complete();
-
-    public ExportDialog(string filename, Gtk.Window parent) {
-        progress_bar = new Gtk.ProgressBar();
-        Gtk.Label l = new Gtk.Label("Exporting: %s".printf(filename));
-        
-        l.set_line_wrap(true);
-        l.set_line_wrap_mode(Pango.WrapMode.WORD);
-        
-        Gtk.VBox vbox = new Gtk.VBox(true, 0);
-        Gtk.HBox hbox = new Gtk.HBox(true, 0);
-        vbox.pack_start(l, false, false, 0);
-        vbox.pack_start(progress_bar, false, false, 0);
-        
-        Gtk.HButtonBox button_area = new Gtk.HButtonBox();
-        button_area.set("layout-style", Gtk.ButtonBoxStyle.CENTER); 
-        
-        cancel_button = new Gtk.Button.from_stock(Gtk.STOCK_CANCEL);
-        cancel_button.clicked += on_cancel_clicked;
-        
-        button_area.add(cancel_button);
-
-        vbox.pack_start(button_area, false, false, 0);
-        hbox.pack_start(vbox, false, false, 0);
-        add(hbox);
-        
-        destroy += on_destroy;
-        
-        
-        set_border_width(8); 
-        set_resizable(false);
-        set_transient_for(parent);
-        set_modal(true);
-        set_title("Export");
-        
-        show_all();
-    }
-    
-    void on_cancel_clicked() {
-        destroy();
-        export_cancel();
-    }
-    
-    void on_destroy() {
-        destroy();
-        if (progress_bar.get_fraction() < 1.0) {
-            export_cancel();
-        }
-    }
-    
-    public void on_fraction_updated(double p) {
-        if (p >= 1.0) {
-            progress_bar.set_fraction(1.0);
-            export_complete();
-            destroy();
-        } else {
-            progress_bar.set_fraction(p);
-            show();
-            progress_bar.queue_draw();
-            queue_draw();
-            this.window.process_updates(true);
-        }
-    }
-}
-
 class Ruler : Gtk.DrawingArea {
     TimeLine timeline;
     
@@ -542,11 +472,13 @@ class TimeLine : Gtk.EventBox {
     public void show_clip_properties(Gtk.Window parent) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
                                     Gtk.DialogFlags.MODAL, Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT);
-        Gtk.Table t = new Gtk.Table(8, 2, false);
+        d.set("has-separator", false);
+        
+        Gtk.Table t = new Gtk.Table(10, 2, false);
         int row = 0;
         int tab_padding = 25;
         
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 10; i++)
             t.set_row_spacing(i, 10);
             
         row = 1;
@@ -615,7 +547,6 @@ class TimeLine : Gtk.EventBox {
         } 
     
         d.vbox.pack_start(t, false, false, 0);
-        d.set_size_request(400, 300);
     
         d.show_all();
         d.run();

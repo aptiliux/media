@@ -12,7 +12,7 @@ enum PlayState {
     PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT
 }
     
-abstract class Project {
+abstract class Project : DialogInterface {
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     
@@ -36,7 +36,6 @@ abstract class Project {
     uint callback_id;
     FetcherCompletion fetcher_completion;
     
-    public signal void export_fraction_updated(double d);
     public signal void position_changed();
     
     public signal void name_changed(string? project_file);
@@ -70,7 +69,7 @@ abstract class Project {
         bus.add_signal_watch();
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-        bus.message["eos"] += on_eos;        
+        bus.message["eos"] += on_eos;                      
     }
     
     // We initialize this message here because there are problems
@@ -321,7 +320,11 @@ abstract class Project {
                 }
                 position_changed();
             } else if (play_state == PlayState.EXPORTING) {
-                export_fraction_updated(time / (double) get_length());
+                if (time > get_length()) {
+                    fraction_updated(1.0);
+                }
+                else
+                    fraction_updated(time / (double) get_length());
             }
         }
         return true;
@@ -427,15 +430,18 @@ abstract class Project {
         
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);               
         pipeline.set_state(Gst.State.NULL);
+        
+        file_updated(filename, 0);
     }
     
-    public void on_export_cancel() {
+    void cancelled() {
         play_state = PlayState.CANCEL_EXPORT;
         pipeline.set_state(Gst.State.NULL);
     }
     
-    public void on_export_complete() {
-        set_gst_state(Gst.State.NULL);
+    // TODO: Rework this
+    public void complete() {
+        pipeline.set_state(Gst.State.NULL);
     }
     
     void do_null_state_export() {
@@ -466,7 +472,7 @@ abstract class Project {
             file_sink.get("location", out str);
             GLib.FileUtils.remove(str);
         } else
-            export_fraction_updated(1.0);
+            done();
         play_state = PlayState.STOPPED;
         
         find_video_track().end_export(mux);
@@ -587,6 +593,21 @@ abstract class Project {
         // even though the seek appears to work fine in that case.
         pipeline.seek_simple(Gst.Format.TIME, flags, pos);
     }
+    
+    public void on_importer_clip_complete(Model.ClipFetcher fetcher) {
+        if (fetcher.error_string != null) {
+            error_occurred(fetcher.error_string);         
+        } else {
+            fetcher_completion.complete(fetcher);
+        }        
+    }
+
+    public ClipFetcher create_import_clip_fetcher(FetcherCompletion fc, string filename) {
+        ClipFetcher f = new Model.ClipFetcher(filename);
+        fetcher_completion = fc;
+        
+        return f;
+    }
 
     public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {
         Model.ClipFetcher fetcher = new Model.ClipFetcher(filename);
@@ -600,7 +621,6 @@ abstract class Project {
         if (fetcher.error_string != null) {
             error_occurred(fetcher.error_string);         
         } else {
-            add_clipfile(fetcher.clipfile);
             fetcher_completion.complete(fetcher);
         }
     }

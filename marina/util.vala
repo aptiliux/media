@@ -4,6 +4,14 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+// I can't find a floating point absolute value function in Vala...
+
+float float_abs(float f) {
+    if (f < 0.0f)
+        return -f;
+    return f;
+}
+
 struct Fraction {
     public int numerator;
     public int denominator;
@@ -14,7 +22,10 @@ struct Fraction {
     }
     
     public bool equal(Fraction f) {
-        return numerator == f.numerator && denominator == f.denominator;
+        if (float_abs(((numerator / (float)denominator) - (f.numerator / (float)f.denominator))) <=
+            (1000.0f / 1001.0f))
+            return true;
+        return false;
     }
 }
 
@@ -85,6 +96,48 @@ bool version_at_least(string v, string w) {
         if (wi > vi)
             return false;
     }
+    return true;
+}
+
+bool get_file_md5_checksum(string filename, out string checksum) {
+    string new_filename = append_extension(filename, "md5");
+    
+    ulong buffer_length;
+    try {
+        GLib.FileUtils.get_contents(new_filename, out checksum, out buffer_length);
+    } catch (GLib.FileError e) {
+        return false;
+    }
+    
+    if (buffer_length != 32) 
+		return false;
+    
+    return true;
+}
+
+void save_file_md5_checksum(string filename, string checksum) {
+    string new_filename = append_extension(filename, "md5");
+    
+    try {
+        GLib.FileUtils.set_contents(new_filename, checksum);
+    } catch (GLib.FileError e) {
+        error("Cannot save md5 file %s!\n".printf(new_filename));
+    }
+}
+
+bool md5_checksum_on_file(string filename, out string checksum) {
+    string file_buffer;
+    ulong len;
+    
+    try {
+        GLib.FileUtils.get_contents(filename, out file_buffer, out len);
+    } catch (GLib.FileError e) {
+        return false;
+    }
+
+    GLib.Checksum c = new GLib.Checksum(GLib.ChecksumType.MD5);
+    c.update((uchar[]) file_buffer, len);
+    checksum = c.get_string();
     return true;
 }
 
@@ -342,9 +395,9 @@ void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled,
 
 // GStreamer utility functions
 
-bool is_ntsc_rate(Fraction r) {
+bool is_drop_frame_rate(Fraction r) {
     return r.numerator == 2997 && r.denominator == 100 ||
-           r.numerator == 30000 && r.denominator == 1001;
+           r.numerator == 30000 && r.denominator == 1001;    
 }
 
 int64 frame_to_time_with_rate(int frame, Fraction rate) {
@@ -370,7 +423,7 @@ Time frame_to_time(int frame, Fraction rate) {
     t.drop_code = false;   
     if (rate.denominator == 1)
         frame_rate = rate.numerator;
-    else if (rate.numerator == 2997 && rate.denominator == 100) {
+    else if (is_drop_frame_rate(rate)) {
         t.drop_code = true;
         frame_rate = 30;
 
@@ -382,8 +435,12 @@ Time frame_to_time(int frame, Fraction rate) {
         int minute_in_block = (frame % FRAMES_PER_10_MINUTES - 2) / FRAMES_PER_MINUTE;
         int minutes = 10 * block + minute_in_block;
         frame += 2 * minutes - 2 * block;   // skip 2 frames per minute, except every 10 minutes
-    } else error("can't handle fractional frame rate");
-   
+    } else {
+        // TODO: We're getting odd framerate fractions from imported videos, so
+        // I've removed the error call until we decide what to do
+        frame_rate = rate.numerator / rate.denominator;
+    }
+    
     t.frame = frame % frame_rate;
     
     int64 secs = frame / frame_rate;
