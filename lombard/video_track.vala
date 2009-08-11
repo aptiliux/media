@@ -8,37 +8,18 @@
 namespace Model {
 class VideoTrack : Track {
     
-    Gtk.Widget output_widget;
-    
     public VideoTrack(Model.Project project) {
         base(project, "Video Track");
-        
-        converter = make_element("ffmpegcolorspace");
-        sink = make_element("xvimagesink");
-        sink.set("force-aspect-ratio", true);
-        
-        project.pipeline.add_many(converter, sink);
-        if (!converter.link(sink))
-            error("can't link converter with video sink!");
     }
 
     protected override string name() { return "video"; }
-    
+
     protected override Gst.Element empty_element() {
         Gst.Element blackness = make_element("videotestsrc");
         blackness.set("pattern", 2);     // 2 == GST_VIDEO_TEST_SRC_BLACK
         return blackness;
     }
 
-    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
-        return converter.get_static_pad("sink");
-    }
-    
-    protected override void get_export_sink() {
-        export_sink = make_element("theoraenc");
-        project.pipeline.add(export_sink);
-    }
-    
     protected override void check(Clip clip) {
         Fraction rate1;
         Fraction rate2;
@@ -51,40 +32,6 @@ class VideoTrack : Track {
         
         if (!rate1.equal(rate2))
             error ("can't insert clip with different frame rate");
-    }
-    
-    void on_element_message(Gst.Bus bus, Gst.Message message) {
-        if (!message.structure.has_name("prepare-xwindow-id"))
-            return;
-        
-        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
-        Gst.XOverlay overlay = (Gst.XOverlay) sink;
-        overlay.set_xwindow_id(xid);
-        
-        // Once we've connected our video sink to a widget, it's best to turn off GTK
-        // double buffering for the widget; otherwise the video image flickers as it's resized.
-        output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
-    }
-
-    public void set_output_widget(Gtk.Widget widget) {
-        output_widget = widget;
-        
-        Gst.Bus bus = project.pipeline.get_bus();
-        
-        // We need to wait for the prepare-xwindow-id element message, which tells us when it's
-        // time to set the X window ID.  We must respond to this message synchronously.
-        // If we used an asynchronous signal (enabled via gst_bus_add_signal_watch) then the
-        // xvimagesink would create its own output window which would flash briefly
-        // onto the display.
-        
-        bus.enable_sync_message_emission();
-        bus.sync_message["element"] += on_element_message;
-
-        // We can now progress to the PAUSED state.
-        // We can only do this if we aren't currently loading a project
-        
-        if (project.loader == null)
-            project.pipeline.set_state(Gst.State.PAUSED);
     }
     
     /* It would be nice if we could query or seek in frames using GST_FORMAT_DEFAULT, or ask
@@ -140,30 +87,6 @@ class VideoTrack : Track {
         return clips[0].clipfile.get_frame_rate(out rate);
     }
 
-    public override void link_for_export(Gst.Element mux) {
-        converter.unlink(sink);
-        
-        if (!project.pipeline.remove(sink))
-            error("couldn't remove for video");
-        get_export_sink();
-        
-        if (!converter.link(export_sink))
-            error("video_track.link_for_export: Cannot link converter to export sink!");
-        if (!export_sink.link(mux))
-            error("video_track.link_for_export: Cannot link export_sink to mux!");    
-    }
-    
-    public override void link_for_playback(Gst.Element mux) {
-        export_sink.unlink(mux);
-
-        converter.unlink(export_sink);
-        project.pipeline.remove(export_sink);
-              
-        project.pipeline.add(sink);
-        
-        if (!converter.link(sink))
-            error("video_track.link_for_playback: Cannot link converter to sink!");
-    }
 }
     
 }

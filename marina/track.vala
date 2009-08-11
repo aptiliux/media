@@ -20,6 +20,8 @@ abstract class Track {
     
     protected Gst.Bin composition;
     
+    public signal void pad_added(Track track, Gst.Bin bin, Gst.Pad pad);
+    public signal void pad_removed(Track track, Gst.Bin bin, Gst.Pad pad);
     public signal void clip_added(Clip clip);
     public signal void clip_removed(Clip clip);
 
@@ -27,17 +29,15 @@ abstract class Track {
     public signal void track_selection_changed(Track track);
 
     protected Gst.Element default_source;
-    protected Gst.Element converter;
     protected Gst.Element sink;    
-    protected Gst.Element export_sink;
     
     public Track(Project project, string display_name) {
         this.project = project;
         this.display_name = display_name;
+
+        composition = (Gst.Bin) make_element_with_name("gnlcomposition", display_name);
         
-        composition = (Gst.Bin) make_element("gnlcomposition");
-        
-        default_source = make_element("gnlsource");
+        default_source = make_element_with_name("gnlsource", "track_default_source");
         Gst.Bin default_source_bin = (Gst.Bin) default_source;
         if (!default_source_bin.add(empty_element()))
             error("can't add empty element");
@@ -57,53 +57,35 @@ abstract class Track {
         project.pipeline.add(composition);
         composition.pad_added += on_pad_added;
         composition.pad_removed += on_pad_removed;
+        project.pre_export += on_pre_export;
+        project.post_export += on_post_export;
     }
 
     protected abstract string name();
 
     protected abstract Gst.Element empty_element();
 
-    protected abstract void get_export_sink();
-    protected abstract Gst.Pad get_destination_sink(Gst.Pad pad);
-    protected abstract void link_for_export(Gst.Element mux);
-    protected abstract void link_for_playback(Gst.Element mux);
-
-    public void start_export(Gst.Element mux) {        
-        if (get_length() == 0) {
-            converter.unlink(sink);
-            project.pipeline.remove_many(composition, converter, sink);
-        } else {
-            link_for_export(mux);
-            
-            default_source.set("duration", project.get_length());
-            default_source.set("media-duration", project.get_length());
-        }
+    void on_pre_export() {
+        default_source.set("duration", project.get_length());
+        default_source.set("media-duration", project.get_length());    
     }
     
-    public void end_export(Gst.Element mux) {
-        if (get_length() == 0) {
-            project.pipeline.add_many(composition, converter, sink);
-            converter.link(sink);        
-        } else {
-            link_for_playback(mux);        
-        }
-
+    void on_post_export() {
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
     }
 
+
     protected virtual void check(Clip clip) { }
 
     void on_pad_removed (Gst.Bin bin, Gst.Pad pad) {
-        pad.unlink(converter.get_static_pad("sink"));
+        pad_removed(this, bin, pad);
     }
 
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
-        Gst.Pad destination_sink = get_destination_sink(pad);
-        if (pad.link(destination_sink) != Gst.PadLinkReturn.OK)
-            error("can't link composition output");
+        pad_added(this, bin, pad);
     }
-    
+  
     public int64 get_time_from_pos(int pos, bool after) {
         if (after)
             return clips[pos].start + clips[pos].length;
@@ -554,13 +536,21 @@ abstract class Track {
 }
 
 class AudioTrack : Track {
+    public Gst.Element audio_convert;
+    public Gst.Element audio_resample;
+
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
-
-        // We need an audioconvert element to convert from integer to floating point
-        converter = make_element("audioconvert");
-        if (!project.pipeline.add(converter)) {
-            error("could not add converter");
+        audio_convert = make_element_with_name("audioconvert",
+            "audioconvert_%s".printf(display_name));
+        audio_resample = make_element_with_name("audioresample",
+            "audioresample_%s".printf(display_name));
+        if (!project.pipeline.add(audio_convert)) {
+            error("could not add audio_convert");
+        }
+        
+        if (!project.pipeline.add(audio_resample)) {
+            error("could not add audio_resample");
         }
     }
 
@@ -568,57 +558,6 @@ class AudioTrack : Track {
     
     protected override Gst.Element empty_element() {
         return project.get_audio_silence();
-    }
- 
-    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
-        // create a new pad for the audio_convert.link to link with
-        Gst.Pad adder_pad = project.adder.get_compatible_pad(pad, pad.get_caps());
-        
-        if (!converter.link(project.adder)) {
-            // TODO this call reports a failure.  However with this link moved to constructor,
-            // multiple tracks in fillmore don't play back.  So . . . for the moment,
-            // silently ignore the error.
-            // error("could not link converter with adder");
-        }
-        return converter.get_compatible_pad(pad, pad.get_caps());
-    }
-    
-    protected override void get_export_sink() {
-        export_sink = make_element("vorbisenc");
-        project.pipeline.add(export_sink);
-    }
-
-    protected override void link_for_export(Gst.Element mux) {
-        project.capsfilter.unlink(project.audio_sink);
-        
-        if (!project.pipeline.remove(project.audio_sink))
-            error("couldn't remove for audio");
-        get_export_sink();
-        
-        if (!project.capsfilter.link(export_sink)) {
-            error("could not link capsfilter to export_sink");
-        }
-        
-        if (!export_sink.link(mux)) {
-            error("could not link export sink to mux");
-        }
-    }
-    
-    protected override void link_for_playback(Gst.Element mux) {
-        export_sink.unlink(mux);
-        project.capsfilter.unlink(export_sink);
-
-        if (!project.pipeline.remove(export_sink)) {
-            error("could not remove export_sink");
-        }
-
-        if (!project.pipeline.add(project.audio_sink)) {
-            error("could not add audio_sink to pipeline");
-        }
-
-        if (!project.capsfilter.link(project.audio_sink)) {
-            error("could not link capsfilter to audio_sink");
-        }
     }
 }
 }

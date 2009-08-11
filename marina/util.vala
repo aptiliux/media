@@ -195,6 +195,17 @@ Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
     return r;
 }
 
+bool confirm_replace(Gtk.Window? parent, string filename) {
+    Gtk.MessageDialog md = new Gtk.MessageDialog.with_markup(
+        parent, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
+        "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
+        Path.get_basename(filename));
+    md.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                   "Replace", Gtk.ResponseType.ACCEPT);
+    int response = md.run();
+    md.destroy();
+    return response == Gtk.ResponseType.ACCEPT;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 //                    Rectangle drawing stuff                              //
@@ -455,9 +466,13 @@ string frame_to_string(int frame, Fraction rate) {
     return frame_to_time(frame, rate).to_string();
 }
 
-Gst.Element make_element(string name) {
-    Gst.Element e = Gst.ElementFactory.make(name, null);
+Gst.Element make_element_with_name(string element_name, string? display_name) {
+    Gst.Element e = Gst.ElementFactory.make(element_name, display_name);
     if (e == null)
-        error("can't create element: %s", name);
+        error("can't create element: %s", element_name);
     return e;
+}
+
+Gst.Element make_element(string name) {
+    return make_element_with_name(name, null);
 }

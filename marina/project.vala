@@ -11,14 +11,16 @@ enum PlayState {
     PRE_RECORD, RECORDING, POST_RECORD,
     PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT
 }
-    
-abstract class Project : DialogInterface {
+
+// TODO: Project derives from MultiFileProgress interface for exporting
+// Move exporting work to separate object similar to import.    
+abstract class Project : MultiFileProgressInterface {
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     
     Gst.Element file_sink;
     Gst.Element mux;
-    
+    Gst.Element export_sink;
     public Gst.Pipeline pipeline;
     public Gst.Element audio_sink;
     public Gst.Element adder;
@@ -36,6 +38,8 @@ abstract class Project : DialogInterface {
     uint callback_id;
     FetcherCompletion fetcher_completion;
     
+    public signal void pre_export();
+    public signal void post_export();
     public signal void position_changed();
     
     public signal void name_changed(string? project_file);
@@ -56,8 +60,7 @@ abstract class Project : DialogInterface {
         capsfilter.set("caps", get_project_audio_caps());
 
         audio_sink = make_element("gconfaudiosink");
-        Gst.Element audio_convert = make_element("audioconvert");
-
+        Gst.Element audio_convert = make_element_with_name("audioconvert", "projectconvert");
         pipeline.add_many(silence, audio_convert, adder, capsfilter, audio_sink);
 
         if (!silence.link_many(audio_convert, adder, capsfilter, audio_sink)) {
@@ -69,7 +72,12 @@ abstract class Project : DialogInterface {
         bus.add_signal_watch();
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-        bus.message["eos"] += on_eos;                      
+        bus.message["eos"] += on_eos;    
+        set_gst_state(Gst.State.PAUSED);                  
+    }
+
+    public void print_graph(Gst.Bin bin, string file_name) {
+        Gst.debug_bin_to_dot_file_with_ts(bin, Gst.DebugGraphDetails.ALL, file_name);
     }
     
     // We initialize this message here because there are problems
@@ -183,6 +191,22 @@ abstract class Project : DialogInterface {
     public void on_clip_removed(Track t, Clip clip) {
         reseek();
     }
+    
+    public virtual void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
+        AudioTrack? audio_track = track as AudioTrack;
+        if (audio_track != null) {
+            if (!bin.link_many(audio_track.audio_convert, audio_track.audio_resample, adder)) {
+                error("could not link bin->audio_convert->resample->adder");
+            }
+        }
+    }
+    
+    public virtual void on_pad_removed(Track track, Gst.Bin bin, Gst.Pad pad) {
+        AudioTrack? audio_track = track as AudioTrack;
+        if (audio_track != null && audio_track.audio_convert != null) {
+            bin.unlink_many(audio_track.audio_convert, audio_track.audio_resample, adder);
+        }
+    }
    
     public void split_at_playhead() {
         foreach (Track track in tracks) {
@@ -265,6 +289,8 @@ abstract class Project : DialogInterface {
     
     public void add_track(Track track) {
         track.clip_removed += on_clip_removed;
+        track.pad_added += on_pad_added;
+        track.pad_removed += on_pad_removed;
         tracks.add(track);
         track_added(track);
     }
@@ -422,38 +448,42 @@ abstract class Project : DialogInterface {
     }
     
     public void start_export(string filename) {
-        file_sink = make_element("filesink");
-        mux = make_element("oggmux");
-        
-        file_sink.set("location", filename);
         play_state = PlayState.PRE_EXPORT_NULL;    
+        file_sink = make_element("filesink");
+        file_sink.set("location", filename);
         
-        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);               
+        if (!pipeline.add(file_sink)) {
+            error("could not add file_sink");
+        }
+        
+        mux = make_element("oggmux");
+        if (!pipeline.add(mux)) {
+            error("could not add oggmux to pipeline");
+        }
+
+        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
         pipeline.set_state(Gst.State.NULL);
-        
+        link_for_export(mux);            
+
         file_updated(filename, 0);
     }
     
-    void cancelled() {
+    void on_cancel() {
         play_state = PlayState.CANCEL_EXPORT;
         pipeline.set_state(Gst.State.NULL);
     }
     
     // TODO: Rework this
-    public void complete() {
+    public void on_complete() {
         pipeline.set_state(Gst.State.NULL);
     }
     
-    void do_null_state_export() {
+    protected virtual void do_null_state_export() {
+        pre_export();
+        if (!mux.link(file_sink)) {
+            error("could not link mux and file_sink");
+        }
         play_state = PlayState.PRE_EXPORT;
-
-        pipeline.add_many(mux, file_sink);
-        
-        find_video_track().start_export(mux);
-        find_audio_track().start_export(mux);
-       
-        mux.link(file_sink);
-
         pipeline.set_state(Gst.State.PAUSED);
     }
     
@@ -466,22 +496,63 @@ abstract class Project : DialogInterface {
         pipeline.set_state(Gst.State.PLAYING);        
     }
     
-    void end_export(bool deleted) {
+    protected virtual void do_end_export(bool deleted) {
         if (deleted) {
             string str;
             file_sink.get("location", out str);
             GLib.FileUtils.remove(str);
-        } else
-            done();
+        }
+        link_for_playback(mux);
+    }
+
+    void end_export(bool deleted) {
         play_state = PlayState.STOPPED;
-        
-        find_video_track().end_export(mux);
-        find_audio_track().end_export(mux);
-        
+        do_end_export(deleted);
+
         pipeline.remove_many(mux, file_sink);
         
         callback_id = 0;
         pipeline.set_state(Gst.State.PAUSED);
+        post_export();
+    }
+
+    protected virtual void link_for_export(Gst.Element mux) {
+        capsfilter.unlink(audio_sink);
+        
+        if (!pipeline.remove(audio_sink))
+            error("couldn't remove for audio");
+
+        get_export_sink();
+        pipeline.add(export_sink);
+
+        if (!capsfilter.link(export_sink)) {
+            error("could not link capsfilter to export_sink");
+        }
+        
+        if (!export_sink.link(mux)) {
+            error("could not link export sink to mux");
+        }
+    }
+    
+    protected virtual void link_for_playback(Gst.Element mux) {
+        export_sink.unlink(mux);
+        capsfilter.unlink(export_sink);
+
+        if (!pipeline.remove(export_sink)) {
+            error("could not remove export_sink");
+        }
+
+        if (!pipeline.add(audio_sink)) {
+            error("could not add audio_sink to pipeline");
+        }
+
+        if (!capsfilter.link(audio_sink)) {
+            error("could not link capsfilter to audio_sink");
+        }
+    }
+
+    protected void get_export_sink() {
+        export_sink = make_element("vorbisenc");
     }
     
     void on_eos(Gst.Bus bus, Gst.Message message) {

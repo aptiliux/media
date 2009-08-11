@@ -5,13 +5,13 @@
  */
 
 // TODO: Is this the best way to do this?
-interface DialogInterface {
+interface MultiFileProgressInterface {
     signal void fraction_updated(double d);
     signal void file_updated(string filename, int index);
     signal void done();
     
-    protected abstract void cancelled();
-    protected abstract void complete();
+    protected abstract void on_cancel();
+    protected abstract void on_complete();
 }
 
 // TODO: Rework the complete signal
@@ -23,12 +23,13 @@ class MultiFileProgress : Gtk.Window {
     Gtk.Button cancel_button;
     int num_files;
   
-    string name;
+    string dialog_title;
   
     signal void cancelled();
     signal void complete();
 
-    public MultiFileProgress(Gtk.Window parent, int num_files, string name, DialogInterface i) {
+    public MultiFileProgress(Gtk.Window parent, int num_files, 
+        string dialog_title, MultiFileProgressInterface provider_interface) {
         this.num_files = num_files;
         
         file_label = new Gtk.Label("");
@@ -55,20 +56,20 @@ class MultiFileProgress : Gtk.Window {
         set_resizable(false);
         set_transient_for(parent);        
         set_modal(true);
-        set_title(name);     
+        set_title(dialog_title);     
         
         destroy += on_destroy;
-        this.name = name;
+        this.dialog_title = dialog_title;
         
         add(vbox);
         show_all();
         
-        i.fraction_updated += on_fraction_updated;
-        i.file_updated += on_file_updated;
-        i.done += on_done;
+        provider_interface.fraction_updated += on_fraction_updated;
+        provider_interface.file_updated += on_file_updated;
+        provider_interface.done += on_done;
         
-        cancelled += i.cancelled;
-        complete += i.complete;
+        cancelled += provider_interface.on_cancel;
+        complete += provider_interface.on_complete;
     }
 
     void on_done() {
@@ -98,7 +99,7 @@ class MultiFileProgress : Gtk.Window {
     }
 
     void on_file_updated(string filename, int index) {
-        number_label.set_text("%sing %d of %d".printf(name, index + 1, num_files));
+        number_label.set_text("%sing %d of %d".printf(dialog_title, index + 1, num_files));
         file_label.set_text("%s".printf(filename));
     }
 }

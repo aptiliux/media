@@ -1,6 +1,6 @@
 namespace Model {
 
-class ClipImporter : DialogInterface {  
+class ClipImporter : MultiFileProgressInterface {  
     enum ImportState {
         FETCHING,
         IMPORTING,
@@ -77,7 +77,7 @@ class ClipImporter : DialogInterface {
         Timeout.add(50, on_timer_callback);
     }
     
-    void cancelled() {
+    void on_cancel() {
         all_done = true;
         import_state = ImportState.CANCELLED;
         pipeline.set_state(Gst.State.NULL);
@@ -109,7 +109,7 @@ class ClipImporter : DialogInterface {
     }
     
     // TODO: Rework this
-    void complete() {
+    void on_complete() {
         all_done = true;
     }
     

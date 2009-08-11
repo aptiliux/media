@@ -13,25 +13,12 @@ class VideoTrack : Track {
     }
 
     protected override string name() { return "video"; }
-    
+
     protected override Gst.Element empty_element() {
         return (Gst.Element) null;
     }
     
-    protected override void get_export_sink() {
-    }
-
-    protected override Gst.Pad get_destination_sink(Gst.Pad pad) {
-        return (Gst.Pad)null;
-    }
-    
     protected override void check(Clip clip) {
-    }
-    
-    void on_element_message(Gst.Bus bus, Gst.Message message) {
-    }
-
-    public void set_output_widget(Gtk.Widget widget) {
     }
     
     int64 frame_to_time(int frame) {
@@ -57,13 +44,6 @@ class VideoTrack : Track {
     public bool get_framerate(out Fraction rate) {
         return false;
     }
-    
-    public override void link_for_export(Gst.Element mux) {
-    }
-    
-    public override void link_for_playback(Gst.Element mux) {
-    }
-
 }
 }
 
@@ -84,8 +64,8 @@ class Recorder : Gtk.Window {
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
-        { "Export", Gtk.STOCK_JUMP_TO, "_Export...", null, null, on_export },
         { "Save", Gtk.STOCK_SAVE, "_Save", null, "Save project", on_project_save },
+        { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
         { "Edit", null, "_Edit", null, null, null },
@@ -97,6 +77,7 @@ class Recorder : Gtk.Window {
         
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
+        { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
         
         { "Rewind", Gtk.STOCK_MEDIA_PREVIOUS, null, "Return", "Go to beginning", on_rewind }
     };
@@ -110,9 +91,10 @@ class Recorder : Gtk.Window {
 <ui>
   <menubar name="MenuBar">
     <menu name="FileMenu" action="File">
-      <menuitem name="FileExport" action="Export"/>
       <menuitem name="FileNew" action="NewProject" />
       <menuitem name="FileSave" action="Save" />
+      <separator />
+      <menuitem name="FileExport" action="Export"/>
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
@@ -124,6 +106,7 @@ class Recorder : Gtk.Window {
     </menu>
     <menu name="HelpMenu" action="Help">
       <menuitem name="HelpAbout" action="About"/>
+      <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
   </menubar>
   <toolbar name="Toolbar">
@@ -182,9 +165,19 @@ class Recorder : Gtk.Window {
         vbox.pack_start(hbox, true, true, 0);
         add(vbox);
         
+        Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
+            get_widget(manager, "/MenuBar/HelpMenu/SaveGraph");
+
+        // TODO: only destroy it if --debug is not specified on the command line
+        // or conversely, only add it if --debug is specified on the command line
+        if (save_graph != null) {
+            save_graph.destroy();
+        }
+        
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
         destroy += on_quit;
+        project.load(null);
         project.add_track(new Model.AudioTrack(project, get_default_track_name()));
         select(project.tracks[0]);
     }
@@ -265,15 +258,28 @@ class Recorder : Gtk.Window {
     // File menu
     
     void on_export() {
-    /*
-        Gtk.FileChooserDialog dialog = new Gtk.FileChooserDialog(
-            "Export", this, Gtk.FileChooserAction.SAVE,
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, "_Export", Gtk.ResponseType.ACCEPT);
-        dialog.set_current_name("Untitled.wav");
-        if (dialog.run() == Gtk.ResponseType.ACCEPT)
-            project.export(dialog.get_filename());
-        dialog.destroy();
-        */
+        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Export", this, 
+                                                                Gtk.FileChooserAction.SAVE,
+                                                                Gtk.STOCK_CANCEL, 
+                                                                Gtk.ResponseType.CANCEL,
+                                                                Gtk.STOCK_SAVE, 
+                                                                Gtk.ResponseType.ACCEPT, null);
+            
+        Gtk.FileFilter filter = new Gtk.FileFilter();
+        filter.set_name("Ogg Files");
+        filter.add_pattern("*.ogg");
+        
+        d.add_filter(filter);
+        
+        if (d.run() == Gtk.ResponseType.ACCEPT) {
+            string filename = append_extension(d.get_filename(), "ogg");
+
+            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename)) {
+                MultiFileProgress export_dialog = new MultiFileProgress(this, 1, "Export", project);
+                project.start_export(filename);
+            }
+        }
+        d.destroy();
     }
     
     void on_project_new() {
@@ -340,6 +346,10 @@ class Recorder : Gtk.Window {
         );
     }
     
+    void on_save_graph() {
+        project.print_graph(project.pipeline, "save_graph");
+    }
+
     // toolbar
     
     void on_rewind() {

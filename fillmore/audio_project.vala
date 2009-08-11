@@ -50,20 +50,6 @@ class AudioProject : Project {
         */
     }
 
-    void post_export() {
-/*
-        capsfilter.unlink_many(wav_encoder, file_sink);
-        pipeline.remove_many(wav_encoder, file_sink);
-        
-        if (!pipeline.add(audio_sink))
-            error("couldn't add");
-        capsfilter.link(audio_sink);
-        
-        play_state = PlayState.STOPPED;
-        stderr.puts("export complete\n");
-*/
-    }
-    
     override double get_version() {
         return 0.01;
     }

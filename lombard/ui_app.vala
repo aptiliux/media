@@ -332,18 +332,6 @@ class App : Gtk.Window {
         importer.process_curr_file();
     }
 
-    bool confirm_replace(string filename) {
-        Gtk.MessageDialog md = new Gtk.MessageDialog.with_markup(
-            this, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
-            "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
-            Path.get_basename(filename));
-        md.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                       "Replace", Gtk.ResponseType.ACCEPT);
-        int response = md.run();
-        md.destroy();
-        return response == Gtk.ResponseType.ACCEPT;
-    }
-    
     void do_save_dialog() {
         Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Save Project", this, 
                                                                 Gtk.FileChooserAction.SAVE,
@@ -360,7 +348,7 @@ class App : Gtk.Window {
         
         if (d.run() == Gtk.ResponseType.ACCEPT) {
             string filename = d.get_filename();
-            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(filename))
+            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename))
                 save_project(append_extension(filename, App.PROJECT_FILE_EXTENSION));
         }
         d.destroy();
@@ -601,7 +589,7 @@ class App : Gtk.Window {
         if (d.run() == Gtk.ResponseType.ACCEPT) {
             string filename = append_extension(d.get_filename(), "ogg");
 
-            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(filename)) {
+            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename)) {
                 new MultiFileProgress(this, 1, "Export", project);
                 project.start_export(filename);
             }
