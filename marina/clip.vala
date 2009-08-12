@@ -5,6 +5,12 @@
  */
 
 namespace Model {
+
+public enum MediaType {
+    AUDIO,
+    VIDEO
+}
+
 class Gap {
     public int64 start;
     public int64 end;
@@ -82,7 +88,7 @@ class ClipFile {
         return s.get_int("rate", out rate);
     }
     
-    public bool get_format(out uint32 fourcc) {
+    public bool get_video_format(out uint32 fourcc) {
         Gst.Structure s;
         
         if (!get_caps_structure(MediaType.VIDEO, out s))
@@ -120,8 +126,8 @@ class ClipFile {
 class ClipFetcher {
     public ClipFile clipfile;
     
-    public Gst.Pad video_source;
-    public Gst.Pad audio_source;
+    Gst.Pad video_source;
+    Gst.Pad audio_source;
     
     Gst.Element filesrc;
     Gst.Bin decodebin;
@@ -158,6 +164,12 @@ class ClipFetcher {
                
         error_string = null;
         pipeline.set_state(Gst.State.PAUSED);
+    }
+    
+    public bool is_of_type(MediaType t) {
+        if (t == MediaType.VIDEO)
+            return video_source != null;
+        return audio_source != null;
     }
     
     public string get_filename() { return clipfile.filename; }

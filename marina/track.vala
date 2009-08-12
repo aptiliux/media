@@ -7,11 +7,6 @@
 
 namespace Model {
 
-public enum MediaType {
-    AUDIO,
-    VIDEO
-}
-
 abstract class Track {
     protected Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time

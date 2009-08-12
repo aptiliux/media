@@ -286,7 +286,7 @@ class App : Gtk.Window {
             Model.ClipFile cf = project.find_clipfile(name);
             if (cf != null)
                 project.append(cf);
-            else importer.filenames.add(name);
+            else importer.add_filename(name);
         }
     }
     
@@ -673,6 +673,9 @@ void main(string[] args) {
             version, MIN_GNONLIN);
         return;
     }
+    
+    string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
+    debug_enabled = (str != null && (str[0] >= '1'));
 
     new App(project_file);
     Gtk.main();

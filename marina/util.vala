@@ -5,11 +5,27 @@
  */
 
 // I can't find a floating point absolute value function in Vala...
-
 float float_abs(float f) {
     if (f < 0.0f)
         return -f;
     return f;
+}
+
+int sign(int x) {
+    if (x == 0)
+        return 0;
+    return x < 0 ? -1 : 1;
+}
+
+// Debug utilities
+
+bool debug_enabled;
+
+void print_debug(string text) {
+    if (!debug_enabled)
+        return;
+        
+    debug(text);
 }
 
 struct Fraction {
@@ -58,12 +74,6 @@ bool time_in_range(int64 time, int64 center, int64 delta) {
     return diff.abs() <= delta;
 }
 
-int sign(int x) {
-    if (x == 0)
-        return 0;
-    return x < 0 ? -1 : 1;
-}
-
 string isolate_filename(string path) {
     string str = Path.get_basename(path);
     return str.split(".")[0];
@@ -109,10 +119,7 @@ bool get_file_md5_checksum(string filename, out string checksum) {
         return false;
     }
     
-    if (buffer_length != 32) 
-		return false;
-    
-    return true;
+    return buffer_length == 32;
 }
 
 void save_file_md5_checksum(string filename, string checksum) {
@@ -476,3 +483,4 @@ Gst.Element make_element_with_name(string element_name, string? display_name) {
 Gst.Element make_element(string name) {
     return make_element_with_name(name, null);
 }
+
