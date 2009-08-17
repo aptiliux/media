@@ -126,15 +126,10 @@ class ClipFile {
 class ClipFetcher {
     public ClipFile clipfile;
     
-    Gst.Pad video_source;
-    Gst.Pad audio_source;
-    
     Gst.Element filesrc;
     Gst.Bin decodebin;
-    Gst.Element fakesink;
     Gst.Pipeline pipeline;
     public string error_string;
-    bool linked;
 
     public signal void ready();
     
@@ -145,12 +140,12 @@ class ClipFetcher {
         filesrc.set("location", filename);
         
         decodebin = (Gst.Bin) make_element("decodebin");
-        fakesink = make_element("fakesink");
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
         if (pipeline == null)
             error("can't construct pipeline");
-        pipeline.add_many(filesrc, decodebin, fakesink);
+        pipeline.add_many(filesrc, decodebin);
+
         if (!filesrc.link(decodebin))
             error("can't link filesrc");
         decodebin.pad_added += on_pad_added;
@@ -163,31 +158,22 @@ class ClipFetcher {
         bus.message["warning"] += on_warning;
                
         error_string = null;
-        pipeline.set_state(Gst.State.PAUSED);
+        pipeline.set_state(Gst.State.PLAYING);
     }
     
     public bool is_of_type(MediaType t) {
         if (t == MediaType.VIDEO)
-            return video_source != null;
-        return audio_source != null;
+            return get_video_pad() != null;
+        return get_audio_pad() != null;
     }
     
     public string get_filename() { return clipfile.filename; }
     
-    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {        
-        string caps = pad.caps.to_string();
-        
-        if (caps.has_prefix("video"))
-            video_source = pad;
-        else if (caps.has_prefix("audio"))
-            audio_source = pad;
-        
-        if (!linked) {
-            Gst.Pad sink = fakesink.get_static_pad("sink");
-            if (pad.link(sink) != Gst.PadLinkReturn.OK)
-                error("can't link pad");
-            linked = true;
-        }
+    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+        Gst.Element fakesink = make_element("fakesink");
+        pipeline.add(fakesink);
+        Gst.Pad fake_pad = fakesink.get_static_pad("sink");
+        pad.link(fake_pad);
     }
 
     void do_error(string error) {
@@ -210,6 +196,25 @@ class ClipFetcher {
         do_error(text);
     }
     
+    Gst.Pad? get_pad(string prefix) {
+        foreach(Gst.Pad pad in decodebin.pads) {
+            string caps = pad.caps.to_string();
+            if (caps.has_prefix(prefix)) {
+                return pad;
+            }
+        }
+        return null;
+    }
+     
+    public Gst.Pad? get_video_pad() {
+        return get_pad("video");
+    }
+    
+    public Gst.Pad? get_audio_pad() {
+        return get_pad("audio");
+    }
+    
+    
     void on_state_change(Gst.Bus bus, Gst.Message message) {
         if (message.src != pipeline)
             return;
@@ -222,11 +227,16 @@ class ClipFetcher {
         if (new_state == old_state) 
             return;
         
-        if (new_state == Gst.State.PAUSED) {
-            if (video_source != null)
-                clipfile.video_caps = video_source.caps;
-            if (audio_source != null)
-                clipfile.audio_caps = audio_source.caps;
+        if (new_state == Gst.State.PLAYING) {
+            Gst.Pad? pad = get_video_pad();
+            if (pad != null) {
+                clipfile.video_caps = pad.caps;
+            }
+            
+            pad = get_audio_pad();
+            if (pad != null) {
+                clipfile.audio_caps = pad.caps;            
+            }
   
             Gst.Format format = Gst.Format.TIME;
             if (!pipeline.query_duration(ref format, out clipfile.length) ||
