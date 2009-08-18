@@ -8,7 +8,7 @@ namespace Model {
 enum PlayState {
     STOPPED,
     PRE_PLAY, PLAYING,
-    PRE_RECORD, RECORDING, POST_RECORD,
+    PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
     PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT
 }
 
@@ -41,6 +41,7 @@ abstract class Project : MultiFileProgressInterface {
     public signal void pre_export();
     public signal void post_export();
     public signal void position_changed();
+    public signal void callback_pulse();
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
@@ -119,7 +120,7 @@ abstract class Project : MultiFileProgressInterface {
         seek(Gst.SeekFlags.FLUSH, position);
 
         play_state = new_state;
-        set_gst_state(Gst.State.PLAYING);
+        play();
     }
     
     public int64 get_length() {
@@ -327,8 +328,8 @@ abstract class Project : MultiFileProgressInterface {
     }
     
     bool on_callback() {
-        if (play_state == PlayState.STOPPED &&
-            !playing) {
+        if ((play_state == PlayState.STOPPED && !playing) ||
+            (play_state == PlayState.POST_RECORD)) {
             callback_id = 0;
             return false;
         }
@@ -336,9 +337,10 @@ abstract class Project : MultiFileProgressInterface {
         Gst.Format format = Gst.Format.TIME;
         int64 time = 0;
         if (pipeline.query_position(ref format, out time) && format == Gst.Format.TIME) {
+            position = time;
+            callback_pulse();
             
             if (play_state == PlayState.STOPPED) {
-                position = time;
                 
                 if (position >= get_length()) {
                     go(get_length());
@@ -366,10 +368,10 @@ abstract class Project : MultiFileProgressInterface {
         playing = true;
     }
     
-    public void pause() {
+    public virtual void pause() {
         if (!playing)
             return;
-            
+
         set_gst_state(Gst.State.PAUSED);
         playing = false;
     }
@@ -518,7 +520,8 @@ abstract class Project : MultiFileProgressInterface {
 
     protected virtual void link_for_export(Gst.Element mux) {
         capsfilter.unlink(audio_sink);
-        
+        capsfilter.set("caps", get_project_audio_export_caps());
+
         if (!pipeline.remove(audio_sink))
             error("couldn't remove for audio");
 
@@ -537,6 +540,7 @@ abstract class Project : MultiFileProgressInterface {
     protected virtual void link_for_playback(Gst.Element mux) {
         export_sink.unlink(mux);
         capsfilter.unlink(export_sink);
+        capsfilter.set("caps", get_project_audio_caps());
 
         if (!pipeline.remove(export_sink)) {
             error("could not remove export_sink");
@@ -572,35 +576,40 @@ abstract class Project : MultiFileProgressInterface {
 
         if (new_state == gst_state)
             return;
-        
+
         gst_state = new_state;
+        do_state_change();
+    }
+
+    protected virtual bool do_state_change() {
         switch (play_state) {
             case PlayState.STOPPED:
-                if (new_state != Gst.State.PAUSED)
-                    return;
+                if (gst_state != Gst.State.PAUSED)
+                    return false;
                 go(position);
-                return;
+                return true;
             case PlayState.PRE_EXPORT_NULL:
-                if (new_state != Gst.State.NULL)
-                    return;
+                if (gst_state != Gst.State.NULL)
+                    return false;
                 do_null_state_export();
-                return;
+                return true;
             case PlayState.PRE_EXPORT:
-                if (new_state != Gst.State.PAUSED)
-                    return;
+                if (gst_state != Gst.State.PAUSED)
+                    return false;
                 do_paused_state_export();
-                return;
+                return true;
             case PlayState.EXPORTING:
-                if (new_state != Gst.State.NULL)
-                    return;
+                if (gst_state != Gst.State.NULL)
+                    return false;
                 end_export(false);
-                return;
+                return true;
             case PlayState.CANCEL_EXPORT:
-                if (new_state != Gst.State.NULL)
-                    return;
+                if (gst_state != Gst.State.NULL)
+                    return false;
                 end_export(true);
-                return;
+                return true;
         }
+        return false;
     }
     
     void on_load_complete(string? error) {
@@ -696,7 +705,29 @@ abstract class Project : MultiFileProgressInterface {
         }
     }
     
+    public int get_sample_rate() {
+        return 48000;
+    }
+    
+    public int get_sample_width() {
+        return 16;
+    }
+    
+    public int get_sample_depth() {
+        return 16;
+    }
+    
+    protected Gst.Caps build_audio_caps(int num_channels) {
+        string caps = "audio/x-raw-int,rate=%d,channels=%d,width=%d,depth=%d";
+        caps = caps.printf(get_sample_rate(), num_channels, get_sample_width(), get_sample_depth());
+        return Gst.Caps.from_string(caps);
+    }
+    
     public Gst.Caps get_project_audio_caps() {
+        return build_audio_caps(2);
+    }
+
+    public Gst.Caps get_project_audio_export_caps() {
         return Gst.Caps.from_string(
             "audio/x-raw-float,rate=48000,channels=2,width=32");
     }

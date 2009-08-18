@@ -124,6 +124,7 @@ class Recorder : Gtk.Window {
     
     public Recorder() {
         project = new Model.AudioProject();
+        project.callback_pulse += on_callback_pulse;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -374,6 +375,11 @@ class Recorder : Gtk.Window {
             project.pause();
     }
         
+    void on_callback_pulse() {
+        if (timeline != null) {
+            timeline.update();
+        }
+    }
     // main
     
     static void main(string[] args) {
