@@ -25,7 +25,7 @@ void print_debug(string text) {
     if (!debug_enabled)
         return;
         
-    debug(text);
+    debug("%s", text);
 }
 
 struct Fraction {
@@ -128,7 +128,7 @@ void save_file_md5_checksum(string filename, string checksum) {
     try {
         GLib.FileUtils.set_contents(new_filename, checksum);
     } catch (GLib.FileError e) {
-        error("Cannot save md5 file %s!\n".printf(new_filename));
+        error("Cannot save md5 file %s!\n", new_filename);
     }
 }
 

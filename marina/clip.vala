@@ -106,7 +106,6 @@ class ClipFile {
     }    
     
     public bool get_num_channels_string(out string s) {
-        
         int i;
         if (!get_num_channels(out i))
             return false;
@@ -116,7 +115,7 @@ class ClipFile {
         else if (i == 2)
             s = "Stereo";
         else if ((i % 2) == 0)
-            s = "Surround %.1".printf(i - 1);
+            s = "Surround %d.1".printf(i - 1);
         else
             s = "%d".printf(i);
         return true;
@@ -186,7 +185,7 @@ class ClipFetcher {
         Error error;
         string text;
         message.parse_warning(out error, out text);
-        warning(text);
+        warning("%s", text);
     }
     
     void on_error(Gst.Bus bus, Gst.Message message) {

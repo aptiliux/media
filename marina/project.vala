@@ -94,14 +94,14 @@ abstract class Project : MultiFileProgressInterface {
         Error error;
         string text;
         message.parse_warning(out error, out text);
-        warning(text);
+        warning("%s", text);
     }
     
     void on_error(Gst.Bus bus, Gst.Message message) {
         Error error;
         string text;
         message.parse_error(out error, out text);
-        warning(text);
+        warning("%s", text);
     }
     
     protected virtual bool do_state_changed(Gst.State state, PlayState play_state) {

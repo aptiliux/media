@@ -177,7 +177,7 @@ class ClipImporter : MultiFileProgressInterface {
                     }
                 }
             } else
-                error("Cannot get md5 checksum for file %s!".printf(f.clipfile.filename));
+                error("Cannot get md5 checksum for file %s!", f.clipfile.filename);
         } else {
             clip_complete(f);
         }
@@ -269,7 +269,7 @@ class ClipImporter : MultiFileProgressInterface {
         Error e;
         string text;
         message.parse_warning(out e, out text);
-        warning(text);
+        warning("%s", text);
     }
     
     void on_state_changed(Gst.Bus b, Gst.Message m) {
