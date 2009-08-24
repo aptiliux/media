@@ -178,6 +178,9 @@ class ClipFetcher {
         
         Gst.Pad fake_pad = fakesink.get_static_pad("sink");
         pad.link(fake_pad);
+        if (!fakesink.sync_state_with_parent()) {
+            error("could not sync state with parent");
+        }
     }
 
     void do_error(string error) {
