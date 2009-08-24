@@ -26,6 +26,22 @@ class VideoProject : Project {
         return 0.01;
     }
 
+    public override TimeCode get_clip_time(ClipFile f) {
+        TimeCode t = {};
+        
+        if (f.is_of_type(MediaType.VIDEO)) {
+            Fraction rate;
+            if (!get_framerate_fraction(out rate)) {
+                rate.numerator = 2997;
+                rate.denominator = 100;
+            }
+            t = frame_to_time(time_to_frame_with_rate(f.length, rate), rate);
+        } else
+            t.get_from_length(f.length);
+            
+        return t;
+    }
+
     public override void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
         base.on_pad_added(track, bin, pad);
         VideoTrack? video_track = track as VideoTrack;

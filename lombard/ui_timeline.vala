@@ -108,7 +108,7 @@ class TimeLine : Gtk.EventBox {
     
     public int64 pixel_snap_time;
     
-    public signal void selection_changed();
+    public signal void selection_changed(bool selected);
     public signal void track_changed();
     
     public GapView gap_view;
@@ -228,7 +228,13 @@ class TimeLine : Gtk.EventBox {
         drag_source_clip = w;
         selected_clip = w;
         queue_draw();
-        selection_changed();
+        selection_changed(true);
+    }
+    
+    public void unselect_clip() {
+        selected_clip = null;
+        queue_draw();
+        selection_changed(false);
     }
     
     public bool is_clip_selected() {
@@ -277,7 +283,7 @@ class TimeLine : Gtk.EventBox {
     
     public void do_copy() {
         clipboard_clip = selected_clip.clip;
-        selection_changed();
+        selection_changed(true);
     }
     
     public void paste(bool over) {
@@ -497,7 +503,7 @@ class TimeLine : Gtk.EventBox {
             f.numerator = 2997;
             f.denominator = 100;
         }    
-        Time time = frame_to_time (time_to_frame_with_rate(selected_clip.clip.length, f), f);
+        TimeCode time = frame_to_time (time_to_frame_with_rate(selected_clip.clip.length, f), f);
         add_label_to_table(t, "%s".printf(time.to_string()), 1, row++, 5, 0);
         
         if (selected_clip.clip.is_trimmed()) {

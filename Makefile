@@ -7,7 +7,8 @@ MARINA_SOURCES =	clip.vala \
 					project.vala \
 					track.vala \
 					util.vala \
-					MultiFileProgress.vala
+					MultiFileProgress.vala \
+					ClipLibraryView.vala
 
 MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
 
@@ -28,7 +29,6 @@ $(FILLMORE): $(FILLMORE_FILES) $(MARINA_FILES) Makefile
 	valac $(VFLAGS) $(FILLMORE_LIBS) $(FILLMORE_FILES) $(MARINA_FILES) -o $(FILLMORE)
 
 LOMBARD = lom
-
 LOMBARD_SOURCES = \
 	ui_app.vala \
 	ui_timeline.vala \

@@ -70,6 +70,13 @@ abstract class Track {
         default_source.set("media-duration", 1000000 * Gst.SECOND);
     }
 
+    public bool contains_clipfile(ClipFile f) {
+        foreach (Clip c in clips) {
+            if (c.clipfile == f)
+                return true;
+        }
+        return false;
+    }
 
     protected virtual void check(Clip clip) { }
 

@@ -52,8 +52,13 @@ class ClipFile {
         return true;
     }
 
+    public bool is_of_type(MediaType t) {
+        if (t == MediaType.VIDEO)
+            return video_caps != null;
+        return audio_caps != null;
+    }
+
     bool get_caps_structure(MediaType m, out Gst.Structure s) {
-        
         if (!has_caps_structure(m))
             return false;
         if (m == MediaType.AUDIO) {
@@ -128,6 +133,7 @@ class ClipFetcher {
     Gst.Element filesrc;
     Gst.Bin decodebin;
     Gst.Pipeline pipeline;
+
     public string error_string;
 
     public signal void ready();
@@ -160,17 +166,16 @@ class ClipFetcher {
         pipeline.set_state(Gst.State.PLAYING);
     }
     
-    public bool is_of_type(MediaType t) {
-        if (t == MediaType.VIDEO)
-            return get_video_pad() != null;
-        return get_audio_pad() != null;
-    }
-    
     public string get_filename() { return clipfile.filename; }
     
-    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {  
+        // TODO: I do not like this; I don't think we can reliably add elements to the pipeline
+        // while it is changing state.
+        // - Andrew
+        
         Gst.Element fakesink = make_element("fakesink");
         pipeline.add(fakesink);
+        
         Gst.Pad fake_pad = fakesink.get_static_pad("sink");
         pad.link(fake_pad);
     }
@@ -211,8 +216,7 @@ class ClipFetcher {
     
     public Gst.Pad? get_audio_pad() {
         return get_pad("audio");
-    }
-    
+    } 
     
     void on_state_change(Gst.Bus bus, Gst.Message message) {
         if (message.src != pipeline)

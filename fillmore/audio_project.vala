@@ -46,6 +46,13 @@ class AudioProject : Project {
         }
     }
     
+    public override TimeCode get_clip_time(ClipFile f) {
+        TimeCode t = {};
+        
+        t.get_from_length(f.length);
+        return t;
+    }
+    
     void post_record() {
         assert(gst_state == Gst.State.NULL);
         create_clip_fetcher(new RecordFetcherCompletion(this, record_track, record_region.start),

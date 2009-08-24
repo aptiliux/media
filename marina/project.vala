@@ -14,7 +14,7 @@ enum PlayState {
 
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
-abstract class Project : MultiFileProgressInterface {
+abstract class Project : MultiFileProgressInterface, Object {
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     
@@ -28,7 +28,7 @@ abstract class Project : MultiFileProgressInterface {
 
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<Model.ClipFetcher> pending = new Gee.HashSet<Model.ClipFetcher>();
-    ClipFile[] clipfiles = new ClipFile[0];
+    Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
 
     public string project_file;
     public ProjectLoader loader;
@@ -49,6 +49,10 @@ abstract class Project : MultiFileProgressInterface {
     public signal void track_added(Track track);
     public signal void error_occurred(string error_message);
     
+    public signal void clipfile_added(ClipFile c);
+
+    public abstract TimeCode get_clip_time(ClipFile f);
+
     public Project(string? filename) {
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
@@ -297,7 +301,20 @@ abstract class Project : MultiFileProgressInterface {
     }
     
     public void add_clipfile(ClipFile clipfile) {
-        clipfiles += clipfile;
+        clipfiles.add(clipfile);
+        clipfile_added(clipfile);
+    }
+    
+    public bool remove_clipfile(string filename) {
+        ClipFile cf = find_clipfile(filename);
+        if (cf != null) {
+            foreach (Track t in tracks) {
+                if (t.contains_clipfile(cf))
+                    return false;
+            }
+            clipfiles.remove(cf);
+        }
+        return true;
     }
     
     public ClipFile? find_clipfile(string filename) {
@@ -440,7 +457,7 @@ abstract class Project : MultiFileProgressInterface {
         foreach (Track track in tracks) {
             track.delete_all_clips();
         }
-        clipfiles = new ClipFile[0];
+        clipfiles.clear();
         set_name(null);
     }
     
@@ -470,13 +487,13 @@ abstract class Project : MultiFileProgressInterface {
         file_updated(filename, 0);
     }
     
-    void on_cancel() {
+    void cancel() {
         play_state = PlayState.CANCEL_EXPORT;
         pipeline.set_state(Gst.State.NULL);
     }
     
     // TODO: Rework this
-    public void on_complete() {
+    public void complete() {
         pipeline.set_state(Gst.State.NULL);
     }
     
@@ -680,13 +697,6 @@ abstract class Project : MultiFileProgressInterface {
         } else {
             fetcher_completion.complete(fetcher);
         }        
-    }
-
-    public ClipFetcher create_import_clip_fetcher(FetcherCompletion fc, string filename) {
-        ClipFetcher f = new Model.ClipFetcher(filename);
-        fetcher_completion = fc;
-        
-        return f;
     }
 
     public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {

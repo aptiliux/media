@@ -45,13 +45,24 @@ struct Fraction {
     }
 }
 
-struct Time {
+// Had to change this since there was an include error with X.h
+// error: previous declaration of ‘Time’ was here
+
+struct TimeCode {
     public int hour;
     public int minute;
     public int second;
     public int frame;
     public bool drop_code;
     
+    public void get_from_length(int64 length) {
+        length /= Gst.SECOND;
+        
+        hour = (int) (length / 3600);
+        minute = (int) ((length % 3600) / 60);
+        second = (int) ((length % 3600) % 60);
+        frame = 0;
+    }
     public string to_string() {
         string ret = "";
         if (hour != 0)
@@ -59,6 +70,7 @@ struct Time {
 
         ret += "%.2d:".printf(minute);
         ret += "%.2d".printf(second);
+        
         if (drop_code)
             ret += ";";
         else
@@ -149,6 +161,10 @@ bool md5_checksum_on_file(string filename, out string checksum) {
 }
 
 // GTK utility functions
+
+static const Gtk.TargetEntry[] drag_target_entries = {
+    { "text/uri-list", 0, 0 } 
+};
 
 Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, string text) {
     Gtk.Label l = new Gtk.Label(text);
@@ -433,10 +449,10 @@ int time_to_frame_with_rate(int64 time, Fraction rate) {
     return time >= frame_to_time_with_rate(frame + 1, rate) ? frame + 1 : frame;
 }
 
-Time frame_to_time(int frame, Fraction rate) {
+TimeCode frame_to_time(int frame, Fraction rate) {
     int frame_rate = 0;
    
-    Time t = {};
+    TimeCode t = {};
     
     t.drop_code = false;   
     if (rate.denominator == 1)

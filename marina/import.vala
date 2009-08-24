@@ -1,6 +1,6 @@
 namespace Model {
 
-class ClipImporter : MultiFileProgressInterface {  
+class ClipImporter : MultiFileProgressInterface, Object {  
     enum ImportState {
         FETCHING,
         IMPORTING,
@@ -9,7 +9,6 @@ class ClipImporter : MultiFileProgressInterface {
     
     FetcherCompletion fetcher_completion;
     string import_directory;
-    Project project;
     
     ImportState import_state;
     bool import_done;
@@ -37,16 +36,15 @@ class ClipImporter : MultiFileProgressInterface {
     Gee.ArrayList<string> queued_filenames = new Gee.ArrayList<string>();
     Gee.ArrayList<string> no_import_formats = new Gee.ArrayList<string>();
     
-    public signal void clip_complete(ClipFetcher f);
+    public signal void clip_complete(ClipFile f);
     public signal void importing_started(int num_clips);
+    public signal void error_occurred(string error);
     
-    public ClipImporter(FetcherCompletion fc, Project p) {
+    public ClipImporter() {
         import_directory = GLib.Environment.get_home_dir();
         import_directory += "/.lombard_fillmore_import/";
         
         GLib.DirUtils.create(import_directory, 0777);
-        project = p;
-        fetcher_completion = fc;
         
         no_import_formats.add("YUY2");
         no_import_formats.add("Y41B");
@@ -86,13 +84,17 @@ class ClipImporter : MultiFileProgressInterface {
         Timeout.add(50, on_timer_callback);
     }
     
-    void on_cancel() {
+    void cancel() {
         all_done = true;
         import_state = ImportState.CANCELLED;
         pipeline.set_state(Gst.State.NULL);
     }
     
-    public void process_curr_file() {
+    public void start() {
+        process_curr_file();
+    }
+    
+    void process_curr_file() {
         if (import_state == ImportState.FETCHING) {
             if (current_file_importing == filenames.size) {
                 if (queued_fetchers.size == 0)
@@ -101,8 +103,7 @@ class ClipImporter : MultiFileProgressInterface {
                     start_import();               
             } else {
                 print_debug("Fetching: %s\n".printf(filenames[current_file_importing]));
-                our_fetcher = project.create_import_clip_fetcher(fetcher_completion, 
-                                                                 filenames[current_file_importing]);
+                our_fetcher = new Model.ClipFetcher(filenames[current_file_importing]);
                 our_fetcher.ready += on_fetcher_ready;
             }
         }
@@ -117,7 +118,7 @@ class ClipImporter : MultiFileProgressInterface {
     }
     
     // TODO: Rework this
-    void on_complete() {
+    void complete() {
         all_done = true;
     }
     
@@ -125,7 +126,7 @@ class ClipImporter : MultiFileProgressInterface {
         if (import_state == ImportState.IMPORTING) {
             our_fetcher.clipfile.filename = append_extension(
                                                    queued_filenames[current_file_importing], "mov");
-            clip_complete(our_fetcher);
+            clip_complete(our_fetcher.clipfile);
         } else
             total_time += our_fetcher.clipfile.length;
   
@@ -134,7 +135,7 @@ class ClipImporter : MultiFileProgressInterface {
     }
     
     bool need_to_import(ClipFetcher f) {
-        if (f.is_of_type(MediaType.VIDEO)) {
+        if (f.clipfile.is_of_type(MediaType.VIDEO)) {
             uint32 format;
             if (f.clipfile.get_video_format(out format)) {
                 foreach (string s in no_import_formats) {
@@ -148,6 +149,11 @@ class ClipImporter : MultiFileProgressInterface {
     }
 
     void on_fetcher_ready(ClipFetcher f) {
+        if (f.error_string != null) {
+            error_occurred(f.error_string);
+            return;
+        }
+        
         if (need_to_import(f)) {
             string checksum;
             if (md5_checksum_on_file(f.clipfile.filename, out checksum)) {
@@ -179,7 +185,7 @@ class ClipImporter : MultiFileProgressInterface {
             } else
                 error("Cannot get md5 checksum for file %s!", f.clipfile.filename);
         } else {
-            clip_complete(f);
+            clip_complete(f.clipfile);
         }
         do_import_complete();
     }
@@ -215,14 +221,14 @@ class ClipImporter : MultiFileProgressInterface {
                 
         pipeline.add_many(filesrc, decodebin, mux, filesink);
         
-        if (f.is_of_type(MediaType.VIDEO)) {
+        if (f.clipfile.is_of_type(MediaType.VIDEO)) {
             video_convert = make_element("ffmpegcolorspace");
             pipeline.add(video_convert);
             
             if (!video_convert.link(mux))
                 error("do_import: Cannot link video converter to mux!");
         }
-        if (f.is_of_type(MediaType.AUDIO)) {
+        if (f.clipfile.is_of_type(MediaType.AUDIO)) {
             audio_convert = make_element("audioconvert");
             pipeline.add(audio_convert);
             
@@ -262,7 +268,7 @@ class ClipImporter : MultiFileProgressInterface {
         string text;
         
         message.parse_error(out e, out text);
-        error("ClipImporter Error: %s\n", text);
+        error_occurred(text);
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
@@ -313,5 +319,67 @@ class ClipImporter : MultiFileProgressInterface {
         import_done = true;
         pipeline.set_state(Gst.State.NULL);
     }
+}
+
+class LibraryImporter {
+    protected Project project;
+    protected ClipImporter importer;
+
+    public signal void started(ClipImporter i, int num);
+    
+    public LibraryImporter(Project p) {
+        project = p;
+        
+        importer = new ClipImporter();
+        importer.clip_complete += on_clip_complete;
+        importer.error_occurred += on_error_occurred;   
+        importer.importing_started += on_importer_started;      
+    }
+
+    void on_importer_started(ClipImporter i, int num) {
+        started(i, num);
+    }
+    
+    void on_error_occurred(string error) {
+        project.error_occurred(error);
+    }
+    
+    protected virtual void append_existing_clipfile(ClipFile f) {
+        
+    }
+    
+    protected virtual void on_clip_complete(ClipFile f) {
+        ClipFile cf = project.find_clipfile(f.filename);
+        if (cf == null)    
+            project.add_clipfile(f);
+    }
+    
+    public void add_file(string filename) {
+        ClipFile cf = project.find_clipfile(filename);
+        
+        if (cf != null)
+            append_existing_clipfile(cf);
+        else
+            importer.add_filename(filename);
+    }
+    
+    public void start() {
+        importer.start();
+    }        
+}
+
+class TimelineImporter : LibraryImporter {
+    public TimelineImporter(Project p) {
+        base(p);      
+    }
+    
+    protected override void append_existing_clipfile(ClipFile f) {
+        project.append(f);
+    }
+    
+    protected override void on_clip_complete(ClipFile f) {
+        base.on_clip_complete(f);
+        project.append(f);
+    }    
 }
 }

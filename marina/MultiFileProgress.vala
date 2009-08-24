@@ -5,13 +5,13 @@
  */
 
 // TODO: Is this the best way to do this?
-interface MultiFileProgressInterface {
-    signal void fraction_updated(double d);
-    signal void file_updated(string filename, int index);
-    signal void done();
+interface MultiFileProgressInterface : Object {
+    public signal void fraction_updated(double d);
+    public signal void file_updated(string filename, int index);
+    public signal void done();
     
-    protected abstract void on_cancel();
-    protected abstract void on_complete();
+    public abstract void cancel();
+    public abstract void complete();
 }
 
 // TODO: Rework the complete signal
@@ -22,14 +22,13 @@ class MultiFileProgress : Gtk.Window {
     Gtk.Label number_label;
     Gtk.Button cancel_button;
     int num_files;
+    
+    MultiFileProgressInterface provider_interface;
   
     string dialog_title;
-  
-    signal void cancelled();
-    signal void complete();
 
     public MultiFileProgress(Gtk.Window parent, int num_files, 
-        string dialog_title, MultiFileProgressInterface provider_interface) {
+        string dialog_title, MultiFileProgressInterface provider) {
         this.num_files = num_files;
         
         file_label = new Gtk.Label("");
@@ -64,12 +63,11 @@ class MultiFileProgress : Gtk.Window {
         add(vbox);
         show_all();
         
+        provider_interface = provider;
+        
         provider_interface.fraction_updated += on_fraction_updated;
         provider_interface.file_updated += on_file_updated;
         provider_interface.done += on_done;
-        
-        cancelled += provider_interface.on_cancel;
-        complete += provider_interface.on_complete;
     }
 
     void on_done() {
@@ -82,9 +80,9 @@ class MultiFileProgress : Gtk.Window {
     
     void on_destroy() {
         if (progress_bar.get_fraction() < 1.0)
-            cancelled();
+            provider_interface.cancel();
         else
-            complete();
+            provider_interface.complete();
     }
     
     void on_fraction_updated(double d) {

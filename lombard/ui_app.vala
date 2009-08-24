@@ -6,29 +6,18 @@
 
 using Gee;
 
-class LombardFetcherCompletion : Model.FetcherCompletion {
-    Model.Project project;
-    
-    public LombardFetcherCompletion(Model.Project project) {
-        base();
-        this.project = project;
-    }
-    
-    public override void complete(Model.ClipFetcher fetch) {
-        base.complete(fetch);
-        project.add_clipfile(fetch.clipfile);
-        project.append(fetch.clipfile);
-    }
-}
-
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
     Model.VideoProject project;
     TimeLine timeline;
+    ClipLibraryView library;
     StatusBar status_bar;
     
-    Gtk.ScrolledWindow scrolled;
+    Gtk.HPaned h_pane;
+    
+    Gtk.ScrolledWindow library_scrolled;
+    Gtk.ScrolledWindow timeline_scrolled;
     Gtk.Adjustment h_adjustment;
     
     double prev_adjustment_lower;
@@ -48,9 +37,14 @@ class App : Gtk.Window {
     Gtk.Action clip_properties_action;
     Gtk.Action zoom_to_project_action;
     
-    Model.ClipImporter importer;
+    Gtk.ToggleAction library_view_action;
+    
+    Model.LibraryImporter importer;
     
     bool done_zoom = false;
+    
+    Gtk.VBox vbox = null;
+    Gtk.MenuBar menubar;
     
     string project_filename;
 
@@ -94,6 +88,10 @@ class App : Gtk.Window {
         
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about }
+    };
+
+    const Gtk.ToggleActionEntry[] check_actions = { 
+        { "Library", null, "Library", "F9", null, on_view_library, true }
     };
     
     const string ui = """
@@ -147,10 +145,6 @@ class App : Gtk.Window {
 </ui>
 """;
 
-    static const Gtk.TargetEntry[] target_entries = {
-        { "text/uri-list", 0, 0 }
-    };
-
     App(string? project_file) {
         set_default_size(600, 500);
         project_filename = project_file;
@@ -162,6 +156,9 @@ class App : Gtk.Window {
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
         
+        Gtk.ActionGroup view_library_action_group = new Gtk.ActionGroup("viewlibrary");
+        view_library_action_group.add_toggle_actions(check_actions, this);
+  
         export_action = group.get_action("Export");
         delete_action = group.get_action("Delete");
         delete_lift_action = group.get_action("DeleteLift");
@@ -175,12 +172,20 @@ class App : Gtk.Window {
         revert_to_original_action = group.get_action("RevertToOriginal");
         clip_properties_action = group.get_action("ClipProperties");
         zoom_to_project_action = group.get_action("ZoomProject");
+        library_view_action = (Gtk.ToggleAction) view_library_action_group.get_action("Library");
 
         Gtk.UIManager manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
         manager.add_ui_from_string(ui, -1);
+
+        manager.insert_action_group(view_library_action_group, 1);
         
-        Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
+        uint view_merge_id = manager.new_merge_id();
+        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/ViewZoomProject",
+                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
+
+        
+        menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
 
         project = new Model.VideoProject(project_filename);
         project.name_changed += set_project_name;
@@ -192,39 +197,73 @@ class App : Gtk.Window {
         project.add_track(new Model.AudioTrack(project, "Audio Track"));
         
         timeline = new TimeLine(project);
-        timeline.selection_changed += on_selection_changed;
+        timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
         project.position_changed += on_position_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+
+        library = new ClipLibraryView(project);
+        library.selection_changed += on_library_selection_changed;
         
         status_bar = new StatusBar(project);
         
-        scrolled = new Gtk.ScrolledWindow(null, null);
-        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
-        scrolled.add_with_viewport(timeline);
+        library_scrolled = new Gtk.ScrolledWindow(null, null);
+        library_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
+        library_scrolled.add_with_viewport(library);
 
-        h_adjustment = scrolled.get_hadjustment();
-        h_adjustment.changed += on_adjustment_changed;
-        prev_adjustment_lower = h_adjustment.get_lower();
-        prev_adjustment_upper = h_adjustment.get_upper();
-
-        Gtk.VBox vbox = new Gtk.VBox(false, 0);
-        vbox.pack_start(menubar, false, false, 0);
-        vbox.pack_start(drawing_area, true, true, 0);
-        vbox.pack_start(new Gtk.HSeparator(), false, false, 0);
-        vbox.pack_start(status_bar, false, false, 0);
-        vbox.pack_start(scrolled, false, false, 0);
-        add(vbox);
+        toggle_library(true);
         
         add_accel_group(manager.get_accel_group());
         
         set_project_name(null);
-        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, target_entries, Gdk.DragAction.COPY);
+        Gtk.drag_dest_set(timeline, Gtk.DestDefaults.ALL, drag_target_entries, 
+                                                                  Gdk.DragAction.COPY);
+        Gtk.drag_dest_set(library, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
+        
+        timeline.drag_data_received += on_drag_data_received;
+        library.drag_data_received += on_drag_data_received;
         
         destroy += Gtk.main_quit;
         
         update_menu();
-        
+        show_all();
+    }
+    
+    void toggle_library(bool showing) {
+        if (vbox == null) {
+            vbox = new Gtk.VBox(false, 0);
+            vbox.pack_start(menubar, false, false, 0);
+
+            h_pane = new Gtk.HPaned();        
+            h_pane.set_position(300);
+            
+            if (showing) {
+                h_pane.add1(library_scrolled);
+                h_pane.add2(drawing_area);            
+            } else
+                h_pane.add2(drawing_area);
+            vbox.pack_start(h_pane, true, true, 0);
+            
+            vbox.pack_start(new Gtk.HSeparator(), false, false, 0);
+            vbox.pack_start(status_bar, false, false, 0);
+
+            timeline_scrolled = new Gtk.ScrolledWindow(null, null);
+            timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
+            timeline_scrolled.add_with_viewport(timeline);
+
+            h_adjustment = timeline_scrolled.get_hadjustment();
+            h_adjustment.changed += on_adjustment_changed;
+            prev_adjustment_lower = h_adjustment.get_lower();
+            prev_adjustment_upper = h_adjustment.get_upper();
+            vbox.pack_start(timeline_scrolled, false, false, 0);
+            
+            add(vbox);
+        } else {
+            if (showing)
+                h_pane.add1(library_scrolled);
+            else
+                h_pane.remove(library_scrolled);
+        }
         show_all();
     }
     
@@ -279,21 +318,20 @@ class App : Gtk.Window {
     
     // Loader code
     
-    public void load_file(string name) {
+    public void load_file(string name, Model.LibraryImporter im) {
         if (get_file_extension(name) == PROJECT_FILE_EXTENSION)
             load_project(name);
         else {
-            Model.ClipFile cf = project.find_clipfile(name);
-            if (cf != null)
-                project.append(cf);
-            else importer.add_filename(name);
+            im.add_file(name);
         }
     }
     
-    void create_clip_importer() {
-        importer = new Model.ClipImporter(new LombardFetcherCompletion(project), project);
-        importer.clip_complete += project.on_importer_clip_complete;             
-        importer.importing_started += on_importer_started;       
+    void create_clip_importer(bool timeline_add) {
+        if (timeline_add)
+            importer = new Model.TimelineImporter(project);
+        else
+            importer = new Model.LibraryImporter(project);            
+        importer.started += on_importer_started;       
     }
     
     void on_open() {
@@ -315,7 +353,7 @@ class App : Gtk.Window {
         
         d.add_filter(filter);
 
-        create_clip_importer();
+        create_clip_importer(false);
 
         d.set_select_multiple(true);
         if (d.run() == Gtk.ResponseType.ACCEPT) {
@@ -323,13 +361,12 @@ class App : Gtk.Window {
                 string str;
                 try {
                     str = GLib.Filename.from_uri(s);
-                }
-                catch (GLib.ConvertError e) { str = s; }
-                load_file(str);
+                } catch (GLib.ConvertError e) { str = s; }
+                load_file(str, importer);
             }
         }                                                    
         d.destroy();
-        importer.process_curr_file();
+        importer.start();
     }
 
     void do_save_dialog() {
@@ -445,29 +482,29 @@ class App : Gtk.Window {
         }
     }
         
-    public override void drag_data_received(Gdk.DragContext context, int x, int y,
+    public void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
                                             Gtk.SelectionData selection_data, uint drag_info,
                                             uint time) {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
-
-        create_clip_importer();          
+        
+        create_clip_importer(w == timeline);
 
         foreach (string s in a) {
             string filename;
             try {
                 filename = GLib.Filename.from_uri(s);
             } catch (GLib.ConvertError e) { continue; }
-            load_file(filename);
+            load_file(filename, importer);
         }
-        importer.process_curr_file();
+        importer.start();
         present();
     }
 
     void update_menu() {
         bool b = timeline.is_clip_selected();
         
-        delete_action.set_sensitive(b || timeline.gap_selected());
+        delete_action.set_sensitive(b || timeline.gap_selected() || library.has_selection());
         delete_lift_action.set_sensitive(b || timeline.gap_selected());
         cut_action.set_sensitive(b);
         cut_lift_action.set_sensitive(b);
@@ -489,7 +526,17 @@ class App : Gtk.Window {
         export_action.set_sensitive(project.can_export());
     }
     
-    public void on_selection_changed() { update_menu(); }
+    public void on_timeline_selection_changed(bool selected) { 
+        if (selected)
+            library.unselect_all();
+        update_menu();
+    }
+    
+    public void on_library_selection_changed(bool selected) {
+        if (selected)
+            timeline.unselect_clip();
+        update_menu();
+    }
     
     // constants from gdkkeysyms.h
     const int GDK_LEFT = 0xff51;
@@ -549,6 +596,10 @@ class App : Gtk.Window {
         return base.key_release_event(event);
     }
     
+    void on_view_library() {
+        toggle_library(library_view_action.get_active());
+    }
+    
     void on_zoom_in() {
         timeline.zoom(0.1f);
         done_zoom = true;
@@ -600,7 +651,10 @@ class App : Gtk.Window {
     // Edit commands
     
     void on_delete() {
-        timeline.delete_selection(true);
+        if (library.has_selection())
+            library.delete_selection();
+        else
+            timeline.delete_selection(true);
     }
     
     void on_delete_lift() {
