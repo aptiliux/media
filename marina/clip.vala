@@ -11,7 +11,7 @@ public enum MediaType {
     VIDEO
 }
 
-class Gap {
+public class Gap {
     public int64 start;
     public int64 end;
 
@@ -29,7 +29,7 @@ class Gap {
     }
 }
 
-class ClipFile {
+public class ClipFile {
     public string filename;
     public int64 length;
     
@@ -127,7 +127,7 @@ class ClipFile {
     }
 }
 
-class ClipFetcher {
+public class ClipFetcher {
     public ClipFile clipfile;
     
     Gst.Element filesrc;
@@ -257,7 +257,7 @@ class ClipFetcher {
     }
 }
 
-class Clip {
+public class Clip {
     public ClipFile clipfile;
     public MediaType type;
     
@@ -369,7 +369,7 @@ class Clip {
     }
 }
 
-class FetcherCompletion {
+public class FetcherCompletion {
     public FetcherCompletion() {
     }
     

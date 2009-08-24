@@ -4,49 +4,6 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-namespace Model {
-// TODO This class will go away when XML loading is cleaned up
-class VideoTrack : Track {
-
-    public VideoTrack(Model.Project project) {
-        base(project, "Video Track");
-    }
-
-    protected override string name() { return "video"; }
-
-    protected override Gst.Element empty_element() {
-        return (Gst.Element) null;
-    }
-    
-    protected override void check(Clip clip) {
-    }
-    
-    int64 frame_to_time(int frame) {
-        return 0;
-    }
-    
-    int time_to_frame(int64 time) {
-        return 0;
-    }
-    
-    public int get_current_frame(int64 time) {
-        return 0;
-    }
-    
-    public int64 previous_frame(int64 position) {
-        return 0;
-    }
-    
-    public int64 next_frame(int64 position) {
-        return 0;
-    }
-
-    public bool get_framerate(out Fraction rate) {
-        return false;
-    }
-}
-}
-
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
     

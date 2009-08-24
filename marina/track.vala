@@ -7,7 +7,7 @@
 
 namespace Model {
 
-abstract class Track {
+public abstract class Track {
     protected Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
     public string display_name;
@@ -537,7 +537,7 @@ abstract class Track {
     }
 }
 
-class AudioTrack : Track {
+public class AudioTrack : Track {
     public Gst.Element audio_convert;
     public Gst.Element audio_resample;
 

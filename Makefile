@@ -10,7 +10,16 @@ MARINA_SOURCES =	clip.vala \
 					MultiFileProgress.vala \
 					ClipLibraryView.vala
 
-MARINA_FILES = $(foreach src, $(MARINA_SOURCES), marina/$(src))
+# TODO: lombard/video_track.vala is temporarily included in Marina.  This should go away soon.
+MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
+				lombard/video_track.vala
+				
+MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
+
+GLOBAL_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0
+
+marina/marina.vapi marina/marina.h $(MARINA_C_FILES): $(MARINA_FILES) Makefile
+	valac $(VFLAGS) -C --library marina/marina -H marina/marina.h $(GLOBAL_LIBS) $(MARINA_FILES)
 
 FILLMORE = fill
 
@@ -23,35 +32,32 @@ FILLMORE_SOURCES = \
 
 FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
 
-FILLMORE_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0
-
-$(FILLMORE): $(FILLMORE_FILES) $(MARINA_FILES) Makefile
-	valac $(VFLAGS) $(FILLMORE_LIBS) $(FILLMORE_FILES) $(MARINA_FILES) -o $(FILLMORE)
+$(FILLMORE): $(FILLMORE_FILES) marina/marina.vapi Makefile
+	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(FILLMORE_FILES) \
+		  marina/marina.vapi $(MARINA_C_FILES) -o $(FILLMORE)
 
 LOMBARD = lom
+
 LOMBARD_SOURCES = \
 	ui_app.vala \
 	ui_timeline.vala \
 	ui_track.vala \
 	ui_clip.vala \
-	video_project.vala \
-	video_track.vala
+	video_project.vala
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
 
 LOMBARD_LIBS =  --pkg gdk-x11-2.0 \
-				--pkg gee-1.0 \
-				--pkg gstreamer-0.10 \
 				--pkg gstreamer-pbutils-0.10 \
 				--pkg gstreamer-interfaces-0.10 \
-				--pkg gtk+-2.0 \
 				--pkg glib-2.0
 
-$(LOMBARD): $(LOMBARD_FILES) $(MARINA_FILES) Makefile
-	valac $(VFLAGS) $(LOMBARD_LIBS) $(LOMBARD_FILES) $(MARINA_FILES) -o $(LOMBARD)
+$(LOMBARD): $(LOMBARD_FILES) marina/marina.vapi Makefile
+	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \
+		  marina/marina.vapi $(MARINA_C_FILES) -o $(LOMBARD)
 
 all: $(FILLMORE) $(LOMBARD)
 
 clean:
-	rm -f $(FILLMORE) $(LOMBARD)
+	rm -f marina/marina.vapi marina/marina.h $(MARINA_C_FILES) $(FILLMORE) $(LOMBARD)
 

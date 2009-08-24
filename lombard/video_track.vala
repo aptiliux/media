@@ -6,7 +6,7 @@
 
 
 namespace Model {
-class VideoTrack : Track {
+public class VideoTrack : Track {
     
     public VideoTrack(Model.Project project) {
         base(project, "Video Track");

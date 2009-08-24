@@ -5,7 +5,7 @@
  */
 
 namespace Model {
-enum PlayState {
+public enum PlayState {
     STOPPED,
     PRE_PLAY, PLAYING,
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
@@ -14,7 +14,7 @@ enum PlayState {
 
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
-abstract class Project : MultiFileProgressInterface, Object {
+public abstract class Project : MultiFileProgressInterface, Object {
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     
@@ -755,7 +755,7 @@ abstract class Project : MultiFileProgressInterface, Object {
     public abstract double get_version();
 }
 
-class ProjectLoader {
+public class ProjectLoader {
     Model.Project project;
 
     string text;

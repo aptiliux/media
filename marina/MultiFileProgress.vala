@@ -5,7 +5,7 @@
  */
 
 // TODO: Is this the best way to do this?
-interface MultiFileProgressInterface : Object {
+public interface MultiFileProgressInterface : Object {
     public signal void fraction_updated(double d);
     public signal void file_updated(string filename, int index);
     public signal void done();
@@ -16,7 +16,7 @@ interface MultiFileProgressInterface : Object {
 
 // TODO: Rework the complete signal
 
-class MultiFileProgress : Gtk.Window {
+public class MultiFileProgress : Gtk.Window {
     Gtk.ProgressBar progress_bar;
     Gtk.Label file_label;
     Gtk.Label number_label;

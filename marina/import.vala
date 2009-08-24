@@ -1,13 +1,12 @@
 namespace Model {
 
-class ClipImporter : MultiFileProgressInterface, Object {  
+public class ClipImporter : MultiFileProgressInterface, Object {  
     enum ImportState {
         FETCHING,
         IMPORTING,
         CANCELLED
     }
     
-    FetcherCompletion fetcher_completion;
     string import_directory;
     
     ImportState import_state;
@@ -321,7 +320,7 @@ class ClipImporter : MultiFileProgressInterface, Object {
     }
 }
 
-class LibraryImporter {
+public class LibraryImporter {
     protected Project project;
     protected ClipImporter importer;
 
@@ -368,7 +367,7 @@ class LibraryImporter {
     }        
 }
 
-class TimelineImporter : LibraryImporter {
+public class TimelineImporter : LibraryImporter {
     public TimelineImporter(Project p) {
         base(p);      
     }

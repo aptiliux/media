@@ -4,7 +4,7 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-class ClipLibraryView : Gtk.EventBox {
+public class ClipLibraryView : Gtk.EventBox {
     Model.Project project;
     Gtk.TreeView tree_view;
     Gtk.TreeSelection selection;

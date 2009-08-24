@@ -5,13 +5,13 @@
  */
 
 // I can't find a floating point absolute value function in Vala...
-float float_abs(float f) {
+public float float_abs(float f) {
     if (f < 0.0f)
         return -f;
     return f;
 }
 
-int sign(int x) {
+public int sign(int x) {
     if (x == 0)
         return 0;
     return x < 0 ? -1 : 1;
@@ -19,16 +19,16 @@ int sign(int x) {
 
 // Debug utilities
 
-bool debug_enabled;
+public bool debug_enabled;
 
-void print_debug(string text) {
+public void print_debug(string text) {
     if (!debug_enabled)
         return;
         
     debug("%s", text);
 }
 
-struct Fraction {
+public struct Fraction {
     public int numerator;
     public int denominator;
     
@@ -45,10 +45,7 @@ struct Fraction {
     }
 }
 
-// Had to change this since there was an include error with X.h
-// error: previous declaration of ‘Time’ was here
-
-struct TimeCode {
+public struct TimeCode {
     public int hour;
     public int minute;
     public int second;
@@ -81,22 +78,22 @@ struct TimeCode {
     }
 }
 
-bool time_in_range(int64 time, int64 center, int64 delta) {
+public bool time_in_range(int64 time, int64 center, int64 delta) {
     int64 diff = time - center;
     return diff.abs() <= delta;
 }
 
-string isolate_filename(string path) {
+public string isolate_filename(string path) {
     string str = Path.get_basename(path);
     return str.split(".")[0];
 }
 
-string get_file_extension(string path) {
+public string get_file_extension(string path) {
     unowned string dot = path.rchr(-1, '.');
     return dot == null ? "" : dot.next_char();
 }
 
-string append_extension(string path, string extension) {
+public string append_extension(string path, string extension) {
     if (get_file_extension(path) == extension)
         return path;
         
@@ -105,7 +102,7 @@ string append_extension(string path, string extension) {
 
 // Given two version number strings such as "0.10.2.4", return true if the first is
 // greater than or equal to the second.
-bool version_at_least(string v, string w) {
+public bool version_at_least(string v, string w) {
     string[] va = v.split(".");
     string[] wa = w.split(".");
     for (int i = 0 ; i < wa.length ; ++i) {
@@ -121,7 +118,7 @@ bool version_at_least(string v, string w) {
     return true;
 }
 
-bool get_file_md5_checksum(string filename, out string checksum) {
+public bool get_file_md5_checksum(string filename, out string checksum) {
     string new_filename = append_extension(filename, "md5");
     
     ulong buffer_length;
@@ -134,7 +131,7 @@ bool get_file_md5_checksum(string filename, out string checksum) {
     return buffer_length == 32;
 }
 
-void save_file_md5_checksum(string filename, string checksum) {
+public void save_file_md5_checksum(string filename, string checksum) {
     string new_filename = append_extension(filename, "md5");
     
     try {
@@ -144,7 +141,7 @@ void save_file_md5_checksum(string filename, string checksum) {
     }
 }
 
-bool md5_checksum_on_file(string filename, out string checksum) {
+public bool md5_checksum_on_file(string filename, out string checksum) {
     string file_buffer;
     ulong len;
     
@@ -162,11 +159,11 @@ bool md5_checksum_on_file(string filename, out string checksum) {
 
 // GTK utility functions
 
-static const Gtk.TargetEntry[] drag_target_entries = {
+public static const Gtk.TargetEntry[] drag_target_entries = {
     { "text/uri-list", 0, 0 } 
 };
 
-Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, string text) {
+public Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, string text) {
     Gtk.Label l = new Gtk.Label(text);
     l.set_line_wrap(true);
     l.use_markup = true;
@@ -177,26 +174,26 @@ Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, stri
     return a;
 }
 
-void add_label_to_table(Gtk.Table t, string str, int x, int y, int xpad, int ypad) {
+public void add_label_to_table(Gtk.Table t, string str, int x, int y, int xpad, int ypad) {
     Gtk.Alignment a = get_aligned_label(0.0f, 0.0f, 0.0f, 0.0f, str);
     t.attach(a, x, x + 1, y, y + 1, Gtk.AttachOptions.FILL, Gtk.AttachOptions.FILL, xpad, ypad);
 }
 
-Gdk.Color parse_color(string color) {
+public Gdk.Color parse_color(string color) {
     Gdk.Color c;
     if (!Gdk.Color.parse(color, out c))
         error("can't parse color");
     return c;
 }
 
-Gtk.Widget get_widget(Gtk.UIManager manager, string name) {
+public Gtk.Widget get_widget(Gtk.UIManager manager, string name) {
     Gtk.Widget widget = manager.get_widget(name);
     if (widget == null)
         error("can't find widget");
     return widget;
 }
 
-Gtk.Dialog create_error_dialog(string title, string message) {
+public Gtk.Dialog create_error_dialog(string title, string message) {
     Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, Gtk.MessageType.ERROR,
                                                 Gtk.ButtonsType.OK, message, null);
     d.set_title(title);
@@ -204,7 +201,7 @@ Gtk.Dialog create_error_dialog(string title, string message) {
     return d;
 }
 
-Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
+public Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
     Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
                                     Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message, 
                                     null);
@@ -218,7 +215,7 @@ Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
     return r;
 }
 
-bool confirm_replace(Gtk.Window? parent, string filename) {
+public bool confirm_replace(Gtk.Window? parent, string filename) {
     Gtk.MessageDialog md = new Gtk.MessageDialog.with_markup(
         parent, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
         "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
@@ -239,7 +236,7 @@ const double LINE_WIDTH = 1.0;
 const double RADIUS = 15.0;
 const Cairo.Antialias ANTIALIAS = Cairo.Antialias.DEFAULT; // NONE/DEFAULT
 
-void draw_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                             int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
@@ -296,7 +293,7 @@ void draw_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled,
     }
 }
 
-void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                                   int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
@@ -353,7 +350,7 @@ void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool fille
     }
 }
 
-void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                                  int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
@@ -408,7 +405,7 @@ void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled
     }
 }
 
-void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
                            int x, int y, int width, int height) {
     if (width == 0 || height == 0)
         return;
@@ -429,17 +426,17 @@ void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled,
 
 // GStreamer utility functions
 
-bool is_drop_frame_rate(Fraction r) {
+public bool is_drop_frame_rate(Fraction r) {
     return r.numerator == 2997 && r.denominator == 100 ||
            r.numerator == 30000 && r.denominator == 1001;    
 }
 
-int64 frame_to_time_with_rate(int frame, Fraction rate) {
+public int64 frame_to_time_with_rate(int frame, Fraction rate) {
     int64 time = (int64) Gst.util_uint64_scale(frame, Gst.SECOND * rate.denominator, rate.numerator);
     return time;
 }
 
-int time_to_frame_with_rate(int64 time, Fraction rate) {
+public int time_to_frame_with_rate(int64 time, Fraction rate) {
     int frame = (int) Gst.util_uint64_scale(time, rate.numerator, Gst.SECOND * rate.denominator);
         
     /* We need frame_to_time_with_rate and time_to_frame_with_rate to be inverse functions, so that
@@ -449,7 +446,7 @@ int time_to_frame_with_rate(int64 time, Fraction rate) {
     return time >= frame_to_time_with_rate(frame + 1, rate) ? frame + 1 : frame;
 }
 
-TimeCode frame_to_time(int frame, Fraction rate) {
+public TimeCode frame_to_time(int frame, Fraction rate) {
     int frame_rate = 0;
    
     TimeCode t = {};
@@ -485,18 +482,18 @@ TimeCode frame_to_time(int frame, Fraction rate) {
     return t;
 }
 
-string frame_to_string(int frame, Fraction rate) {    
+public string frame_to_string(int frame, Fraction rate) {    
     return frame_to_time(frame, rate).to_string();
 }
 
-Gst.Element make_element_with_name(string element_name, string? display_name) {
+public Gst.Element make_element_with_name(string element_name, string? display_name) {
     Gst.Element e = Gst.ElementFactory.make(element_name, display_name);
     if (e == null)
         error("can't create element: %s", element_name);
     return e;
 }
 
-Gst.Element make_element(string name) {
+public Gst.Element make_element(string name) {
     return make_element_with_name(name, null);
 }
 
