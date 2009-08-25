@@ -9,7 +9,7 @@ using Gee;
 class Ruler : Gtk.DrawingArea {
     TimeLine timeline;
     
-    Ruler(TimeLine timeline) {
+    public Ruler(TimeLine timeline) {
         this.timeline = timeline;
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
         modify_bg(Gtk.StateType.NORMAL, parse_color("#777"));

@@ -97,7 +97,9 @@ class Recorder : Gtk.Window {
         
         Gtk.UIManager manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
-        manager.add_ui_from_string(ui, -1);
+        try {
+            manager.add_ui_from_string(ui, -1);
+        } catch (Error e) { error(e.message); }
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");

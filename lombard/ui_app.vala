@@ -145,7 +145,7 @@ class App : Gtk.Window {
 </ui>
 """;
 
-    App(string? project_file) {
+    public App(string? project_file) {
         set_default_size(600, 500);
         project_filename = project_file;
         
@@ -176,7 +176,9 @@ class App : Gtk.Window {
 
         Gtk.UIManager manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
-        manager.add_ui_from_string(ui, -1);
+        try {
+            manager.add_ui_from_string(ui, -1);
+        } catch (Error e) { error(e.message); }
 
         manager.insert_action_group(view_library_action_group, 1);
         
