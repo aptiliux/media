@@ -121,7 +121,7 @@ public bool version_at_least(string v, string w) {
 public bool get_file_md5_checksum(string filename, out string checksum) {
     string new_filename = append_extension(filename, "md5");
     
-    ulong buffer_length;
+    size_t buffer_length;
     try {
         GLib.FileUtils.get_contents(new_filename, out checksum, out buffer_length);
     } catch (GLib.FileError e) {
@@ -143,7 +143,7 @@ public void save_file_md5_checksum(string filename, string checksum) {
 
 public bool md5_checksum_on_file(string filename, out string checksum) {
     string file_buffer;
-    ulong len;
+    size_t len;
     
     try {
         GLib.FileUtils.get_contents(filename, out file_buffer, out len);

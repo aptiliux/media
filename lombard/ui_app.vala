@@ -178,7 +178,7 @@ class App : Gtk.Window {
         manager.insert_action_group(group, 0);
         try {
             manager.add_ui_from_string(ui, -1);
-        } catch (Error e) { error(e.message); }
+        } catch (Error e) { error("%s", e.message); }
 
         manager.insert_action_group(view_library_action_group, 1);
         
