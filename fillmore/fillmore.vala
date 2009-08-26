@@ -36,7 +36,8 @@ class Recorder : Gtk.Window {
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
         
-        { "Rewind", Gtk.STOCK_MEDIA_PREVIOUS, null, "Return", "Go to beginning", on_rewind }
+        { "Rewind", Gtk.STOCK_MEDIA_PREVIOUS, "Rewind", "Home", "Go to beginning", on_rewind },
+        { "End", Gtk.STOCK_MEDIA_NEXT, "End", "End", "Go to end", on_end }
     };
     
     const Gtk.ToggleActionEntry[] toggle_entries = {
@@ -70,10 +71,12 @@ class Recorder : Gtk.Window {
     <toolitem name="New" action="NewTrack"/>
     <separator/>
     <toolitem name="Rewind" action="Rewind"/>
+    <toolitem name="End" action="End" />
     <toolitem name="Play" action="Play"/>
     <toolitem name="Record" action="Record"/>
   </toolbar>
   <accelerator name="Rewind" action="Rewind"/>
+  <accelerator name="End" action="End" />
   <accelerator name="Play" action="Play"/>
   <accelerator name="Record" action="Record"/>
 </ui>
@@ -188,6 +191,17 @@ class Recorder : Gtk.Window {
     
     public void scroll_to_beginning() {
         h_adjustment.set_value(0.0);
+    }
+    
+    public void scroll_to_end() {
+        int new_adjustment = TimeLine.time_to_xpos(project.get_length());
+        int window_width = timeline.parent.allocation.width;
+        if (new_adjustment < timeline.parent.allocation.width) {
+            new_adjustment = 0;
+        } else {
+            new_adjustment = new_adjustment - window_width / 2;
+        }
+        h_adjustment.set_value(new_adjustment);
     }
     
     const int scroll_speed = 8;
@@ -317,6 +331,11 @@ class Recorder : Gtk.Window {
         scroll_to_beginning();
     }
     
+    void on_end() {
+        project.go_end();
+        scroll_to_end();
+    }
+
     void on_play() {
         /*if (project.recording())
             project.stop();     // will reset both buttons
