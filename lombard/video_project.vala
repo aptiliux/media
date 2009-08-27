@@ -42,24 +42,6 @@ class VideoProject : Project {
         return t;
     }
 
-    public override void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
-        base.on_pad_added(track, bin, pad);
-        VideoTrack? video_track = track as VideoTrack;
-        if (video_track != null) {
-            if (pad.link(converter.get_static_pad("sink")) != Gst.PadLinkReturn.OK) {
-                error("couldn't link pad to converter");
-            }
-        }
-    }
-    
-    public override void on_pad_removed(Track track, Gst.Bin bin, Gst.Pad pad) {
-        base.on_pad_removed(track, bin, pad);
-        VideoTrack? video_track = track as VideoTrack;
-        if (video_track != null) {
-            pad.unlink(converter.get_static_pad("sink"));
-        }
-    }
-    
     protected override void do_append(ClipFile clipfile, string name, int64 insert_time) {
         if (clipfile.video_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
@@ -180,6 +162,14 @@ class VideoProject : Project {
         if (is_drop_frame_rate(r))
             return 30;
         return r.numerator / r.denominator;
+    }
+    
+    public override Gst.Element? get_track_element(Track track) {
+        if (track is Model.VideoTrack) {
+            return converter;
+        }
+        
+        return base.get_track_element(track);
     }
 }
 }

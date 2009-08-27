@@ -5,9 +5,9 @@
  */
 
 class TrackHeader : Gtk.EventBox {
-    Model.Track track;
-    HeaderArea header_area;
-    Gtk.Label track_label;
+    protected Model.Track track;
+    protected HeaderArea header_area;
+    protected Gtk.Label track_label;
     
     public const int width = 100;
     
@@ -24,9 +24,6 @@ class TrackHeader : Gtk.EventBox {
         
         track_label = new Gtk.Label(track.display_name);
         track_label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
-        Gtk.VBox vbox = new Gtk.VBox(false, 0);
-        vbox.pack_start(track_label, true, true, 0);
-        add(vbox);
     }
     
     void on_track_renamed() {
@@ -40,6 +37,52 @@ class TrackHeader : Gtk.EventBox {
     public override bool button_press_event(Gdk.EventButton event) {
         header_area.select(track);
         return true;
+    }
+}
+
+class AudioTrackHeader : TrackHeader {
+    public Gtk.Scrollbar pan;
+    public Gtk.Scrollbar volume;
+    
+    public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
+        base(track, header);
+        pan = new Gtk.HScrollbar(new Gtk.Adjustment(0, -1, 1, 0.1, 0.1, 0.0));
+        pan.value_changed += on_pan_value_changed;
+        volume = new Gtk.HScrollbar(new Gtk.Adjustment(10, 0, 10, 0.1, 1, 0));
+        volume.value_changed += on_volume_value_changed;
+
+        Gtk.VBox vbox = new Gtk.VBox(false, 0);
+        vbox.pack_start(track_label, true, true, 0);
+        
+        Gtk.HBox pan_hbox = new Gtk.HBox(false, 0);
+        Gtk.Label pan_label = new Gtk.Label("P");
+        pan_hbox.pack_start(pan_label, true, true, 0);
+        pan_hbox.add(pan);
+        vbox.add(pan_hbox);
+        
+        Gtk.HBox volume_hbox = new Gtk.HBox(false, 0);
+        Gtk.Label volume_label = new Gtk.Label("V");
+        volume_hbox.pack_start(volume_label, true, true, 0);
+        volume_hbox.add(volume);
+        
+        vbox.add(volume_hbox);
+        add(vbox);
+    }
+
+    void on_pan_value_changed() {
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            Gtk.Adjustment adjustment = pan.get_adjustment();
+            audio_track.set_pan(adjustment.get_value());
+        }
+    }
+    
+    void on_volume_value_changed() {
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            Gtk.Adjustment adjustment = volume.get_adjustment();
+            audio_track.set_volume(adjustment.get_value());
+        }
     }
 }
 
@@ -79,7 +122,12 @@ class HeaderArea : Gtk.EventBox {
     }
     
     public void add_track(Model.Track track) {
-        TrackHeader header = new TrackHeader(track, this);
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        assert(audio_track != null);
+        //we are currently only supporting audio tracks.  We'll probably have
+        //a separate method for adding video track, midi track, aux input, etc
+        
+        TrackHeader header = new AudioTrackHeader(audio_track, this);
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(separator(), false, false, 0);
         vbox.show_all();

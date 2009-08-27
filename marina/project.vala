@@ -196,21 +196,22 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public void on_clip_removed(Track t, Clip clip) {
         reseek();
     }
-    
-    public virtual void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
-        AudioTrack? audio_track = track as AudioTrack;
-        if (audio_track != null) {
-            if (!bin.link_many(audio_track.audio_convert, audio_track.audio_resample, adder)) {
-                error("could not link bin->audio_convert->resample->adder");
-            }
+
+    public virtual Gst.Element? get_track_element(Track track) {
+        if (track is AudioTrack) {
+            return adder;
         }
+        
+        assert(false); // shouldn't be able to get here
+        return null;
     }
     
-    public virtual void on_pad_removed(Track track, Gst.Bin bin, Gst.Pad pad) {
-        AudioTrack? audio_track = track as AudioTrack;
-        if (audio_track != null && audio_track.audio_convert != null) {
-            bin.unlink_many(audio_track.audio_convert, audio_track.audio_resample, adder);
-        }
+    public void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
+        track.link_new_pad(bin, pad, get_track_element(track));
+    }
+    
+    public void on_pad_removed(Track track, Gst.Bin bin, Gst.Pad pad) {
+        track.unlink_pad(bin, pad, get_track_element(track));
     }
    
     public void split_at_playhead() {

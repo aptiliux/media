@@ -57,8 +57,9 @@ public abstract class Track {
     }
 
     protected abstract string name();
-
     protected abstract Gst.Element empty_element();
+    public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
+    public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
 
     void on_pre_export() {
         default_source.set("duration", project.get_length());
@@ -538,8 +539,10 @@ public abstract class Track {
 }
 
 public class AudioTrack : Track {
-    public Gst.Element audio_convert;
-    public Gst.Element audio_resample;
+    Gst.Element audio_convert;
+    Gst.Element audio_resample;
+    Gst.Element pan;
+    Gst.Element volume;
 
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
@@ -547,6 +550,11 @@ public class AudioTrack : Track {
             "audioconvert_%s".printf(display_name));
         audio_resample = make_element_with_name("audioresample",
             "audioresample_%s".printf(display_name));
+        pan = make_element("audiopanorama");
+        pan.set_property("panorama", 0);
+        volume = make_element("volume");
+        volume.set_property("volume", 10);
+        
         if (!project.pipeline.add(audio_convert)) {
             error("could not add audio_convert");
         }
@@ -554,12 +562,52 @@ public class AudioTrack : Track {
         if (!project.pipeline.add(audio_resample)) {
             error("could not add audio_resample");
         }
+        
+        if (!project.pipeline.add(pan)) {
+            error("could not add pan");
+        }
+        
+        if (!project.pipeline.add(volume)) {
+            error("could not add volume");
+        }
     }
 
     protected override string name() { return "audio"; }
     
+    public void set_pan(double new_value) {
+        assert(new_value <= 1.0 && new_value >= -1);
+        pan.set_property("panorama", new_value);
+    }
+    
+    public double get_pan() {
+        Value the_pan = 0;
+        pan.get_property("panorama", ref the_pan);
+        return the_pan.get_double();
+    }
+    
+    public void set_volume(double new_volume) {
+        assert(new_volume >= 0 && new_volume <= 10);
+        volume.set_property("volume", new_volume);
+    }
+    
+    public double get_volume() {
+        Value the_volume = 0;
+        volume.get_property("volume", ref the_volume);
+        return the_volume.get_double();
+    }
+
     protected override Gst.Element empty_element() {
         return project.get_audio_silence();
+    }
+    
+    public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+        if (!bin.link_many(audio_convert, audio_resample, pan, volume, track_element)) {
+            error("could not link_new_pad for audio track");
+        }
+    }
+    
+    public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+        bin.unlink_many(audio_convert, audio_resample, pan, volume, track_element);
     }
 }
 }

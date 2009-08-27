@@ -86,7 +86,16 @@ public class VideoTrack : Track {
         }
         return clips[0].clipfile.get_frame_rate(out rate);
     }
-
+    
+    public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+        if (pad.link(track_element.get_static_pad("sink")) != Gst.PadLinkReturn.OK) {
+            error("couldn't link pad to converter");
+        }
+    }
+    
+    public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+        pad.unlink(track_element.get_static_pad("sink"));
+    }
 }
     
 }
