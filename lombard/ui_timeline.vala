@@ -266,7 +266,7 @@ class TimeLine : Gtk.EventBox {
         } else {
             if (gap_view != null) {
                 if (!project.delete_gap(gap_view.trackview.track, gap_view.gap, false)) {
-                  if (create_delete_cancel_dialog("Confirm", "Really delete single-track gap?") ==
+                  if (DialogUtils.delete_cancel("Confirm", "Really delete single-track gap?") ==
                            Gtk.ResponseType.YES) {
                        project.delete_gap(gap_view.trackview.track, gap_view.gap, true);       
                     }                
@@ -296,9 +296,8 @@ class TimeLine : Gtk.EventBox {
         int do_ripple = view.track.do_clip_paste(c, pos, over, new_clip);
         
         if (do_ripple == -1) {
-            Gtk.Dialog d = create_error_dialog("Error", "Cannot paste clip onto another clip.");
-            d.run();
-            d.destroy();
+            DialogUtils.error("Error", 
+                "Cannot paste clip onto another clip.");
         } else if (do_ripple == 1) {
             TrackView other = (view == tracks[0]) ? tracks[1] : tracks[0];
             other.track.ripple_paste(c.length, pos);

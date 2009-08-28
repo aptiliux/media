@@ -5,8 +5,8 @@
  */
 
 class TrackHeader : Gtk.EventBox {
-    protected Model.Track track;
-    protected HeaderArea header_area;
+    protected weak Model.Track track;
+    protected weak HeaderArea header_area;
     protected Gtk.Label track_label;
     
     public const int width = 100;
@@ -87,8 +87,8 @@ class AudioTrackHeader : TrackHeader {
 }
 
 class HeaderArea : Gtk.EventBox {
-    Model.Project project;
-    public Recorder recorder;
+    weak Model.Project project;
+    public weak Recorder recorder;
     
     Gtk.VBox vbox;
     public Gdk.Color background_color = parse_color("#666");
@@ -97,6 +97,7 @@ class HeaderArea : Gtk.EventBox {
         this.project = recorder.project;
         this.recorder = recorder;
         project.track_added += add_track;
+        project.track_removed += on_track_removed;
         
         set_size_request(TrackHeader.width, 0);
         modify_bg(Gtk.StateType.NORMAL, background_color);
@@ -131,6 +132,35 @@ class HeaderArea : Gtk.EventBox {
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(separator(), false, false, 0);
         vbox.show_all();
+        select(track);
+    }
+    
+    public void on_track_removed(Model.Track track) {
+        TrackHeader? my_track_header = null;
+        Gtk.HSeparator? my_separator = null;
+        foreach(Gtk.Widget widget in vbox.get_children()) {
+            if (my_track_header == null) {
+                TrackHeader? track_header = widget as TrackHeader;
+                if (track_header != null && track_header.track == track) {
+                    my_track_header = track_header;
+                }
+            } else {
+                my_separator = widget as Gtk.HSeparator;
+                break;
+            }
+        }
+        
+        if (my_track_header != null) {
+            vbox.remove(my_track_header);
+        }
+        
+        if (my_separator != null) {
+            vbox.remove(my_separator);
+        }
+
+        if (project.tracks.size != 0) {
+            select(project.tracks[0]);
+        }
     }
     
     public void select(Model.Track track) {

@@ -6,6 +6,21 @@
 
 using Gee;
 
+class LombardFetcherCompletion : Model.FetcherCompletion {
+    Model.Project project;
+    
+    public LombardFetcherCompletion(Model.Project project) {
+        base();
+        this.project = project;
+    }
+    
+    public override void complete(Model.ClipFetcher fetch) {
+        base.complete(fetch);
+        project.add_clipfile(fetch.clipfile);
+        project.append(fetch.clipfile);
+    }
+}
+
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
@@ -49,8 +64,6 @@ class App : Gtk.Window {
     string project_filename;
 
     public static const string NAME = "lombard";
-    public static const string PROJECT_FILE_EXTENSION = "lom";
-    public static const string PROJECT_FILE_FILTER = "*.lom";   
    
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
@@ -145,6 +158,15 @@ class App : Gtk.Window {
 </ui>
 """;
 
+    const DialogUtils.filter_description_struct[] filters = {
+        { "Lombard Project Files", Model.Project.LOMBARD_FILE_EXTENSION },
+        { "Fillmore Project Files", Model.Project.FILLMORE_FILE_EXTENSION }
+    };
+
+    const DialogUtils.filter_description_struct[] export_filters = {
+        { "Ogg Files", "ogg" }
+    };
+
     public App(string? project_file) {
         set_default_size(600, 500);
         project_filename = project_file;
@@ -194,6 +216,9 @@ class App : Gtk.Window {
         project.load_error += on_load_error;
         project.load_success += on_load_success;
         project.error_occurred += do_error_dialog;
+        // TODO: this is a hack to deal with project loading.  Lombard assumes one video
+        // track and one audio track.  It was non-trivial to delete and recreate tracks.
+        project.clear_tracks = false;
 
         project.add_track(new Model.VideoTrack(project));
         project.add_track(new Model.AudioTrack(project, "Audio Track"));
@@ -305,9 +330,7 @@ class App : Gtk.Window {
     }
 
     public void do_error_dialog(string message) {
-        Gtk.Dialog d = create_error_dialog("Error", message);
-        d.run();
-        d.destroy();
+        DialogUtils.error("Error", message);
     }
     
     public void on_load_error(string message) {
@@ -321,7 +344,7 @@ class App : Gtk.Window {
     // Loader code
     
     public void load_file(string name, Model.LibraryImporter im) {
-        if (get_file_extension(name) == PROJECT_FILE_EXTENSION)
+        if (get_file_extension(name) == Model.Project.LOMBARD_FILE_EXTENSION)
             load_project(name);
         else {
             im.add_file(name);
@@ -345,7 +368,7 @@ class App : Gtk.Window {
                                                             Gtk.ResponseType.ACCEPT, null);
         Gtk.FileFilter filter = new Gtk.FileFilter();
         filter.set_name("Project Files");
-        filter.add_pattern(PROJECT_FILE_FILTER);
+        filter.add_pattern(Model.Project.LOMBARD_FILE_FILTER);
         
         d.add_filter(filter);
         
@@ -372,25 +395,10 @@ class App : Gtk.Window {
     }
 
     void do_save_dialog() {
-        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Save Project", this, 
-                                                                Gtk.FileChooserAction.SAVE,
-                                                                Gtk.STOCK_CANCEL, 
-                                                                Gtk.ResponseType.CANCEL,
-                                                                Gtk.STOCK_SAVE, 
-                                                                Gtk.ResponseType.ACCEPT, null);
-            
-        Gtk.FileFilter filter = new Gtk.FileFilter();
-        filter.set_name("Project Files");
-        filter.add_pattern(PROJECT_FILE_FILTER);
-        
-        d.add_filter(filter);
-        
-        if (d.run() == Gtk.ResponseType.ACCEPT) {
-            string filename = d.get_filename();
-            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename))
-                save_project(append_extension(filename, App.PROJECT_FILE_EXTENSION));
+        string filename;
+        if (DialogUtils.save(this, "Save Project", filters, out filename)) {
+            project.save(filename);
         }
-        d.destroy();
     }
     
     void on_save_as() {
@@ -622,32 +630,21 @@ class App : Gtk.Window {
     void on_play_pause() {
         if (project.is_playing())
             project.pause();
-        else project.play();
+        else {
+        // TODO: we should be calling play() here, which in turn would call 
+        // do_play(Model.PlayState).  This is not currently how the code is organized.
+        // This is part of a checkin that is already large, so putting this off for another
+        // checkin for ease of testing.
+            project.do_play(Model.PlayState.PLAYING);
+        }
     }
     
     void on_export() {
-        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Export", this, 
-                                                                Gtk.FileChooserAction.SAVE,
-                                                                Gtk.STOCK_CANCEL, 
-                                                                Gtk.ResponseType.CANCEL,
-                                                                Gtk.STOCK_SAVE, 
-                                                                Gtk.ResponseType.ACCEPT, null);
-            
-        Gtk.FileFilter filter = new Gtk.FileFilter();
-        filter.set_name("Ogg Files");
-        filter.add_pattern("*.ogg");
-        
-        d.add_filter(filter);
-        
-        if (d.run() == Gtk.ResponseType.ACCEPT) {
-            string filename = append_extension(d.get_filename(), "ogg");
-
-            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename)) {
-                new MultiFileProgress(this, 1, "Export", project);
-                project.start_export(filename);
-            }
+        string filename;
+        if (DialogUtils.save(this, "Export", export_filters, out filename)) {
+            MultiFileProgress export_dialog = new MultiFileProgress(this, 1, "Export", project);
+            project.start_export(filename);
         }
-        d.destroy();
     }
     
     // Edit commands

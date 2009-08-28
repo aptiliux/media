@@ -193,40 +193,6 @@ public Gtk.Widget get_widget(Gtk.UIManager manager, string name) {
     return widget;
 }
 
-public Gtk.Dialog create_error_dialog(string title, string message) {
-    Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, Gtk.MessageType.ERROR,
-                                                Gtk.ButtonsType.OK, message, null);
-    d.set_title(title);
-    
-    return d;
-}
-
-public Gtk.ResponseType create_delete_cancel_dialog(string title, string message) {
-    Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
-                                    Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message, 
-                                    null);
-    d.set_title(title);                                                 
-    
-    d.add_buttons(Gtk.STOCK_DELETE, Gtk.ResponseType.YES, Gtk.STOCK_CANCEL, Gtk.ResponseType.NO);
-    
-    Gtk.ResponseType r = (Gtk.ResponseType) d.run();
-    d.destroy();
-    
-    return r;
-}
-
-public bool confirm_replace(Gtk.Window? parent, string filename) {
-    Gtk.MessageDialog md = new Gtk.MessageDialog.with_markup(
-        parent, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
-        "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
-        Path.get_basename(filename));
-    md.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                   "Replace", Gtk.ResponseType.ACCEPT);
-    int response = md.run();
-    md.destroy();
-    return response == Gtk.ResponseType.ACCEPT;
-}
-
 /////////////////////////////////////////////////////////////////////////////
 //                    Rectangle drawing stuff                              //
 // Original rounded rectangle code from: http://cairographics.org/samples/ //
@@ -497,3 +463,138 @@ public Gst.Element make_element(string name) {
     return make_element_with_name(name, null);
 }
 
+namespace DialogUtils {
+    public struct filter_description_struct {
+        public string name;
+        public string extension;
+    }
+
+    Gtk.FileFilter add_filter(Gtk.FileChooserDialog d, string name, string extension) {
+        Gtk.FileFilter filter = new Gtk.FileFilter();
+        filter.set_name(name);
+        filter.add_pattern("*." + extension);
+        d.add_filter(filter);
+        return filter;
+    }
+
+    void add_filters(filter_description_struct[] filter_descriptions, Gtk.FileChooserDialog d,
+        Gee.ArrayList<Gtk.FileFilter> filters, bool allow_all) {
+
+        int length = filter_descriptions.length;
+        for (int i=0;i<length;++i) {
+            Gtk.FileFilter filter = add_filter(d, filter_descriptions[i].name,
+                                                filter_descriptions[i].extension);
+            filters.add(filter);
+        }
+        
+        if (allow_all) {
+            add_filter(d, "All files", "*");
+            //don't add to filters.  filters should have same number of items as filter_descriptions
+        }
+        
+        assert(filter_descriptions.length == filters.size);
+        
+        d.set_filter(filters[0]);
+    }
+
+    public bool open(Gtk.Window parent, filter_description_struct[] filter_descriptions,
+        bool allow_multiple, bool allow_all, out GLib.SList<string> filenames) {
+        bool return_value = false;
+
+        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Open Files", parent, 
+                                                            Gtk.FileChooserAction.OPEN,
+                                                            Gtk.STOCK_CANCEL, 
+                                                            Gtk.ResponseType.CANCEL,
+                                                            Gtk.STOCK_OPEN, 
+                                                            Gtk.ResponseType.ACCEPT, null);
+
+        Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();    
+        add_filters(filter_descriptions, d, filters, allow_all);
+        d.set_select_multiple(allow_multiple);
+        if (d.run() == Gtk.ResponseType.ACCEPT) {
+            return_value = true;
+            filenames = d.get_filenames();
+        }                                                    
+        d.destroy();
+        return return_value;
+    }
+
+    public bool save(Gtk.Window parent, string title, 
+            filter_description_struct[] filter_descriptions, out string filename) {
+        bool return_value = false;
+        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog(title, parent, 
+            Gtk.FileChooserAction.SAVE, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT, null);
+
+        int length = filter_descriptions.length;
+        Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();    
+
+        add_filters(filter_descriptions, d, filters, false);
+        
+        //all this extra code is because the dialog doesn't append the extension for us
+        //in the filename, so we can't use d.set_do_overwrite_confirmation
+        
+        while (d.run() == Gtk.ResponseType.ACCEPT) {
+            string local_filename = d.get_filename();
+            unowned Gtk.FileFilter selected_filter = d.get_filter();
+
+            int i = 0;
+            foreach (Gtk.FileFilter file_filter in filters) {
+                if (file_filter == selected_filter) {
+                    break;
+                }
+                ++i;
+            }
+            
+            assert(i < length);
+
+            local_filename = append_extension(local_filename, filter_descriptions[i].extension);
+            if (!FileUtils.test(local_filename, FileTest.EXISTS) || 
+                confirm_replace(parent, local_filename)) {
+                return_value = true;
+                filename = local_filename;
+                break;
+            }
+            else {
+                d.present();
+            }
+        }
+        d.destroy();
+        return return_value;
+    }
+
+    public void error(string title, string message) {
+        Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
+                                Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, message, null);
+        d.set_title(title);
+        d.run();
+        d.destroy();
+    }
+
+    public Gtk.ResponseType delete_cancel(string title, string message) {
+        Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
+                                        Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message, 
+                                        null);
+        d.set_title(title);                                                 
+        
+        d.add_buttons(Gtk.STOCK_DELETE, Gtk.ResponseType.YES, Gtk.STOCK_CANCEL, 
+                    Gtk.ResponseType.NO);
+        
+        Gtk.ResponseType r = (Gtk.ResponseType) d.run();
+        d.destroy();
+        
+        return r;
+    }
+
+    public bool confirm_replace(Gtk.Window? parent, string filename) {
+        Gtk.MessageDialog md = new Gtk.MessageDialog.with_markup(
+            parent, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
+            "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
+            Path.get_basename(filename));
+        md.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                       "Replace", Gtk.ResponseType.ACCEPT);
+        int response = md.run();
+        md.destroy();
+        return response == Gtk.ResponseType.ACCEPT;
+    }
+}

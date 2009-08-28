@@ -2,7 +2,12 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_SOURCES =	clip.vala \
+MARINA_TESTABLE_SOURCES =	ProjectLoader.vala
+
+MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src))
+
+MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
+					clip.vala \
 					import.vala \
 					project.vala \
 					track.vala \
@@ -55,6 +60,23 @@ LOMBARD_LIBS =  --pkg gdk-x11-2.0 \
 $(LOMBARD): $(LOMBARD_FILES) marina/marina.vapi Makefile
 	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \
 		  marina/marina.vapi $(MARINA_C_FILES) -o $(LOMBARD)
+
+MARINA_TEST_SOURCES = ProjectLoading.vala
+MARINA_TEST_FILES = $(foreach src, $(MARINA_TEST_SOURCES), test/marina/$(src))
+
+TEST_SOURCES = test.vala 
+TEST_LIBS = --pkg gee-1.0 \
+			--pkg gstreamer-0.10 \
+			--pkg gtk+-2.0 \
+			--pkg glib-2.0
+			
+TEST_FILES = $(foreach src, $(TEST_SOURCES), test/$(src))
+
+TEST = media_test
+
+$(TEST): $(MARINA_TESTABLE_FILES) $(MARINA_TEST_SUPPORT) $(TEST_FILES) $(MARINA_TEST_FILES) Makefile
+	valac $(VFLAGS) $(TEST_LIBS) $(TEST_FILES) $(MARINA_TEST_FILES) $(MARINA_TESTABLE_FILES) \
+		$(MARINA_TEST_SUPPORT) -o $(TEST)
 
 all: $(FILLMORE) $(LOMBARD)
 

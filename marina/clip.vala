@@ -169,10 +169,6 @@ public class ClipFetcher {
     public string get_filename() { return clipfile.filename; }
     
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {  
-        // TODO: I do not like this; I don't think we can reliably add elements to the pipeline
-        // while it is changing state.
-        // - Andrew
-        
         Gst.Element fakesink = make_element("fakesink");
         pipeline.add(fakesink);
         

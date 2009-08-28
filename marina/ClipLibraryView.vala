@@ -148,10 +148,8 @@ public class ClipLibraryView : Gtk.EventBox {
                 label.show();
             }
         } else {
-            Gtk.Dialog d = create_error_dialog("Error", 
+            DialogUtils.error("Error", 
                             "Cannot remove clip file that exists on a track!");
-            d.run();
-            d.destroy();
         }
     }
     

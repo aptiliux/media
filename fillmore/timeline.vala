@@ -21,8 +21,8 @@ class Ruler : Gtk.DrawingArea {
 }
 
 class RegionView : Gtk.DrawingArea {
-    public Model.Clip region;
-    public TrackView track_view;
+    public weak Model.Clip region;
+    public weak TrackView track_view;
     
     public RegionView(Model.Clip clip) {
         region = clip;
@@ -65,8 +65,8 @@ class FillmoreFetcherCompletion : Model.FetcherCompletion {
 }
 
 class TrackView : Gtk.Fixed {
-    Model.Track track;
-    public TimeLine timeline;
+    public weak Model.Track track;
+    public weak TimeLine timeline;
     
     Model.Clip drag;
     int drag_region_x;
@@ -183,8 +183,8 @@ class TrackView : Gtk.Fixed {
 }
 
 class TimeLine : Gtk.EventBox {
-    public Model.Project project;
-    public Recorder recorder;
+    public weak Model.Project project;
+    public weak Recorder recorder;
     
     Gtk.VBox vbox;
     Ruler ruler;
@@ -204,6 +204,7 @@ class TimeLine : Gtk.EventBox {
         
         project.position_changed += update;
         project.track_added += add_track;
+        project.track_removed += on_track_removed;
         
         vbox = new Gtk.VBox(false, 0);
         ruler = new Ruler();
@@ -235,6 +236,27 @@ class TimeLine : Gtk.EventBox {
         vbox.show_all();
     }
     
+    public void on_track_removed(Model.Track track) {
+        TrackView? my_track_view = null;
+        Gtk.HSeparator? my_separator = null;
+        foreach(Gtk.Widget widget in vbox.get_children()) {
+            if (my_track_view == null) {
+                TrackView? track_view = widget as TrackView;
+                if (track_view != null && track_view.track == track) {
+                    my_track_view = track_view;
+                }
+            } else {
+                my_separator = widget as Gtk.HSeparator;
+                break;
+            }
+        }
+        
+        assert(my_track_view != null);
+        assert(my_separator != null);
+        vbox.remove(my_track_view);
+        vbox.remove(my_separator);
+    }
+    
     public static int64 xpos_to_time(int x) {
         return x * Gst.SECOND / pixels_per_second;
     }
@@ -244,7 +266,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void update() {
-        if (project.is_playing())// || project.recording())
+        if (project.is_playing())
             recorder.scroll_toward_center(time_to_xpos(project.position));
         queue_draw();
     }

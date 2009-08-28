@@ -14,6 +14,10 @@ public class VideoTrack : Track {
 
     protected override string name() { return "video"; }
 
+    public override MediaType media_type() {
+        return MediaType.VIDEO;
+    }
+
     protected override Gst.Element empty_element() {
         Gst.Element blackness = make_element("videotestsrc");
         blackness.set("pattern", 2);     // 2 == GST_VIDEO_TEST_SRC_BLACK
@@ -86,7 +90,7 @@ public class VideoTrack : Track {
         }
         return clips[0].clipfile.get_frame_rate(out rate);
     }
-    
+
     public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         if (pad.link(track_element.get_static_pad("sink")) != Gst.PadLinkReturn.OK) {
             error("couldn't link pad to converter");

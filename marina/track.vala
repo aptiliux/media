@@ -8,7 +8,7 @@
 namespace Model {
 
 public abstract class Track {
-    protected Project project;
+    protected weak Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
     public string display_name;
     bool is_selected;
@@ -55,8 +55,16 @@ public abstract class Track {
         project.pre_export += on_pre_export;
         project.post_export += on_post_export;
     }
+    
+    ~Track() {
+        if (!project.pipeline.remove(composition)) {
+            error("couldn't remove composition");
+        }
+    }
 
     protected abstract string name();
+    public abstract MediaType media_type();
+
     protected abstract Gst.Element empty_element();
     public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
@@ -509,7 +517,7 @@ public abstract class Track {
     }
     
     public void save(FileStream f) {
-        f.printf("  <track name=\"%s\">\n", name());
+        f.printf("  <track type=\"%s\" name=\"%s\">\n", name(), get_display_name());
         for (int i = 0; i < clips.size; i++)
             clips[i].save(f);
         f.puts("  </track>\n");
@@ -550,6 +558,7 @@ public class AudioTrack : Track {
             "audioconvert_%s".printf(display_name));
         audio_resample = make_element_with_name("audioresample",
             "audioresample_%s".printf(display_name));
+ 
         pan = make_element("audiopanorama");
         pan.set_property("panorama", 0);
         volume = make_element("volume");
@@ -572,8 +581,16 @@ public class AudioTrack : Track {
         }
     }
 
+    ~AudioTrack() {
+        project.pipeline.remove_many(audio_convert, audio_resample, pan, volume);
+    }
+  
     protected override string name() { return "audio"; }
     
+    public override MediaType media_type() {
+        return MediaType.AUDIO;
+    }
+
     public void set_pan(double new_value) {
         assert(new_value <= 1.0 && new_value >= -1);
         pan.set_property("panorama", new_value);

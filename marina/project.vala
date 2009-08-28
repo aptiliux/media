@@ -5,16 +5,251 @@
  */
 
 namespace Model {
+// TODO: Fix up the hierarchy (MediaLoaderHandler knows nothing about audio)
+public class MediaLoaderHandler : LoaderHandler {
+    protected weak Project the_project;
+    protected Track current_track;
+    protected OrphanTrack the_orphan_track;
+    
+    public MediaLoaderHandler(Project the_project) {
+        this.the_project = the_project;
+        current_track = null;
+        the_orphan_track = null;
+    }
+    
+    public override bool commit_project(string[]? attr_names, string[]? attr_values) {
+        int number_of_attributes = attr_names.length;
+        if (number_of_attributes != 1) {
+            load_error("Missing version information");
+            return false;
+        }
+        
+        if (the_project.get_file_version() < attr_values[0].to_int()) {
+            load_error("Version mismatch! (File Version: %d, App Version: %d)".printf(
+                the_project.get_file_version(), attr_values[0].to_int()));
+            return false;
+        }
+        return true;
+    }
+    
+    public override bool commit_track(string[]? attr_names, string[]? attr_values) {
+        assert(current_track == null);
+        assert(the_orphan_track == null);
+        
+        int number_of_attributes = attr_names.length;
+        string? name = null;
+        string? type = null;
+        for (int i = 0; i < number_of_attributes; ++i) {
+            switch(attr_names[i]) {
+                case "type":
+                    type = attr_values[i];
+                    break;
+                case "name":
+                    name = attr_values[i];
+                    break;
+                default:
+                    // TODO: we need a way to deal with orphaned attributes, for
+                    // now, reject the file
+                    load_error("Unknown attribute %s".printf(attr_names[i]));
+                    return false;
+            }
+        }
+        
+        if (name == null) {
+            load_error("Missing track name");
+            return false;
+        }
+        
+        if (type == null) {
+            load_error("Missing track type");
+            return false;
+        }
+        
+        if (type == "audio") {
+            if (the_project.clear_tracks) {
+                current_track = new AudioTrack(the_project, name);
+                the_project.add_track(current_track);
+            } else {
+                current_track = the_project.find_audio_track();        
+            }
+            return true;
+        }
+        
+        return base.commit_track(attr_names, attr_values);;
+    }
+    
+    public override void leave_track() {
+        assert(current_track != null);
+        assert(the_orphan_track == null);
+        current_track = null;
+    }
+    
+    public override bool commit_clip(string[]? attr_names, string[]? attr_values) {
+        assert(current_track != null);
+        assert(the_orphan_track == null);
+        
+        int number_of_attributes = attr_names.length;
+        string? filename = null;
+        string? clip_name = null;
+        int64 start = -1;
+        int64 media_start = -1;
+        int64 duration = -1;
+        for (int i = 0; i < number_of_attributes; i++) {
+        switch (attr_names[i]) {
+            case "filename":
+                filename = attr_values[i];
+                break;
+            case "name":
+                clip_name = attr_values[i];
+                break;
+            case "start":
+                start = attr_values[i].to_int64();
+                break;
+            case "media-start":
+                media_start = attr_values[i].to_int64();
+                break;
+            case "duration":
+                duration = attr_values[i].to_int64();
+                break;
+            default:
+                // TODO: we need a way to deal with orphaned attributes, for now, reject the file
+                load_error("Unknown attribute %s".printf(attr_names[i]));
+                return false;
+            }
+        }
+        
+        if (filename == null) {
+            load_error("missing filename");
+            return false;
+        }
+        
+        if (clip_name == null) {
+            load_error("missing clip_name");
+            return false;
+        }
+        
+        if (start == -1) {
+            load_error("missing start time");
+            return false;
+        }
+        
+        if (media_start == -1) {
+            load_error("missing media_start");
+            return false;
+        }
+        
+        if (duration == -1) {
+            load_error("missing duration");
+        }
+
+        ClipFile clipfile = the_project.find_clipfile(filename);
+        if (clipfile == null) {
+            load_error("clip file %s was not loaded".printf(filename));
+            return false;
+        }
+        
+        // TODO: why does clip have a start time?
+        Clip clip = new Clip(clipfile, current_track.media_type(), clip_name, 
+            0, media_start, duration);
+        
+        current_track.append_at_time(clip, start);
+        return true;
+    }
+
+    public override void leave_orphan_track() {
+        assert(the_orphan_track != null);
+        assert(current_track == null);
+        the_orphan_track = null;
+    }
+    
+    public override bool commit_orphan_track(string[]? attr_names, string[]? attr_values) {
+        assert(the_orphan_track == null);
+        assert(current_track == null);
+        the_orphan_track = new OrphanTrack(attr_names, attr_values);
+        the_project.orphan_tracks.add(the_orphan_track);
+
+        return true;
+    }
+
+    public override bool commit_orphan_clip(string[]? attr_names, string[]? attr_values) {
+        assert(the_orphan_track != null);
+        the_orphan_track.add_clip(attr_names, attr_values);
+        return true;
+    }
+}
+
 public enum PlayState {
     STOPPED,
     PRE_PLAY, PLAYING,
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
-    PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT
+    PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
+    LOADING, CLOSING
+}
+
+public class XmlElement {
+    string[] attr_values;
+    string[] attr_names;
+    string element_name;
+    
+    public XmlElement(string element_name, string []attr_names, string[]attr_values) {
+        this.element_name = element_name;
+        this.attr_names = attr_names;
+        this.attr_values = attr_values;
+    }
+    
+    protected void write_attributes(FileStream f) {
+        int number_of_elements = attr_names.length;
+        for (int i = 0; i < number_of_elements; ++i) {
+            f.printf("%s=\"%s\" ", attr_names[i], attr_values[i]);
+        }
+    }
+}
+
+public class OrphanClip : XmlElement {
+    public OrphanClip(string[] attr_names, string[] attr_values) {
+        base("clip", attr_names, attr_values);
+    }
+    
+    public void save(FileStream f) {
+        f.printf("<clip ");
+        write_attributes(f);
+        f.printf("/>\n");
+    }
+}
+
+public class OrphanTrack : XmlElement {
+    Gee.ArrayList<OrphanClip> clips;
+    
+    public OrphanTrack(string[] attr_names, string[] attr_values) {
+        base("track", attr_names, attr_values);
+        clips = new Gee.ArrayList<OrphanClip>();
+    }
+    
+    public void add_clip(string[] attr_names, string[] attr_values) {
+        clips.add(new OrphanClip(attr_names, attr_values));
+    }
+    
+    public void save(FileStream f) {
+        f.printf("<track ");
+        write_attributes(f);
+        f.printf(">\n");
+        
+        foreach (OrphanClip clip in clips) {
+            clip.save(f);
+        }
+        
+        f.printf("</track>");
+    }
 }
 
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
 public abstract class Project : MultiFileProgressInterface, Object {
+    public static const string FILLMORE_FILE_EXTENSION = "fill";
+    public static const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
+    public static const string LOMBARD_FILE_EXTENSION = "lom";
+    public static const string LOMBARD_FILE_FILTER = "*." + LOMBARD_FILE_EXTENSION;
+
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     
@@ -27,7 +262,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public Gst.Element capsfilter;
 
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
-    Gee.HashSet<Model.ClipFetcher> pending = new Gee.HashSet<Model.ClipFetcher>();
+    Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
     Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
 
     public string project_file;
@@ -37,6 +272,9 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public int64 position;  // current play position in ns
     uint callback_id;
     FetcherCompletion fetcher_completion;
+    public Gee.ArrayList<OrphanTrack> orphan_tracks;
+    // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
+    public bool clear_tracks = true;
     
     public signal void pre_export();
     public signal void post_export();
@@ -46,7 +284,10 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
     public signal void load_success();
+    public signal void closed();
+    
     public signal void track_added(Track track);
+    public signal void track_removed(Track track);
     public signal void error_occurred(string error_message);
     
     public signal void clipfile_added(ClipFile c);
@@ -54,6 +295,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public abstract TimeCode get_clip_time(ClipFile f);
 
     public Project(string? filename) {
+        orphan_tracks = new Gee.ArrayList<OrphanTrack>();
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
@@ -119,8 +361,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
     
     protected void do_play(PlayState new_state) {
-        assert(gst_state == Gst.State.PAUSED);
-
         seek(Gst.SeekFlags.FLUSH, position);
 
         play_state = new_state;
@@ -301,11 +541,26 @@ public abstract class Project : MultiFileProgressInterface, Object {
         track_added(track);
     }
     
+    public void remove_track(Track track) {
+        pipeline.set_state(Gst.State.NULL);
+        tracks.remove(track);
+        track_removed(track);
+    }
+    
+    public void on_clip_ready(ClipFile clipfile) {
+        add_clipfile(clipfile);
+    }
+    
+    public void on_load_started(string filename) {
+        clear();
+        set_name(filename);
+    }
+
     public void add_clipfile(ClipFile clipfile) {
         clipfiles.add(clipfile);
         clipfile_added(clipfile);
     }
-    
+
     public bool remove_clipfile(string filename) {
         ClipFile cf = find_clipfile(filename);
         if (cf != null) {
@@ -322,16 +577,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         foreach (ClipFile cf in clipfiles)
             if (cf.filename == filename)
                 return cf;
-        return null;
-    }
-    
-    // TODO this should go away all together when the XML loading gets fixed up
-    public VideoTrack? find_video_track() {
-        foreach (Track track in tracks) {
-            if (track is VideoTrack) {
-                return track as VideoTrack;
-            }
-        }
         return null;
     }
     
@@ -358,8 +603,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
             position = time;
             callback_pulse();
             
-            if (play_state == PlayState.STOPPED) {
-                
+            if (play_state == PlayState.PLAYING) {
                 if (position >= get_length()) {
                     go(get_length());
                     pause();
@@ -376,10 +620,11 @@ public abstract class Project : MultiFileProgressInterface, Object {
         return true;
     }
     
-    public void play() {
+    void play() {
         if (playing)
             return;
 
+        assert(gst_state == Gst.State.PAUSED);
         set_gst_state(Gst.State.PLAYING);
         if (callback_id == 0)
             callback_id = Timeout.add(50, on_callback);
@@ -390,6 +635,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         if (!playing)
             return;
 
+        play_state = PlayState.STOPPED;
         set_gst_state(Gst.State.PAUSED);
         playing = false;
     }
@@ -457,14 +703,27 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public void clear() {
         foreach (Track track in tracks) {
             track.delete_all_clips();
+            if (clear_tracks) {
+                track_removed(track);
+            }
         }
+
+        // TODO: both applications should be clearing tracks and not assuming how many tracks
+        if (clear_tracks) {
+            tracks.clear();
+        }
+        
         clipfiles.clear();
         set_name(null);
     }
     
     public bool can_export() {
-        return find_video_track().get_length() != 0 ||
-               find_audio_track().get_length() != 0;
+        foreach (Track track in tracks) {
+            if (track.get_length() > 0) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public void start_export(string filename) {
@@ -601,10 +860,15 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
     protected virtual bool do_state_change() {
         switch (play_state) {
+            case PlayState.LOADING:
+                loader.load();
+                return true;
             case PlayState.STOPPED:
-                if (gst_state != Gst.State.PAUSED)
-                    return false;
-                go(position);
+                if (gst_state != Gst.State.PAUSED) {
+                    pipeline.set_state(Gst.State.PAUSED);
+                } else {
+                    go(position);
+                }
                 return true;
             case PlayState.PRE_EXPORT_NULL:
                 if (gst_state != Gst.State.NULL)
@@ -626,6 +890,11 @@ public abstract class Project : MultiFileProgressInterface, Object {
                     return false;
                 end_export(true);
                 return true;
+            case PlayState.CLOSING:
+                if (gst_state == Gst.State.NULL) {
+                    closed();
+                }
+                return true;
         }
         return false;
     }
@@ -643,6 +912,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
            
             bus_init();
             pipeline.set_state(Gst.State.PAUSED);
+            play_state = PlayState.STOPPED;
         
             load_success();
         }
@@ -653,7 +923,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     // method executes or afterward.
     public void load(string? fname) {
         if (fname == null) {
-            bus_init();
+            on_load_complete(null);
             return;
         }
         
@@ -662,9 +932,27 @@ public abstract class Project : MultiFileProgressInterface, Object {
             return;
         }
 
-        loader = new ProjectLoader(this);
+        MediaLoaderHandler loader_handler = get_media_loader_handler();
+        loader_handler.load_error += on_load_error;
+        loader = new ProjectLoader(loader_handler, fname);
+        loader.clip_ready += on_clip_ready;
+        loader.load_started += on_load_started;
         loader.load_complete += on_load_complete;
-        loader.load(fname);
+
+        pipeline.set_state(Gst.State.NULL);
+        play_state = PlayState.LOADING;
+    }
+    
+    protected virtual MediaLoaderHandler get_media_loader_handler() {
+        return new MediaLoaderHandler(this);
+    }
+    
+    public void on_load_error(string error_string) {
+        error_occurred(error_string);
+    }
+    
+    public int get_file_version() {
+        return 1;
     }
     
     public void save(string? filename) {
@@ -673,14 +961,27 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
         FileStream f = FileStream.open(project_file, "w");
         
-        f.printf("<lombard version=\"%f\">\n", get_version());
+        f.printf("<marina version=\"%d\">\n", get_file_version());
         foreach (Track track in tracks) {
             track.save(f);
         }
-        f.printf("</lombard>\n"); 
+        
+        foreach (OrphanTrack track in orphan_tracks) {
+            track.save(f);
+        }
+        f.printf("</marina>\n"); 
     }
 
-   protected void set_gst_state(Gst.State state) {
+    public void close() {
+        play_state = PlayState.CLOSING;
+        if (gst_state != Gst.State.NULL) {
+            set_gst_state(Gst.State.NULL);
+        } else {
+            closed();
+        }
+    }
+    
+    protected void set_gst_state(Gst.State state) {
         if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE)
             error("can't set state");
     }
@@ -692,7 +993,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         pipeline.seek_simple(Gst.Format.TIME, flags, pos);
     }
     
-    public void on_importer_clip_complete(Model.ClipFetcher fetcher) {
+    public void on_importer_clip_complete(ClipFetcher fetcher) {
         if (fetcher.error_string != null) {
             error_occurred(fetcher.error_string);         
         } else {
@@ -700,14 +1001,21 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }        
     }
 
+    public ClipFetcher create_import_clip_fetcher(FetcherCompletion fc, string filename) {
+        ClipFetcher f = new ClipFetcher(filename);
+        fetcher_completion = fc;
+        
+        return f;
+    }
+
     public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {
-        Model.ClipFetcher fetcher = new Model.ClipFetcher(filename);
+        ClipFetcher fetcher = new ClipFetcher(filename);
         this.fetcher_completion = fetcher_completion;
         fetcher.ready += on_fetcher_ready;
         pending.add(fetcher);
     }
 
-    void on_fetcher_ready(Model.ClipFetcher fetcher) {
+    void on_fetcher_ready(ClipFetcher fetcher) {
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
             error_occurred(fetcher.error_string);         
@@ -754,167 +1062,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     public abstract double get_version();
-}
 
-public class ProjectLoader {
-    Model.Project project;
-
-    string text;
-    size_t text_len;
-        
-    bool loaded_file_header;
-    Track track;
-    string error;
-
-    Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
-    
-    public signal void load_complete(string? error);
-    
-    public ProjectLoader(Model.Project project) {
-        this.project = project;
-    }
-    
-    void parse(MarkupParser parser) {
-        MarkupParseContext context =
-            new MarkupParseContext(parser, (MarkupParseFlags) 0, this, null);
-            
-        try {
-            context.parse(text, (long) text_len);
-        } catch (MarkupError e) {
-            error = e.message;
-        }
-    }
-    
-    void xml_start_element(GLib.MarkupParseContext c, string name, 
-                           string[] attr_names, string[] attr_values) throws MarkupError {
-        if (name == "track") {
-            if (attr_names.length != 1 || attr_names[0] != "name")
-                throw new MarkupError.INVALID_CONTENT("expected name attribute");
-            switch (attr_values[0]) {
-                case "video":
-                    track = project.find_video_track();
-                    break;
-                case "audio":
-                    track = project.find_audio_track();
-                    break;
-                default:
-                    throw new MarkupError.INVALID_CONTENT("unknown track");
-            }
-        } else if (name == "clip") {
-            string filename = null;
-            string clip_name = null;
-            int64 start = 0;
-            int64 media_start = 0;
-            int64 duration = 0;
-    
-            for (int i = 0; i < attr_names.length; i++) {
-                string val = attr_values[i];
-                switch (attr_names[i]) {
-                    case "filename":
-                        filename = val;
-                        break;
-                    case "name":
-                        clip_name = val;
-                        break;
-                    case "start":
-                        start = val.to_int64();
-                        break;
-                    case "media-start":
-                        media_start = val.to_int64();
-                        break;
-                    case "duration":
-                        duration = val.to_int64();
-                        break;
-                    default:
-                        throw new MarkupError.INVALID_CONTENT("Unknown attribute %s!".printf(val));
-                }
-            }
-
-            ClipFile clipfile = project.find_clipfile(filename);
-            if (clipfile == null)
-                GLib.error("clipfile not found");
-            
-            if (clip_name == null)
-                clip_name = isolate_filename(clipfile.filename);
-            Clip clip = new Clip(clipfile, 
-                                 track == project.find_video_track() ? 
-                                    MediaType.VIDEO : MediaType.AUDIO, 
-                                 clip_name, 0, media_start, duration);
-            
-            if (track == null)
-                throw new MarkupError.INVALID_CONTENT("clip outside track element");
-            track.append_at_time(clip, start);
-        }
-    }
-    
-    void fetcher_callback(ClipFetcher f) {
-        if (f.error_string != null && error == null)
-            error = "%s: %s".printf(f.clipfile.filename, f.error_string);
-        else project.add_clipfile(f.clipfile);
-        pending.remove(f);
-        
-        if (pending.size == 0) {
-            if (error == null) {
-                // Now that all ClipFetchers have completed, parse the XML again and
-                // create Clip objects.
-                MarkupParser parser = { xml_start_element, null, null, null };
-                parse(parser);
-            }
-            load_complete(error);
-        }
-    }
-    
-    void xml_start_clipfile(GLib.MarkupParseContext c, string name, 
-                            string[] attr_names, string[] attr_values) throws MarkupError {
-        
-        if (!loaded_file_header) {
-            if (name != "lombard")
-                throw new MarkupError.INVALID_CONTENT("Missing header!");
-                
-            if (attr_names.length < 1 ||
-                attr_names[0] != "version") {
-                throw new MarkupError.INVALID_CONTENT("Corrupted header!");
-            }
-         
-            if (project.get_version() < attr_values[0].to_double())
-                throw new MarkupError.INVALID_CONTENT(
-                    "Version mismatch! (File Version: %f, App Version: %f)",
-                    project.get_version(), attr_values[0].to_double());
-                    
-            loaded_file_header = true;
-        } else if (name == "clip")
-            for (int i = 0; i < attr_names.length; i++)
-                if (attr_names[i] == "filename") {
-                    string filename = attr_values[i];
-                    foreach (ClipFetcher fetcher in pending)
-                        if (fetcher.get_filename() == filename)
-                            return;     // we're already fetching this clipfile
-
-                    ClipFetcher fetcher = new ClipFetcher(filename);
-                    pending.add(fetcher);
-                    fetcher.ready += fetcher_callback;
-                    return;
-                }
-    }
-    
-    public void load(string filename) {
-        try {
-            FileUtils.get_contents(filename, out text, out text_len);
-        } catch (FileError e) {
-            load_complete(e.message);
-            return;
-        }
-
-        project.clear();
-        project.set_name(filename);
-        
-        // Parse the XML and start a ClipFetcher for each clip referenced.
-        MarkupParser parser = { xml_start_clipfile, null, null, null };
-        parse(parser);
-        
-        if (error != null || pending.size == 0)
-            load_complete(error);
-    }
 }
 }
 

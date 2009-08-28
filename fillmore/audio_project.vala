@@ -23,7 +23,6 @@ class RecordFetcherCompletion : FetcherCompletion {
         Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
             isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length);
         track.add_new_clip(the_clip, position, true);
-        project.pause();
     }
 }
 
@@ -67,8 +66,10 @@ class AudioProject : Project {
         record_region = null;
         record_track = null;
         audio_in = record_capsfilter = null;
+        wav_encoder = record_sink = null;
         
-        play_state = PlayState.STOPPED;
+        //don't call self.pause because that will check if we are recording      
+        base.pause();
     }
 
     override double get_version() {
@@ -83,8 +84,8 @@ class AudioProject : Project {
     
     public override void pause() {
         if (is_recording()) {
-            set_gst_state(Gst.State.NULL);
             play_state = PlayState.POST_RECORD;
+            set_gst_state(Gst.State.NULL);
         }
         else {
             base.pause();
@@ -147,8 +148,7 @@ class AudioProject : Project {
     }
     
     string generate_base(string name) {
-        string base_name = name;
-        base_name.down();
+        string base_name = name.down();
         base_name.canon("abcdefghijklmnopqrstuvwxyz1234567890", '_');
         return base_name;
     }

@@ -17,11 +17,14 @@ class Recorder : Gtk.Window {
     
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
-    
+
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
+        { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
         { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
         { "Save", Gtk.STOCK_SAVE, "_Save", null, "Save project", on_project_save },
+        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", null, "Save project with new name", 
+            on_project_save_as },
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
@@ -31,6 +34,7 @@ class Recorder : Gtk.Window {
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New", null, "Create new track", on_track_new },
         { "Rename", null, "_Rename...", null, "Rename track", on_track_rename },
+        { "DeleteTrack", null, "Re_move", null, "Delete track", on_track_remove },
         
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
@@ -50,7 +54,9 @@ class Recorder : Gtk.Window {
   <menubar name="MenuBar">
     <menu name="FileMenu" action="File">
       <menuitem name="FileNew" action="NewProject" />
+      <menuitem name="FileOpen" action="Open" />
       <menuitem name="FileSave" action="Save" />
+      <menuitem name="FileSaveAs" action="SaveAs" />
       <separator />
       <menuitem name="FileExport" action="Export"/>
       <menuitem name="FileQuit" action="Quit"/>
@@ -61,6 +67,7 @@ class Recorder : Gtk.Window {
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack"/>
       <menuitem name="TrackRename" action="Rename" />
+      <menuitem name="TrackDelete" action="DeleteTrack" />
     </menu>
     <menu name="HelpMenu" action="Help">
       <menuitem name="HelpAbout" action="About"/>
@@ -81,10 +88,20 @@ class Recorder : Gtk.Window {
   <accelerator name="Record" action="Record"/>
 </ui>
 """;
+
+    const DialogUtils.filter_description_struct[] filters = {
+        { "Fillmore Project Files", Model.Project.FILLMORE_FILE_EXTENSION },
+        { "Lombard Project Files", Model.Project.LOMBARD_FILE_EXTENSION }
+    };
     
-    public Recorder() {
+    const DialogUtils.filter_description_struct[] export_filters = {
+        { "Ogg Files", "ogg" }
+    };
+    
+    public Recorder(string? project_file) {
         project = new Model.AudioProject();
         project.callback_pulse += on_callback_pulse;
+        project.load_error += on_load_error;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -139,14 +156,35 @@ class Recorder : Gtk.Window {
         
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
-        destroy += on_quit;
-        project.load(null);
+        delete_event += on_delete_event;
+        project.load(project_file);
+        if (project_file == null) {
+            default_track_set();
+        }
+    }
+
+    void default_track_set() {
         project.add_track(new Model.AudioTrack(project, get_default_track_name()));
         select(project.tracks[0]);
     }
-    
+
     public string get_default_track_name() {
-        int i = project.tracks.size + 1;
+        List<string> default_track_names = new List<string>();
+        foreach(Model.Track track in project.tracks) {
+            if (track.display_name.has_prefix("track ")) {
+                default_track_names.append(track.display_name);
+            }
+        }
+        default_track_names.sort(strcmp);
+        
+        int i = 1;
+        foreach(string s in default_track_names) {
+            string track_name = "track %d".printf(i);
+            if (s != track_name) {
+                return track_name;
+            }
+            ++i;
+        }
         return "track %d".printf(i);
     }
    
@@ -155,20 +193,6 @@ class Recorder : Gtk.Window {
         if (widget == null)
             error("can't find widget");
         return widget;
-    }
-    
-    void on_state_changed(Model.PlayState state) {
-        record_action.set_sensitive(state != Model.PlayState.PLAYING);
-        
-        // While recording, we disable the play button but keep its action enabled
-        // so that its shortcut (Space) can be used to stop recording.
-        play_button.set_sensitive(state != Model.PlayState.RECORDING);
-        
-        if (state == Model.PlayState.STOPPED) {
-            play_button.set_active(false);
-            record_button.set_active(false);
-            cursor_pos = -1;
-        }
     }
     
     void on_selection_changed(TimeLine timeline, RegionView? new_selection) {
@@ -232,46 +256,55 @@ class Recorder : Gtk.Window {
     // File menu
     
     void on_export() {
-        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Export", this, 
-                                                                Gtk.FileChooserAction.SAVE,
-                                                                Gtk.STOCK_CANCEL, 
-                                                                Gtk.ResponseType.CANCEL,
-                                                                Gtk.STOCK_SAVE, 
-                                                                Gtk.ResponseType.ACCEPT, null);
-            
-        Gtk.FileFilter filter = new Gtk.FileFilter();
-        filter.set_name("Ogg Files");
-        filter.add_pattern("*.ogg");
-        
-        d.add_filter(filter);
-        
-        if (d.run() == Gtk.ResponseType.ACCEPT) {
-            string filename = append_extension(d.get_filename(), "ogg");
-
-            if (!FileUtils.test(filename, FileTest.EXISTS) || confirm_replace(this, filename)) {
-                MultiFileProgress export_dialog = new MultiFileProgress(this, 1, "Export", project);
-                project.start_export(filename);
-            }
+        string filename;
+        if (DialogUtils.save(this, "Export", export_filters, out filename)) {
+            MultiFileProgress export_dialog = new MultiFileProgress(this, 1, "Export", project);
+            project.start_export(filename);
         }
-        d.destroy();
     }
     
     void on_project_new() {
-        Gtk.FileChooserDialog dialog = new Gtk.FileChooserDialog(
-            "Project location", this, Gtk.FileChooserAction.CREATE_FOLDER,
-            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            "_Save", Gtk.ResponseType.ACCEPT);
-//        if (dialog.run() == Gtk.ResponseType.ACCEPT) {
-//            project.set_project_path(dialog.get_filename());
-//        }
-        dialog.destroy();
+    }
+    
+    void on_project_open() {
+        GLib.SList<string> filenames;
+        if (DialogUtils.open(this, filters, false, false, out filenames)) {
+            project.load(filenames.data);
+        }
+    }
+    
+    void on_project_save_as() {
+        save_dialog();
     }
     
     void on_project_save() {
+        if (project.project_file != null) {
+            project.save(null);
+        }
+        else {
+            save_dialog();
+        }
+    }
+    
+    
+    void save_dialog() {
+        string filename;
+        if (DialogUtils.save(this, "Save Project", filters, out filename)) {
+            project.save(filename);
+        }
     }
     
     void on_quit() {
-        //project.close();
+        project.closed += on_project_close;
+        project.close();
+    }
+    
+    bool on_delete_event() {
+        on_quit();
+        return true;
+    }
+
+    void on_project_close() {
         Gtk.main_quit();
     }
     
@@ -310,6 +343,10 @@ class Recorder : Gtk.Window {
         dialog.destroy();
     }
 
+    void on_track_remove() {
+        project.remove_track(selected_track());
+    }
+    
     // Help menu
     
     void on_about() {
@@ -337,20 +374,22 @@ class Recorder : Gtk.Window {
     }
 
     void on_play() {
-        /*if (project.recording())
-            project.stop();     // will reset both buttons
-        else */
-        if (play_button.get_active())
-            project.play();
+        if (project.is_recording()) {
+            record_button.set_active(false);
+            play_button.set_active(false);
+            project.pause();
+        } else if (play_button.get_active())
+            project.do_play(Model.PlayState.PLAYING);
         else
             project.pause();
     }
     
     void on_record() {
-        if (record_button.get_active())
+        if (record_button.get_active()) {
             project.record(selected_track());
-        else
+        } else {
             project.pause();
+        }
     }
         
     void on_callback_pulse() {
@@ -365,11 +404,24 @@ class Recorder : Gtk.Window {
         GLib.Environment.set_application_name("fillmore");
         
         Gst.init(ref args);
+
+        string? project_file = null;        
+        if (args.length > 1) {
+            project_file = args[1];
+        }
         
-        Recorder recorder = new Recorder();
+        Recorder recorder = new Recorder(project_file);
         recorder.show_all();
     
         Gtk.main();
+    }
+
+    public void do_error_dialog(string message) {
+        DialogUtils.error("Error", message);
+    }
+    
+    public void on_load_error(string message) {
+        do_error_dialog(message);
     }
 
 }

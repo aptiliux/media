@@ -5,6 +5,66 @@
  */
 
 namespace Model {
+
+class VideoLoaderHandler : MediaLoaderHandler {
+    Track video_track;
+    
+    public VideoLoaderHandler(Project the_project, Track video_track) {
+        base(the_project);
+        this.video_track = video_track;
+    }
+    
+    public override bool commit_track(string[]? attr_names, string[]? attr_values) {
+        assert(current_track == null);
+        
+        int number_of_attributes = attr_names.length;
+        string? name = null;
+        string? type = null;
+        for (int i = 0; i < number_of_attributes; ++i) {
+            switch(attr_names[i]) {
+                case "type":
+                    type = attr_values[i];
+                    break;
+                case "name":
+                    name = attr_values[i];
+                    break;
+                default:
+                    // TODO: we need a way to deal with orphaned attributes, 
+                    // for now, reject the file
+                    load_error("Unknown attribute %s".printf(attr_names[i]));
+                    return false;
+            }
+        }
+        
+        if (name == null) {
+            load_error("Missing track name");
+            return false;
+        }
+        
+        if (type == null) {
+            load_error("Missing track type");
+        }
+        
+        if (type == "video") {
+            current_track = video_track;
+            return true;
+        }
+        
+        return base.commit_track(attr_names, attr_values);;
+    }
+
+    protected override bool can_handle_track(string[] attrs, string[] values) {
+        for (int i = 0; i < attrs.length; ++i) {
+            if (attrs[i] == "type") {
+                if (values[i] == "video") {
+                    return true;
+                }
+            }
+        }
+        return base.can_handle_track(attrs, values);
+    }
+}
+
 class VideoProject : Project {
     Gst.Element video_export_sink;
     Gst.Element sink;
@@ -25,7 +85,11 @@ class VideoProject : Project {
     public override double get_version() {
         return 0.01;
     }
-
+    
+    protected override MediaLoaderHandler get_media_loader_handler() {
+        return new VideoLoaderHandler(this, find_video_track());
+    }
+    
     public override TimeCode get_clip_time(ClipFile f) {
         TimeCode t = {};
         
@@ -164,6 +228,15 @@ class VideoProject : Project {
         return r.numerator / r.denominator;
     }
     
+    public VideoTrack? find_video_track() {
+        foreach (Track track in tracks) {
+            if (track.media_type() == MediaType.VIDEO) {
+                return track as VideoTrack;
+            }
+        }
+        return null;
+    }
+
     public override Gst.Element? get_track_element(Track track) {
         if (track is Model.VideoTrack) {
             return converter;
