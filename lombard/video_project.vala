@@ -70,6 +70,8 @@ class VideoProject : Project {
     Gst.Element sink;
     Gst.Element converter;
     Gtk.Widget output_widget;
+    
+    Gee.ArrayList<Model.ThumbnailFetcher> pending = new Gee.ArrayList<Model.ThumbnailFetcher>();
 
     public VideoProject(string? filename) {
         base(filename);      
@@ -90,6 +92,20 @@ class VideoProject : Project {
         return new VideoLoaderHandler(this, find_video_track());
     }
     
+    public override void add_clipfile(Model.ClipFile f) {
+        if (f.is_of_type(MediaType.VIDEO)) {
+            Model.ThumbnailFetcher fetcher = new Model.ThumbnailFetcher(f, 0);
+            fetcher.ready += on_thumbnail_ready;
+            pending.add(fetcher);
+        } else
+            base.add_clipfile(f);
+    }
+
+    void on_thumbnail_ready(Model.ThumbnailFetcher f) {
+        base.add_clipfile(f.clipfile);
+        pending.remove(f);
+    }
+
     public override TimeCode get_clip_time(ClipFile f) {
         TimeCode t = {};
         

@@ -13,7 +13,13 @@ public class ClipLibraryView : Gtk.EventBox {
     int num_clipfiles;
     Gee.ArrayList<string> files_dragging = new Gee.ArrayList<string>();
 
+    Gtk.IconTheme icon_theme;
+
+    Gdk.Pixbuf default_audio_icon;
+    Gdk.Pixbuf default_video_icon;
+
     enum ColumnType {
+        THUMBNAIL,
         NAME,
         DURATION,
         FILENAME
@@ -24,11 +30,15 @@ public class ClipLibraryView : Gtk.EventBox {
     public ClipLibraryView(Model.Project p) {
         project = p;
         
-        list_store = new Gtk.ListStore(3, typeof (string), typeof (string), typeof (string), -1);
+        icon_theme = Gtk.IconTheme.get_default();
+        
+        list_store = new Gtk.ListStore(4, typeof (Gdk.Pixbuf), typeof (string), 
+                                       typeof (string), typeof (string), -1);
         tree_view = new Gtk.TreeView.with_model(list_store);
         
-        add_column();
-        add_column();
+        add_column(ColumnType.THUMBNAIL);
+        add_column(ColumnType.NAME);
+        add_column(ColumnType.DURATION);
         
         num_clipfiles = 0;
         label = new Gtk.Label("Drag clips here.");
@@ -41,7 +51,7 @@ public class ClipLibraryView : Gtk.EventBox {
         project.clipfile_added += on_clipfile_added;
         
         Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries,
-                                    Gdk.DragAction.COPY);                    
+                            Gdk.DragAction.COPY);                    
         tree_view.drag_begin += on_drag_begin;
         tree_view.drag_data_get += on_drag_data_get;
         tree_view.cursor_changed += on_cursor_changed;
@@ -50,6 +60,9 @@ public class ClipLibraryView : Gtk.EventBox {
         selection.set_mode(Gtk.SelectionMode.MULTIPLE);
 
         add(label);
+
+        default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
+        default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
     }
     
     void on_cursor_changed() {
@@ -71,15 +84,14 @@ public class ClipLibraryView : Gtk.EventBox {
                 uri = GLib.Filename.to_uri(s);
             } catch (GLib.ConvertError e) {
                 uri = s;        
-                print_debug("Cannot get URI for %s! (%s)\n".printf(s, e.message));
+                warning("Cannot get URI for %s! (%s)\n".printf(s, e.message));
             }
             uri_array += uri;
         }
         data.set_uris(uri_array);                     
     }
     
-    bool get_selected_rows(out Gtk.TreeModel model, 
-                                                    out GLib.List<Gtk.TreePath> paths) {
+    bool get_selected_rows(out Gtk.TreeModel model, out GLib.List<Gtk.TreePath> paths) {
         paths = selection.get_selected_rows(out model);
         return paths.length() != 0;
     }
@@ -100,16 +112,38 @@ public class ClipLibraryView : Gtk.EventBox {
         }
     }
     
-    void add_column() {
+    void add_column(ColumnType c) {
         Gtk.TreeViewColumn column = new Gtk.TreeViewColumn();
+        Gtk.CellRenderer renderer;
         
-        Gtk.CellRendererText renderer = new Gtk.CellRendererText();
-        Gdk.Color c = parse_color("#FFF");
-        renderer.set("foreground-gdk", &c);        
+        if (c == ColumnType.THUMBNAIL) {
+            renderer = new Gtk.CellRendererPixbuf();
+        } else {
+            renderer = new Gtk.CellRendererText();
+            Gdk.Color color = parse_color("#FFF");
+            renderer.set("foreground-gdk", &color);
+        }      
         
         column.pack_start(renderer, true);
         column.set_resizable(true);
-        column.add_attribute(renderer, "text", tree_view.append_column(column) - 1);
+        
+        if (c == ColumnType.THUMBNAIL)
+            column.add_attribute(renderer, "pixbuf", tree_view.append_column(column) - 1);
+        else
+            column.add_attribute(renderer, "text", tree_view.append_column(column) - 1);
+    }
+
+    void update_iter(Gtk.TreeIter it, Model.ClipFile f) {
+        TimeCode t  = project.get_clip_time(f);
+        
+        Gdk.Pixbuf icon = f.thumbnail == null ? (f.is_of_type(Model.MediaType.VIDEO) ? 
+                                                default_video_icon : default_audio_icon) 
+                                              : f.thumbnail;
+                                         
+        list_store.set(it, ColumnType.THUMBNAIL, icon,
+                            ColumnType.NAME, isolate_filename(f.filename), 
+                            ColumnType.DURATION, t.to_string(), 
+                            ColumnType.FILENAME, f.filename, -1);          
     }
     
     void on_clipfile_added(Model.ClipFile f) {
@@ -124,12 +158,27 @@ public class ClipLibraryView : Gtk.EventBox {
         
         list_store.append(out it);
         
-        TimeCode t = {};
-        t = project.get_clip_time(f);
+        update_iter(it, f);
+        f.updated += on_clipfile_updated;
+    }
+    
+    void on_clipfile_updated(Model.ClipFile f) {
+        Gtk.TreeModel model = tree_view.get_model();
+        Gtk.TreeIter iter;
         
-        list_store.set(it, ColumnType.NAME, isolate_filename(f.filename), 
-                            ColumnType.DURATION, t.to_string(), 
-                            ColumnType.FILENAME, f.filename, -1);        
+        bool b = model.get_iter_first(out iter);
+
+        while (b) {
+            string filename;
+            list_store.get(iter, ColumnType.FILENAME, out filename);
+        
+            if (f.filename == filename) {
+                update_iter(iter, f);
+                break;
+            }
+        
+            b = model.iter_next(ref iter);
+        }
     }
     
     void delete_row(Gtk.TreeModel model, Gtk.TreePath path) {
@@ -137,7 +186,7 @@ public class ClipLibraryView : Gtk.EventBox {
         list_store.get_iter(out it, path);
         
         string filename;
-        model.get(it, 2, out filename, -1);
+        model.get(it, ColumnType.FILENAME, out filename, -1);
         
         if (project.remove_clipfile(filename)) { 
             list_store.remove(it);

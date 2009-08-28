@@ -35,10 +35,17 @@ public class ClipFile {
     
     public Gst.Caps video_caps;    // or null if no video
     public Gst.Caps audio_caps;    // or null if no audio
+    public Gdk.Pixbuf thumbnail = null;
+
+    public signal void updated();
 
     public ClipFile(string filename, int64 length = 0) {
         this.filename = filename;
         this.length = length;
+    }
+
+    public void set_thumbnail(Gdk.Pixbuf b) {
+        thumbnail = b.scale_simple(60, 40, Gdk.InterpType.BILINEAR);
     }
     
     public bool has_caps_structure(MediaType m) {
@@ -127,17 +134,42 @@ public class ClipFile {
     }
 }
 
-public class ClipFetcher {
+public abstract class Fetcher {
+    protected Gst.Element filesrc;
+    protected Gst.Element decodebin;
+    protected Gst.Pipeline pipeline;
+    
     public ClipFile clipfile;
     
-    Gst.Element filesrc;
-    Gst.Bin decodebin;
-    Gst.Pipeline pipeline;
+    public signal void ready();
+    
+    protected abstract void on_pad_added(Gst.Pad pad);
+    protected abstract void on_state_change(Gst.Bus bus, Gst.Message message);
 
     public string error_string;
 
-    public signal void ready();
+    protected void do_error(string error) {
+        error_string = error;
+        pipeline.set_state(Gst.State.NULL);
+        ready();
+    }
+
+    protected void on_warning(Gst.Bus bus, Gst.Message message) {
+        Error error;
+        string text;
+        message.parse_warning(out error, out text);
+        warning("%s", text);
+    }
     
+    protected void on_error(Gst.Bus bus, Gst.Message message) {
+        Error error;
+        string text;
+        message.parse_error(out error, out text);
+        do_error(text);
+    }
+}
+
+public class ClipFetcher : Fetcher {  
     public ClipFetcher(string filename) {
         clipfile = new ClipFile(filename);
         
@@ -168,35 +200,28 @@ public class ClipFetcher {
     
     public string get_filename() { return clipfile.filename; }
     
-    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {  
-        Gst.Element fakesink = make_element("fakesink");
-        pipeline.add(fakesink);
+    protected override void on_pad_added(Gst.Pad pad) {  
+        Gst.Pad fake_pad;
+        Gst.Element fake_sink;
         
-        Gst.Pad fake_pad = fakesink.get_static_pad("sink");
-        pad.link(fake_pad);
-        if (!fakesink.sync_state_with_parent()) {
-            error("could not sync state with parent");
-        }
-    }
+        if (pad.caps.to_string().has_prefix("video")) {
+            fake_sink = make_element("fakesink");
+            pipeline.add(fake_sink);
+            fake_pad = fake_sink.get_static_pad("sink");
 
-    void do_error(string error) {
-        error_string = error;
-        pipeline.set_state(Gst.State.NULL);
-        ready();
-    }
-    
-    void on_warning(Gst.Bus bus, Gst.Message message) {
-        Error error;
-        string text;
-        message.parse_warning(out error, out text);
-        warning("%s", text);
-    }
-    
-    void on_error(Gst.Bus bus, Gst.Message message) {
-        Error error;
-        string text;
-        message.parse_error(out error, out text);
-        do_error(text);
+            if (!fake_sink.sync_state_with_parent()) {
+                error("could not sync state with parent");
+            }
+        } else {
+            fake_sink = make_element("fakesink");
+            pipeline.add(fake_sink);
+            fake_pad = fake_sink.get_static_pad("sink");
+
+            if (!fake_sink.sync_state_with_parent()) {
+                error("could not sync state with parent");
+            }
+        }
+        pad.link(fake_pad);
     }
     
     Gst.Pad? get_pad(string prefix) {
@@ -208,16 +233,8 @@ public class ClipFetcher {
         }
         return null;
     }
-     
-    public Gst.Pad? get_video_pad() {
-        return get_pad("video");
-    }
     
-    public Gst.Pad? get_audio_pad() {
-        return get_pad("audio");
-    } 
-    
-    void on_state_change(Gst.Bus bus, Gst.Message message) {
+    protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         if (message.src != pipeline)
             return;
             
@@ -228,14 +245,14 @@ public class ClipFetcher {
         message.parse_state_changed(out old_state, out new_state, out pending);
         if (new_state == old_state) 
             return;
-        
+            
         if (new_state == Gst.State.PLAYING) {
-            Gst.Pad? pad = get_video_pad();
+            Gst.Pad? pad = get_pad("video");
             if (pad != null) {
                 clipfile.video_caps = pad.caps;
             }
             
-            pad = get_audio_pad();
+            pad = get_pad("audio");
             if (pad != null) {
                 clipfile.audio_caps = pad.caps;            
             }
@@ -247,6 +264,90 @@ public class ClipFetcher {
                 return;
             }
             pipeline.set_state(Gst.State.NULL);                                  
+        } else if (new_state == Gst.State.NULL) {
+            ready();
+        }
+    }
+}
+
+public class ThumbnailFetcher : Fetcher {
+    ThumbnailSink thumbnail_sink;
+    Gst.Element colorspace;
+    int64 seek_position;
+    bool done_seek;
+    bool have_thumbnail;
+    
+    public ThumbnailFetcher(ClipFile f, int64 time) {
+        clipfile = f;
+        seek_position = time;
+        
+        filesrc = make_element("filesrc");
+        filesrc.set("location", f.filename);
+        
+        decodebin = (Gst.Bin) make_element("decodebin");
+        pipeline = new Gst.Pipeline("pipeline");
+        pipeline.set_auto_flush_bus(false);
+
+        thumbnail_sink = new ThumbnailSink();
+        thumbnail_sink.have_thumbnail += on_have_thumbnail;
+        
+        colorspace = make_element("ffmpegcolorspace");
+    
+        pipeline.add_many(filesrc, decodebin, thumbnail_sink, colorspace);
+        
+        filesrc.link(decodebin);
+        decodebin.pad_added += on_pad_added;
+        
+        colorspace.link(thumbnail_sink);
+        
+        Gst.Bus bus = pipeline.get_bus();
+        
+        bus.add_signal_watch();
+        bus.message["state-changed"] += on_state_change;
+        bus.message["error"] += on_error;
+        bus.message["warning"] += on_warning;
+
+        have_thumbnail = false;
+        done_seek = false;
+        pipeline.set_state(Gst.State.PAUSED);
+    }
+    
+    void on_have_thumbnail(Gdk.Pixbuf buf) {
+        if (done_seek) {
+            have_thumbnail = true;
+            clipfile.set_thumbnail(buf);
+        }     
+    }
+    
+    protected override void on_pad_added(Gst.Pad pad) {
+        Gst.Caps c = pad.get_caps();
+        
+        if (c.to_string().has_prefix("video")) {
+            pad.link(colorspace.get_static_pad("sink"));
+        }
+    }
+    
+    protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
+        if (message.src != pipeline)
+            return;
+            
+        Gst.State new_state;
+        Gst.State old_state;
+        Gst.State pending_state;
+        
+        message.parse_state_changed (out old_state, out new_state, out pending_state);
+        if (new_state == old_state &&
+            new_state != Gst.State.PAUSED)
+            return;
+            
+        if (new_state == Gst.State.PAUSED) {
+            if (!done_seek) {
+                done_seek = true;
+                pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, seek_position);
+            } else {
+                if (have_thumbnail)
+                    pipeline.set_state(Gst.State.NULL);
+            }
         } else if (new_state == Gst.State.NULL) {
             ready();
         }

@@ -159,7 +159,7 @@ public bool md5_checksum_on_file(string filename, out string checksum) {
 
 // GTK utility functions
 
-public static const Gtk.TargetEntry[] drag_target_entries = {
+public const Gtk.TargetEntry[] drag_target_entries = {
     { "text/uri-list", 0, 0 } 
 };
 

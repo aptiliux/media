@@ -13,7 +13,8 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					track.vala \
 					util.vala \
 					MultiFileProgress.vala \
-					ClipLibraryView.vala
+					ClipLibraryView.vala \
+					thumbnailsink.vala
 
 # TODO: lombard/video_track.vala is temporarily included in Marina.  This should go away soon.
 MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
@@ -21,7 +22,7 @@ MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
 				
 MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
 
-GLOBAL_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0
+GLOBAL_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0 --pkg gstreamer-base-0.10
 
 marina/marina.vapi marina/marina.h $(MARINA_C_FILES): $(MARINA_FILES) Makefile
 	valac $(VFLAGS) -C --library marina/marina -H marina/marina.h $(GLOBAL_LIBS) $(MARINA_FILES)
