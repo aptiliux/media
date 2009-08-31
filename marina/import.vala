@@ -24,6 +24,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     Gst.Element video_convert;
     Gst.Element audio_convert;
     Gst.Element mux;
+    
     int current_file_importing = 0;
     
     int64 current_time;

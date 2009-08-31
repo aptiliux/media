@@ -17,6 +17,13 @@ public int sign(int x) {
     return x < 0 ? -1 : 1;
 }
 
+int stricmp(string str1, string str2) {
+    string temp_str1 = str1.casefold(-1);
+    string temp_str2 = str2.casefold(-1);
+    
+    return temp_str1.collate(temp_str2);
+}
+
 // Debug utilities
 
 public bool debug_enabled;

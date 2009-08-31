@@ -34,6 +34,7 @@ public class ClipLibraryView : Gtk.EventBox {
         
         list_store = new Gtk.ListStore(4, typeof (Gdk.Pixbuf), typeof (string), 
                                        typeof (string), typeof (string), -1);
+                                       
         tree_view = new Gtk.TreeView.with_model(list_store);
         
         add_column(ColumnType.THUMBNAIL);
@@ -49,6 +50,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
         tree_view.set_headers_visible(false);
         project.clipfile_added += on_clipfile_added;
+        project.cleared += remove_all_rows;
         
         Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries,
                             Gdk.DragAction.COPY);                    
@@ -58,11 +60,102 @@ public class ClipLibraryView : Gtk.EventBox {
         
         selection = tree_view.get_selection();
         selection.set_mode(Gtk.SelectionMode.MULTIPLE);
-
+        
         add(label);
+
+        // We have to have our own button press and release handlers
+        // since the normal drag-selection handling does not allow you
+        // to click outside any cell in the library to clear your selection,
+        // and also does not allow dragging multiple clips from the library
+        // to the timeline
+        tree_view.button_press_event += on_button_pressed;
+        tree_view.button_release_event += on_button_released;
 
         default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
         default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
+    }
+    
+    Gtk.TreePath? find_first_selected() {
+        Gtk.TreeIter it;
+        Gtk.TreeModel model = tree_view.get_model();
+        bool b;
+        
+        b = model.get_iter_first(out it);
+    
+        while (b) {
+            Gtk.TreePath path = model.get_path(it);
+            if (selection.path_is_selected(path))
+                return path;
+                
+            b = model.iter_next(ref it);
+        }
+        return null;
+    }
+    
+    bool on_button_pressed(Gdk.EventButton b) {
+        Gtk.TreePath path;
+        int cell_x;
+        int cell_y;
+        
+        tree_view.get_path_at_pos((int) b.x, (int) b.y, out path, null, out cell_x, out cell_y);
+        
+        if (path == null) {
+            unselect_all();
+            return true;
+        }
+        
+        bool shift_pressed = (b.state & Gdk.ModifierType.SHIFT_MASK) != 0;
+        bool control_pressed = (b.state & Gdk.ModifierType.CONTROL_MASK) != 0;
+        
+        if (!control_pressed &&
+            !shift_pressed) {
+            if (!selection.path_is_selected(path))
+                unselect_all();
+        } else {
+            if (shift_pressed) {
+                Gtk.TreePath first = find_first_selected();
+                
+                if (first != null)
+                    selection.select_range(first, path);
+            }
+        }
+        selection.select_path(path);
+        
+        return true;
+    }
+    
+    bool on_button_released(Gdk.EventButton b) {
+        Gtk.TreePath path;
+        Gtk.TreeViewColumn column;
+        
+        int cell_x;
+        int cell_y;
+        
+        tree_view.get_path_at_pos((int) b.x, (int) b.y, out path, out column, out cell_x, out cell_y);
+        
+       // The check for cell_x == 0 and cell_y == 0 is here since for whatever reason, this 
+       // function is called when we drop some clips onto the timeline.  We only need to mess with 
+       // the selection if we've actually clicked in the tree view, but I cannot find a way to 
+       // guarantee this, since the coordinates that the Gdk.EventButton structure and the 
+       // (cell_x, cell_y) pair give are always 0, 0 when this happens. 
+       // I can assume that clicking on 0, 0 exactly is next to impossible, so I feel this
+       // strange check is okay.
+       
+        if (path == null ||
+            (cell_x == 0 && cell_y == 0))
+            return true;
+
+        bool shift_pressed = (b.state & Gdk.ModifierType.SHIFT_MASK) != 0;
+        bool control_pressed = (b.state & Gdk.ModifierType.CONTROL_MASK) != 0;
+
+        if (!control_pressed &&
+            !shift_pressed) {
+            if (selection.path_is_selected(path))
+                unselect_all();
+        }
+        selection.select_path(path);
+        
+        return true;
     }
     
     void on_cursor_changed() {
@@ -91,15 +184,15 @@ public class ClipLibraryView : Gtk.EventBox {
         data.set_uris(uri_array);                     
     }
     
-    bool get_selected_rows(out Gtk.TreeModel model, out GLib.List<Gtk.TreePath> paths) {
+    int get_selected_rows(out Gtk.TreeModel model, out GLib.List<Gtk.TreePath> paths) {
         paths = selection.get_selected_rows(out model);
-        return paths.length() != 0;
+        return (int) paths.length();
     }
     
     void on_drag_begin(Gdk.DragContext c) {
         Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
-        if (get_selected_rows(out model, out paths)) {        
+        if (get_selected_rows(out model, out paths) > 0) {        
             files_dragging.clear();
             foreach (Gtk.TreePath t in paths) {
                 Gtk.TreeIter iter;
@@ -146,39 +239,85 @@ public class ClipLibraryView : Gtk.EventBox {
                             ColumnType.FILENAME, f.filename, -1);          
     }
     
-    void on_clipfile_added(Model.ClipFile f) {
+    void on_clipfile_added(Model.ClipFile f, int position) {
         Gtk.TreeIter it;
         
-        if (num_clipfiles == 0) {
-            remove(label);
-            add(tree_view);
-            tree_view.show();
+        if (find_clipfile(f, out it) >= 0) {
+            list_store.remove(it);
+        } else {
+            if (num_clipfiles == 0) {
+                remove(label);
+                add(tree_view);
+                tree_view.show();
+            }
+            num_clipfiles++;
+            f.updated += on_clipfile_updated;
         }
-        num_clipfiles++;
         
-        list_store.append(out it);
-        
+        if (position == -1)
+            list_store.append(out it);
+        else
+            list_store.insert(out it, position);
+
         update_iter(it, f);
-        f.updated += on_clipfile_updated;
+    }
+
+    int find_clipfile(Model.ClipFile f, out Gtk.TreeIter iter) {
+        Gtk.TreeModel model = tree_view.get_model();
+        
+        bool b = model.get_iter_first(out iter);
+        
+        int i = 0;
+        while (b) {
+            string filename;
+            model.get(iter, ColumnType.FILENAME, out filename);
+            
+            if (filename == f.filename)
+                return i;
+            
+            i++;
+            b = model.iter_next(ref iter);
+        }
+        return -1;
     }
     
-    void on_clipfile_updated(Model.ClipFile f) {
+    public void on_clipfile_updated(Model.ClipFile f) {
+        Gtk.TreeModel model = tree_view.get_model();
+        Gtk.TreeIter iter;
+        
+        if (find_clipfile(f, out iter) >= 0)
+            update_iter(iter, f);
+    }
+    
+    bool remove_row(out Gtk.TreeIter it) {
+        bool b = list_store.remove(it);
+        num_clipfiles--;
+        if (num_clipfiles == 0) {
+            remove(tree_view);
+            add(label);
+            label.show();
+        }
+        return b;
+    }
+    
+    void remove_all_rows() {
         Gtk.TreeModel model = tree_view.get_model();
         Gtk.TreeIter iter;
         
         bool b = model.get_iter_first(out iter);
-
+        
         while (b) {
-            string filename;
-            list_store.get(iter, ColumnType.FILENAME, out filename);
-        
-            if (f.filename == filename) {
-                update_iter(iter, f);
-                break;
-            }
-        
-            b = model.iter_next(ref iter);
+            b = remove_row(out iter);
         }
+    }
+    
+    void on_clipfile_deleted(Model.ClipFile f) {
+        Gtk.TreeModel model = tree_view.get_model();
+        Gtk.TreeIter iter;
+
+        if (find_clipfile(f, out iter) >= 0)
+            remove_row(out iter);
+        queue_draw();
     }
     
     void delete_row(Gtk.TreeModel model, Gtk.TreePath path) {
@@ -189,13 +328,7 @@ public class ClipLibraryView : Gtk.EventBox {
         model.get(it, ColumnType.FILENAME, out filename, -1);
         
         if (project.remove_clipfile(filename)) { 
-            list_store.remove(it);
-            num_clipfiles--;
-            if (num_clipfiles == 0) {
-                remove(tree_view);
-                add(label);
-                label.show();
-            }
+            remove_row(out it);
         } else {
             DialogUtils.error("Error", 
                             "Cannot remove clip file that exists on a track!");
@@ -205,14 +338,14 @@ public class ClipLibraryView : Gtk.EventBox {
     public bool has_selection() {
         Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
-        return get_selected_rows(out model, out paths);
+        return get_selected_rows(out model, out paths) != 0;
     }
     
     public void delete_selection() {
         Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
         
-        if (get_selected_rows(out model, out paths)) { 
+        if (get_selected_rows(out model, out paths) > 0) { 
             foreach (Gtk.TreePath p in paths)
                 delete_row(model, paths.nth_data(0));
         }

@@ -140,13 +140,12 @@ public abstract class Fetcher {
     protected Gst.Pipeline pipeline;
     
     public ClipFile clipfile;
-    
-    public signal void ready();
+    public string error_string;
     
     protected abstract void on_pad_added(Gst.Pad pad);
     protected abstract void on_state_change(Gst.Bus bus, Gst.Message message);
 
-    public string error_string;
+    public signal void ready();
 
     protected void do_error(string error) {
         error_string = error;

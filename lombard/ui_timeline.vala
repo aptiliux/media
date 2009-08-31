@@ -133,6 +133,7 @@ class TimeLine : Gtk.EventBox {
         modify_fg(Gtk.StateType.NORMAL, parse_color("#f00"));
         
         pixel_div = pixel_max / pixel_min;
+        pixel_percentage = 0.0f;
         calculate_pixel_step (0.5f);
     }
 
@@ -204,6 +205,8 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void zoom_to_project(double width) {
+        if (project.get_length() == 0)
+            return;
         double numerator = GLib.Math.log(
                     (width * Gst.SECOND) / ((double) project.get_length() * (double) pixel_min));
         double denominator = GLib.Math.log((double) pixel_div);

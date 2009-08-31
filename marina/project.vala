@@ -290,7 +290,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public signal void track_removed(Track track);
     public signal void error_occurred(string error_message);
     
-    public signal void clipfile_added(ClipFile c);
+    public signal void clipfile_added(ClipFile c, int position);
+    public signal void cleared();
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
@@ -556,11 +557,22 @@ public abstract class Project : MultiFileProgressInterface, Object {
         set_name(filename);
     }
 
-    public virtual void add_clipfile(ClipFile clipfile) {
-        clipfiles.add(clipfile);
-        clipfile_added(clipfile);
+    int add_clipfile_abc_order(ClipFile clipfile) {
+        int i = 0;
+        foreach (ClipFile f in clipfiles) {
+            if (stricmp(isolate_filename(clipfile.filename), isolate_filename(f.filename)) <= 0) {
+                break;
+            }
+            i++;
+        }
+        clipfiles.insert(i, clipfile);        
+        return i;
     }
 
+    public virtual void add_clipfile(ClipFile clipfile) {
+        clipfile_added(clipfile, add_clipfile_abc_order(clipfile));
+    }
+    
     public bool remove_clipfile(string filename) {
         ClipFile cf = find_clipfile(filename);
         if (cf != null) {
@@ -715,6 +727,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         
         clipfiles.clear();
         set_name(null);
+        cleared();
     }
     
     public bool can_export() {
