@@ -78,10 +78,8 @@ public class ClipLibraryView : Gtk.EventBox {
     Gtk.TreePath? find_first_selected() {
         Gtk.TreeIter it;
         Gtk.TreeModel model = tree_view.get_model();
-        bool b;
         
-        b = model.get_iter_first(out it);
-    
+        bool b = model.get_iter_first(out it);
         while (b) {
             Gtk.TreePath path = model.get_path(it);
             if (selection.path_is_selected(path))
@@ -181,7 +179,9 @@ public class ClipLibraryView : Gtk.EventBox {
             }
             uri_array += uri;
         }
-        data.set_uris(uri_array);                     
+        data.set_uris(uri_array);    
+        
+        Gtk.drag_set_icon_default(context);                 
     }
     
     int get_selected_rows(out Gtk.TreeModel model, out GLib.List<Gtk.TreePath> paths) {
@@ -192,7 +192,8 @@ public class ClipLibraryView : Gtk.EventBox {
     void on_drag_begin(Gdk.DragContext c) {
         Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
-        if (get_selected_rows(out model, out paths) > 0) {        
+        if (get_selected_rows(out model, out paths) > 0) {      
+            bool set_pixbuf = false;  
             files_dragging.clear();
             foreach (Gtk.TreePath t in paths) {
                 Gtk.TreeIter iter;
@@ -201,6 +202,14 @@ public class ClipLibraryView : Gtk.EventBox {
                 string filename;
                 model.get(iter, ColumnType.FILENAME, out filename, -1);
                 files_dragging.add(filename);
+                
+                if (!set_pixbuf) {
+                    Gdk.Pixbuf pixbuf;
+                    model.get(iter, ColumnType.THUMBNAIL, out pixbuf, -1);
+                    
+                    Gtk.drag_set_icon_pixbuf(c, pixbuf, 0, 0);
+                    set_pixbuf = true;
+                }
             }
         }
     }
@@ -282,7 +291,6 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     public void on_clipfile_updated(Model.ClipFile f) {
-        Gtk.TreeModel model = tree_view.get_model();
         Gtk.TreeIter iter;
         
         if (find_clipfile(f, out iter) >= 0)
@@ -309,15 +317,6 @@ public class ClipLibraryView : Gtk.EventBox {
         while (b) {
             b = remove_row(out iter);
         }
-    }
-    
-    void on_clipfile_deleted(Model.ClipFile f) {
-        Gtk.TreeModel model = tree_view.get_model();
-        Gtk.TreeIter iter;
-
-        if (find_clipfile(f, out iter) >= 0)
-            remove_row(out iter);
-        queue_draw();
     }
     
     void delete_row(Gtk.TreeModel model, Gtk.TreePath path) {

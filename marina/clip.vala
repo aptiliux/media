@@ -45,7 +45,11 @@ public class ClipFile {
     }
 
     public void set_thumbnail(Gdk.Pixbuf b) {
-        thumbnail = b.scale_simple(60, 40, Gdk.InterpType.BILINEAR);
+        // TODO: Investigate this
+        // 56x56 - 62x62 icon size does not work for some reason when
+        // we display the thumbnail while dragging the clip.
+        
+        thumbnail = b.scale_simple(64, 44, Gdk.InterpType.BILINEAR);
     }
     
     public bool has_caps_structure(MediaType m) {
