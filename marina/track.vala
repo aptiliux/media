@@ -4,7 +4,6 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-
 namespace Model {
 
 public abstract class Track {
@@ -15,6 +14,9 @@ public abstract class Track {
     
     protected Gst.Bin composition;
     
+    protected Gst.Element default_source;
+    protected Gst.Element sink;    
+    
     public signal void pad_added(Track track, Gst.Bin bin, Gst.Pad pad);
     public signal void pad_removed(Track track, Gst.Bin bin, Gst.Pad pad);
     public signal void clip_added(Clip clip);
@@ -23,9 +25,6 @@ public abstract class Track {
     public signal void track_renamed(Track track);
     public signal void track_selection_changed(Track track);
 
-    protected Gst.Element default_source;
-    protected Gst.Element sink;    
-    
     public Track(Project project, string display_name) {
         this.project = project;
         this.display_name = display_name;
