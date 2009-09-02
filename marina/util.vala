@@ -24,6 +24,17 @@ int stricmp(string str1, string str2) {
     return temp_str1.collate(temp_str2);
 }
 
+// TODO: write this using generics.  
+public string[] copy_array(string[] source) {
+    string[] destination = new string[source.length];
+    int i = 0;
+    foreach (string item in source) {
+        destination[i] = item;
+        ++i;
+    }
+    return destination;
+}
+
 // Debug utilities
 
 public bool debug_enabled;

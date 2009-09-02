@@ -2,7 +2,8 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_TESTABLE_SOURCES =	ProjectLoader.vala
+MARINA_TESTABLE_SOURCES =	ProjectLoader.vala \
+							util.vala
 
 MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src))
 
@@ -11,7 +12,6 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					import.vala \
 					project.vala \
 					track.vala \
-					util.vala \
 					MultiFileProgress.vala \
 					ClipLibraryView.vala \
 					thumbnailsink.vala
@@ -79,8 +79,8 @@ $(TEST): $(MARINA_TESTABLE_FILES) $(MARINA_TEST_SUPPORT) $(TEST_FILES) $(MARINA_
 	valac $(VFLAGS) $(TEST_LIBS) $(TEST_FILES) $(MARINA_TEST_FILES) $(MARINA_TESTABLE_FILES) \
 		$(MARINA_TEST_SUPPORT) -o $(TEST)
 
-all: $(FILLMORE) $(LOMBARD)
+all: $(FILLMORE) $(LOMBARD) $(MARINA)
 
 clean:
-	rm -f marina/marina.vapi marina/marina.h $(MARINA_C_FILES) $(FILLMORE) $(LOMBARD)
+	rm -f marina/marina.vapi marina/marina.h $(MARINA_C_FILES) $(FILLMORE) $(LOMBARD) $(TEST)
 

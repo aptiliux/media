@@ -18,7 +18,7 @@ class RecordFetcherCompletion : FetcherCompletion {
         this.position = position;
     }
 
-    public override void complete(Model.ClipFetcher fetch) {
+    public override void complete(ClipFetcher fetch) {
         base.complete(fetch);
         Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
             isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length);
@@ -76,6 +76,15 @@ class AudioProject : Project {
         return 0.01;
     }
 
+    public override void add_track(Track track) {
+        if (track.media_type() == MediaType.VIDEO) {
+            track.hide();
+            inactive_tracks.add(track);
+            return;
+        }
+        base.add_track(track);
+    }
+    
     public bool is_recording() {
         return play_state == PlayState.PRE_RECORD ||
                play_state == PlayState.RECORDING ||

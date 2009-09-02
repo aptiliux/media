@@ -112,8 +112,9 @@ class HeaderArea : Gtk.EventBox {
 
         vbox.pack_start(separator(), false, false, 0);
         
-        foreach (Model.Track track in project.tracks)
+        foreach (Model.Track track in project.tracks) {
             add_track(track);
+        }
     }
     
     Gtk.HSeparator separator() {

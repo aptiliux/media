@@ -5,19 +5,16 @@
  */
 
 namespace Model {
-// TODO: Fix up the hierarchy (MediaLoaderHandler knows nothing about audio)
 public class MediaLoaderHandler : LoaderHandler {
     protected weak Project the_project;
     protected Track current_track;
-    protected OrphanTrack the_orphan_track;
     
     public MediaLoaderHandler(Project the_project) {
         this.the_project = the_project;
         current_track = null;
-        the_orphan_track = null;
     }
     
-    public override bool commit_project(string[]? attr_names, string[]? attr_values) {
+    public override bool commit_marina(string[] attr_names, string[] attr_values) {
         int number_of_attributes = attr_names.length;
         if (number_of_attributes != 1) {
             load_error("Missing version information");
@@ -32,9 +29,8 @@ public class MediaLoaderHandler : LoaderHandler {
         return true;
     }
     
-    public override bool commit_track(string[]? attr_names, string[]? attr_values) {
+    public override bool commit_track(string[] attr_names, string[] attr_values) {
         assert(current_track == null);
-        assert(the_orphan_track == null);
         
         int number_of_attributes = attr_names.length;
         string? name = null;
@@ -73,6 +69,13 @@ public class MediaLoaderHandler : LoaderHandler {
                 current_track = the_project.find_audio_track();        
             }
             return true;
+        } else if (type == "video") {
+            if (the_project.clear_tracks) {
+                current_track = new VideoTrack(the_project);
+                the_project.add_track(current_track);
+            } else {
+                current_track = the_project.find_video_track();
+            }
         }
         
         return base.commit_track(attr_names, attr_values);;
@@ -80,13 +83,11 @@ public class MediaLoaderHandler : LoaderHandler {
     
     public override void leave_track() {
         assert(current_track != null);
-        assert(the_orphan_track == null);
         current_track = null;
     }
     
-    public override bool commit_clip(string[]? attr_names, string[]? attr_values) {
+    public override bool commit_clip(string[] attr_names, string[] attr_values) {
         assert(current_track != null);
-        assert(the_orphan_track == null);
         
         int number_of_attributes = attr_names.length;
         string? filename = null;
@@ -140,6 +141,7 @@ public class MediaLoaderHandler : LoaderHandler {
         
         if (duration == -1) {
             load_error("missing duration");
+            return false;
         }
 
         ClipFile clipfile = the_project.find_clipfile(filename);
@@ -151,29 +153,7 @@ public class MediaLoaderHandler : LoaderHandler {
         // TODO: why does clip have a start time?
         Clip clip = new Clip(clipfile, current_track.media_type(), clip_name, 
             0, media_start, duration);
-        
         current_track.append_at_time(clip, start);
-        return true;
-    }
-
-    public override void leave_orphan_track() {
-        assert(the_orphan_track != null);
-        assert(current_track == null);
-        the_orphan_track = null;
-    }
-    
-    public override bool commit_orphan_track(string[]? attr_names, string[]? attr_values) {
-        assert(the_orphan_track == null);
-        assert(current_track == null);
-        the_orphan_track = new OrphanTrack(attr_names, attr_values);
-        the_project.orphan_tracks.add(the_orphan_track);
-
-        return true;
-    }
-
-    public override bool commit_orphan_clip(string[]? attr_names, string[]? attr_values) {
-        assert(the_orphan_track != null);
-        the_orphan_track.add_clip(attr_names, attr_values);
         return true;
     }
 }
@@ -184,62 +164,6 @@ public enum PlayState {
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
     PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
     LOADING, CLOSING
-}
-
-public class XmlElement {
-    string[] attr_values;
-    string[] attr_names;
-    string element_name;
-    
-    public XmlElement(string element_name, string []attr_names, string[]attr_values) {
-        this.element_name = element_name;
-        this.attr_names = attr_names;
-        this.attr_values = attr_values;
-    }
-    
-    protected void write_attributes(FileStream f) {
-        int number_of_elements = attr_names.length;
-        for (int i = 0; i < number_of_elements; ++i) {
-            f.printf("%s=\"%s\" ", attr_names[i], attr_values[i]);
-        }
-    }
-}
-
-public class OrphanClip : XmlElement {
-    public OrphanClip(string[] attr_names, string[] attr_values) {
-        base("clip", attr_names, attr_values);
-    }
-    
-    public void save(FileStream f) {
-        f.printf("<clip ");
-        write_attributes(f);
-        f.printf("/>\n");
-    }
-}
-
-public class OrphanTrack : XmlElement {
-    Gee.ArrayList<OrphanClip> clips;
-    
-    public OrphanTrack(string[] attr_names, string[] attr_values) {
-        base("track", attr_names, attr_values);
-        clips = new Gee.ArrayList<OrphanClip>();
-    }
-    
-    public void add_clip(string[] attr_names, string[] attr_values) {
-        clips.add(new OrphanClip(attr_names, attr_values));
-    }
-    
-    public void save(FileStream f) {
-        f.printf("<track ");
-        write_attributes(f);
-        f.printf(">\n");
-        
-        foreach (OrphanClip clip in clips) {
-            clip.save(f);
-        }
-        
-        f.printf("</track>");
-    }
 }
 
 // TODO: Project derives from MultiFileProgress interface for exporting
@@ -262,6 +186,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public Gst.Element capsfilter;
 
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
+    public Gee.ArrayList<Track> inactive_tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
     Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
 
@@ -272,7 +197,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public int64 position;  // current play position in ns
     uint callback_id;
     FetcherCompletion fetcher_completion;
-    public Gee.ArrayList<OrphanTrack> orphan_tracks;
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
     
@@ -296,7 +220,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public abstract TimeCode get_clip_time(ClipFile f);
 
     public Project(string? filename) {
-        orphan_tracks = new Gee.ArrayList<OrphanTrack>();
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
@@ -534,12 +457,17 @@ public abstract class Project : MultiFileProgressInterface, Object {
         return false;
     }
     
-    public void add_track(Track track) {
+    public virtual void add_track(Track track) {
         track.clip_removed += on_clip_removed;
         track.pad_added += on_pad_added;
         track.pad_removed += on_pad_removed;
         tracks.add(track);
         track_added(track);
+    }
+    
+    public void add_inactive_track(Track track) {
+        track.hide();
+        inactive_tracks.add(track);
     }
     
     public void remove_track(Track track) {
@@ -592,8 +520,20 @@ public abstract class Project : MultiFileProgressInterface, Object {
         return null;
     }
     
-    // TODO this should go away all together when the XML loading gets fixed up
+    public VideoTrack? find_video_track() {
+        assert(clear_tracks == false);//this should only be called from within context of lombard
+        //once clear_tracks goes away, this method should go away. don't assume only one video_track
+        foreach (Track track in tracks) {
+            if (track.media_type() == MediaType.VIDEO) {
+                return track as VideoTrack;
+            }
+        }
+        return null;
+    }
+
     public Track? find_audio_track() {
+        assert(clear_tracks == false);//this should only be called from within context of lombard
+        //once clear_tracks goes away, this method should go away. don't assume only one audio_track
         foreach (Track track in tracks) {
             if (track is AudioTrack) {
                 return track;
@@ -945,19 +885,13 @@ public abstract class Project : MultiFileProgressInterface, Object {
             return;
         }
 
-        MediaLoaderHandler loader_handler = get_media_loader_handler();
-        loader_handler.load_error += on_load_error;
-        loader = new ProjectLoader(loader_handler, fname);
+        loader = new ProjectLoader(new MediaLoaderHandler(this), fname);
         loader.clip_ready += on_clip_ready;
         loader.load_started += on_load_started;
         loader.load_complete += on_load_complete;
 
         pipeline.set_state(Gst.State.NULL);
         play_state = PlayState.LOADING;
-    }
-    
-    protected virtual MediaLoaderHandler get_media_loader_handler() {
-        return new MediaLoaderHandler(this);
     }
     
     public void on_load_error(string error_string) {
@@ -979,7 +913,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
             track.save(f);
         }
         
-        foreach (OrphanTrack track in orphan_tracks) {
+        foreach (Track track in inactive_tracks) {
             track.save(f);
         }
         f.printf("</marina>\n"); 

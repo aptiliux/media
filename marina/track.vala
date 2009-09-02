@@ -57,7 +57,7 @@ public abstract class Track {
     }
     
     ~Track() {
-        if (!project.pipeline.remove(composition)) {
+        if (composition != null && !project.pipeline.remove(composition)) {
             error("couldn't remove composition");
         }
     }
@@ -68,6 +68,11 @@ public abstract class Track {
     protected abstract Gst.Element empty_element();
     public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
+
+    public void hide() {
+        project.pipeline.remove(composition);
+        composition = null;
+    }
 
     void on_pre_export() {
         default_source.set("duration", project.get_length());
@@ -271,9 +276,11 @@ public abstract class Track {
     // This function adds a new clip to the timeline; in that it adds it to
     // the Gnonlin composition and also adds a new ClipView object
     public void add_new_clip(Clip c, int64 pos, bool overwrite) {
-        composition.add(c.file_source);
-        add_clip_at(c, pos, overwrite);
-        clip_added(c);
+        if (composition != null) {
+            composition.add(c.file_source);
+            add_clip_at(c, pos, overwrite);
+            clip_added(c);
+        }
     }
 
     public void ripple_delete(int64 length, int64 clip_start, int64 clip_length) {
@@ -379,10 +386,12 @@ public abstract class Track {
         // clips that aren't yet in the composition otherwise, which causes behavior
         // like the position in the composition being incorrect when we start playing.
         // This also fixes the lockup problem we were having.
-        composition.add(clip.file_source);         
-        insert_at(index, clip, pos);
-        
-        clip_added(clip);
+        if (composition != null) {
+            composition.add(clip.file_source);         
+            insert_at(index, clip, pos);
+            
+            clip_added(clip);
+        }
     }
     
     public void put(int index, Clip c) {
