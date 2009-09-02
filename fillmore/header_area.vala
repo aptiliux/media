@@ -47,9 +47,14 @@ class AudioTrackHeader : TrackHeader {
     public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
         base(track, header);
         pan = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
+        pan.set_update_policy(Gtk.UpdateType.DISCONTINUOUS); // only want a signal when we are done
         pan.value_changed += on_pan_value_changed;
+        
         volume = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
+        volume.set_update_policy(Gtk.UpdateType.DISCONTINUOUS); // only want a signal when are done
         volume.value_changed += on_volume_value_changed;
+
+        track.parameter_changed += on_parameter_changed;
 
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(track_label, true, true, 0);
@@ -82,6 +87,19 @@ class AudioTrackHeader : TrackHeader {
         if (audio_track != null) {
             Gtk.Adjustment adjustment = volume.get_adjustment();
             audio_track.set_volume(adjustment.get_value());
+        }
+    }
+
+    void on_parameter_changed(Model.Parameter parameter, double new_value) {
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        assert(audio_track != null);
+        switch(parameter) {
+            case Model.Parameter.VOLUME:
+                volume.set_value(new_value);
+            break;
+            case Model.Parameter.PAN:
+                pan.set_value(new_value);
+            break;
         }
     }
 }
@@ -128,7 +146,7 @@ class HeaderArea : Gtk.EventBox {
         assert(audio_track != null);
         //we are currently only supporting audio tracks.  We'll probably have
         //a separate method for adding video track, midi track, aux input, etc
-        
+
         TrackHeader header = new AudioTrackHeader(audio_track, this);
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(separator(), false, false, 0);

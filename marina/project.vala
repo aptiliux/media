@@ -72,10 +72,10 @@ public class MediaLoaderHandler : LoaderHandler {
             for (int i = 0; i < number_of_attributes; ++i) {
                 switch(attr_names[i]) {
                     case "panorama":
-                        audio_track.set_pan(attr_values[i].to_double());
+                        audio_track._set_pan(attr_values[i].to_double());
                         break;
                     case "volume":
-                        audio_track.set_volume(attr_values[i].to_double());
+                        audio_track._set_volume(attr_values[i].to_double());
                         break;
                     default:
                         break;
@@ -217,7 +217,12 @@ public abstract class Project : MultiFileProgressInterface, Object {
     FetcherCompletion fetcher_completion;
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
-    
+
+    public int saved_index = 0;
+    public Gee.ArrayList<Command> command_list = new Gee.ArrayList<Command>();    
+    public bool is_dirty { get { return saved_index != command_list.size; } }
+    public bool can_undo { get { return command_list.size > 0; } }
+
     public signal void pre_export();
     public signal void post_export();
     public signal void position_changed();
@@ -234,6 +239,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void clipfile_added(ClipFile c, int position);
     public signal void cleared();
+    public signal void dirty_changed(bool is_dirty);
+    public signal void undo_changed(bool can_undo);
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
@@ -891,7 +898,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
     
     void on_load_complete(string? error) {
-        loader = null;
+        saved_index = 0;
+
         if (error != null) {
             clear();
             load_error(error);
@@ -914,6 +922,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
     public void load(string? fname) {
+        loader = null;
+        command_list.clear();
         project_file = fname;
         if (fname == null) {
             on_load_complete(null);
@@ -957,6 +967,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
             track.save(f);
         }
         f.printf("</marina>\n"); 
+        saved_index = command_list.size - 1;
+        dirty_changed(false);
     }
 
     public void close() {
@@ -1046,6 +1058,24 @@ public abstract class Project : MultiFileProgressInterface, Object {
             pad.set_caps(audio_cap);
         }
         return silence;
+    }
+
+    public void do_command(Command the_command) {
+        the_command.apply();
+        command_list.add(the_command);
+        dirty_changed(true);
+        undo_changed(can_undo);
+    }
+
+    public void undo() {
+        int index = command_list.size - 1;
+        if (index >= 0) {
+            Command the_command = command_list[index];
+            command_list.remove(the_command);
+            the_command.undo();
+        }
+        dirty_changed(is_dirty);
+        undo_changed(can_undo);
     }
 
     public abstract double get_version();

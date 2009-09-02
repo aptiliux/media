@@ -11,6 +11,10 @@ public float float_abs(float f) {
     return f;
 }
 
+public bool float_within(double f, double epsilon) {
+    return float_abs((float) f) < epsilon;
+}
+
 public int sign(int x) {
     if (x == 0)
         return 0;
@@ -589,6 +593,25 @@ namespace DialogUtils {
         d.destroy();
     }
 
+    Gtk.ResponseType run_dialog(Gtk.Window? parent, Gtk.MessageType type, 
+        string? title, string message, ButtonStruct[] buttons) {
+        Gtk.MessageDialog dialog = new Gtk.MessageDialog(parent, Gtk.DialogFlags.MODAL,
+                                        type, Gtk.ButtonsType.NONE, message, null);
+        if (title != null) {
+            dialog.set_title(title);
+        }
+        
+        int length = buttons.length;
+        for (int i = 0; i < length; ++i) {
+            dialog.add_button(buttons[i].title, buttons[i].type);
+        }
+        
+        Gtk.ResponseType response = (Gtk.ResponseType) dialog.run();
+        dialog.destroy();
+        
+        return response;
+    }
+    
     public Gtk.ResponseType delete_cancel(string title, string message) {
         Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
                                         Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message, 
@@ -614,5 +637,25 @@ namespace DialogUtils {
         int response = md.run();
         md.destroy();
         return response == Gtk.ResponseType.ACCEPT;
+    }
+    
+    struct ButtonStruct {
+        public ButtonStruct(string title, Gtk.ResponseType type) {
+            this.title = title;
+            this.type = type;
+        }
+        
+        public string title;
+        public Gtk.ResponseType type;
+    }
+    
+    public Gtk.ResponseType save_close_cancel(Gtk.Window? parent, string? title, string message) {
+        ButtonStruct[] buttons = {
+            ButtonStruct("Close _without saving", Gtk.ResponseType.CLOSE),
+            ButtonStruct(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL),
+            ButtonStruct(Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT)
+        };
+        
+        return run_dialog(parent, Gtk.MessageType.WARNING, title, message, buttons);
     }
 }

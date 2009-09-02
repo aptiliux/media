@@ -17,6 +17,7 @@ class Recorder : Gtk.Window {
     
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
+    Gtk.UIManager manager;
 
     public const string NAME = "fillmore";
     const Gtk.ActionEntry[] entries = {
@@ -30,6 +31,7 @@ class Recorder : Gtk.Window {
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
         { "Edit", null, "_Edit", null, null, null },
+        { "Undo", Gtk.STOCK_UNDO, null, null, null, on_undo },
         { "Delete", Gtk.STOCK_DELETE, "_Delete", "Delete", null, on_delete },
 
         { "Track", null, "_Track", null, null, null },
@@ -63,6 +65,7 @@ class Recorder : Gtk.Window {
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
+      <menuitem name="EditUndo" action="Undo" />
       <menuitem name="EditDelete" action="Delete"/>
     </menu>
     <menu name="TrackMenu" action="Track">
@@ -104,6 +107,8 @@ class Recorder : Gtk.Window {
         project.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;
         project.name_changed += on_name_changed;
+        project.dirty_changed += on_dirty_changed;
+        project.undo_changed += on_undo_changed;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -117,7 +122,7 @@ class Recorder : Gtk.Window {
         delete_action.set_sensitive(false);
         record_action = group.get_action("Record");
         
-        Gtk.UIManager manager = new Gtk.UIManager();
+        manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
         try {
             manager.add_ui_from_string(ui, -1);
@@ -127,6 +132,7 @@ class Recorder : Gtk.Window {
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
         play_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Play");
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
+        on_undo_changed(false);
         
         timeline = new TimeLine(this);
         timeline.selection_changed += on_selection_changed;
@@ -155,7 +161,7 @@ class Recorder : Gtk.Window {
         if (save_graph != null) {
             save_graph.destroy();
         }
-        
+
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
         delete_event += on_delete_event;
@@ -280,20 +286,26 @@ class Recorder : Gtk.Window {
     }
     
     void on_project_save() {
+        do_save();
+    }
+    
+    bool do_save() {
         if (project.project_file != null) {
             project.save(null);
+            return true;
         }
         else {
-            save_dialog();
+            return save_dialog();
         }
     }
     
-    
-    void save_dialog() {
+    bool save_dialog() {
         string filename;
         if (DialogUtils.save(this, "Save Project", filters, out filename)) {
             project.save(filename);
+            return true;
         }
+        return false;
     }
     
     void on_quit() {
@@ -307,11 +319,32 @@ class Recorder : Gtk.Window {
     }
 
     void on_project_close() {
+        project.closed -= on_project_close;
+        if (project.is_dirty) {
+            switch(DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
+                case Gtk.ResponseType.ACCEPT:
+                    if (!do_save()) {
+                        return;
+                    }
+                    break;
+                case Gtk.ResponseType.CLOSE:
+                    break;
+                case Gtk.ResponseType.CANCEL:
+                    return;
+                default:
+                    assert(false);
+                    break;
+            }
+        }
         Gtk.main_quit();
     }
     
     // Edit menu
 
+    void on_undo() {
+        project.undo();
+    }
+    
     void on_delete() {
         Model.Clip clip = timeline.selected.region;
         selected_track().delete_clip(clip, false);
@@ -428,6 +461,18 @@ class Recorder : Gtk.Window {
 
     void on_name_changed() {
         set_title(project.get_file_display_name());
+    }
+    
+    void on_dirty_changed(bool isDirty) {
+        Gtk.MenuItem? file_save = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/FileMenu/FileSave");
+        assert(file_save != null);
+        file_save.set_sensitive(isDirty);
+    }
+    
+    void on_undo_changed(bool can_undo) {
+        Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
+        assert(undo != null);
+        undo.set_sensitive(can_undo);
     }
 }
 

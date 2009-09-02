@@ -9,12 +9,13 @@ MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src)
 
 MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					clip.vala \
-					import.vala \
-					project.vala \
-					track.vala \
-					MultiFileProgress.vala \
 					ClipLibraryView.vala \
-					thumbnailsink.vala
+					command.vala \
+					import.vala \
+					MultiFileProgress.vala \
+					project.vala \
+					thumbnailsink.vala \
+					track.vala
 
 # TODO: lombard/video_track.vala is temporarily included in Marina.  This should go away soon.
 MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \

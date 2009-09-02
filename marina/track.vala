@@ -566,6 +566,8 @@ public class AudioTrack : Track {
     Gst.Element pan;
     Gst.Element volume;
 
+    public signal void parameter_changed(Parameter parameter, double new_value);
+    
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
         audio_convert = make_element_with_name("audioconvert",
@@ -609,10 +611,23 @@ public class AudioTrack : Track {
         base.write_attributes(f);
         f.printf("volume=\"%f\" panorama=\"%f\" ", get_volume(), get_pan());
     }
-    
+
     public void set_pan(double new_value) {
+        double old_value = get_pan();
+        if (!float_within(new_value - old_value, 0.05)) {
+            ParameterCommand parameter_command = 
+                new ParameterCommand(this, Parameter.PAN, new_value, old_value);
+            project.do_command(parameter_command);
+        }
+    }
+    
+    public void _set_pan(double new_value) {
         assert(new_value <= 1.0 && new_value >= -1.0);
-        pan.set_property("panorama", new_value);
+        double old_value = get_pan();
+        if (!float_within(old_value - new_value, 0.05)) {
+            pan.set_property("panorama", new_value);
+            parameter_changed(Parameter.PAN, new_value);
+        }
     }
     
     public double get_pan() {
@@ -622,8 +637,21 @@ public class AudioTrack : Track {
     }
     
     public void set_volume(double new_volume) {
+        double old_volume = get_volume();
+        if (!float_within(old_volume - new_volume, 0.05)) {
+            ParameterCommand parameter_command =
+                new ParameterCommand(this, Parameter.VOLUME, new_volume, old_volume);
+            project.do_command(parameter_command);
+        }
+    }
+
+    public void _set_volume(double new_volume) {
         assert(new_volume >= 0.0 && new_volume <= 10.0);
-        volume.set_property("volume", new_volume);
+        double old_volume = get_volume();
+        if (!float_within(old_volume - new_volume, 0.05)) {
+            volume.set_property("volume", new_volume);    
+            parameter_changed(Parameter.VOLUME, new_volume);
+        }
     }
     
     public double get_volume() {
