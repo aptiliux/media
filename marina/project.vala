@@ -44,10 +44,7 @@ public class MediaLoaderHandler : LoaderHandler {
                     name = attr_values[i];
                     break;
                 default:
-                    // TODO: we need a way to deal with orphaned attributes, for
-                    // now, reject the file
-                    load_error("Unknown attribute %s".printf(attr_names[i]));
-                    return false;
+                    break;
             }
         }
         
@@ -62,12 +59,33 @@ public class MediaLoaderHandler : LoaderHandler {
         }
         
         if (type == "audio") {
+            AudioTrack audio_track = null;
             if (the_project.clear_tracks) {
                 current_track = new AudioTrack(the_project, name);
-                the_project.add_track(current_track);
             } else {
                 current_track = the_project.find_audio_track();        
             }
+
+            audio_track = current_track as AudioTrack;
+            assert(audio_track != null);
+
+            for (int i = 0; i < number_of_attributes; ++i) {
+                switch(attr_names[i]) {
+                    case "panorama":
+                        audio_track.set_pan(attr_values[i].to_double());
+                        break;
+                    case "volume":
+                        audio_track.set_volume(attr_values[i].to_double());
+                        break;
+                    default:
+                        break;
+                }
+            }
+            
+            if (the_project.clear_tracks) {
+                the_project.add_track(current_track);
+            }
+            
             return true;
         } else if (type == "video") {
             if (the_project.clear_tracks) {
@@ -220,6 +238,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public abstract TimeCode get_clip_time(ClipFile f);
 
     public Project(string? filename) {
+        this.project_file = filename;
+
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
@@ -652,6 +672,24 @@ public abstract class Project : MultiFileProgressInterface, Object {
         name_changed(filename);
     }
     
+    public string get_file_display_name() {
+        if (project_file == null) {
+            return "Unsaved Project - %s".printf(get_app_name());
+        }
+        else {
+            string dir = Path.get_dirname(project_file);
+            string name = Path.get_basename(project_file);
+            string home_path = GLib.Environment.get_home_dir();
+
+            if (dir == ".")
+                dir = GLib.Environment.get_current_dir();
+
+            if (dir.has_prefix(home_path))
+                dir = "~" + dir.substring(home_path.length);
+            return "%s (%s) - %s".printf(name, dir, get_app_name());
+        }
+    }
+
     public void clear() {
         foreach (Track track in tracks) {
             track.delete_all_clips();
@@ -868,6 +906,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
             play_state = PlayState.STOPPED;
         
             load_success();
+            name_changed(project_file);
         }
     }
     
@@ -875,6 +914,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
     public void load(string? fname) {
+        project_file = fname;
         if (fname == null) {
             on_load_complete(null);
             return;
@@ -1009,6 +1049,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     public abstract double get_version();
+    public abstract string get_app_name();
 
 }
 }

@@ -46,9 +46,9 @@ class AudioTrackHeader : TrackHeader {
     
     public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
         base(track, header);
-        pan = new Gtk.HScrollbar(new Gtk.Adjustment(0, -1, 1, 0.1, 0.1, 0.0));
+        pan = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
         pan.value_changed += on_pan_value_changed;
-        volume = new Gtk.HScrollbar(new Gtk.Adjustment(10, 0, 10, 0.1, 1, 0));
+        volume = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
         volume.value_changed += on_volume_value_changed;
 
         Gtk.VBox vbox = new Gtk.VBox(false, 0);

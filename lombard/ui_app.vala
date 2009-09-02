@@ -63,7 +63,7 @@ class App : Gtk.Window {
     
     string project_filename;
 
-    public static const string NAME = "lombard";
+    public const string NAME = "lombard";
    
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
@@ -313,20 +313,7 @@ class App : Gtk.Window {
     }
     
     public void set_project_name(string? filename) {
-        if (filename == null)
-            set_title ("Unsaved Project - %s".printf(App.NAME));
-        else {
-            string dir = Path.get_dirname(filename);
-            string name = Path.get_basename(filename);
-            string home_path = GLib.Environment.get_home_dir();
-
-            if (dir == ".")
-                dir = GLib.Environment.get_current_dir();
-
-            if (dir.has_prefix(home_path))
-                dir = "~" + dir.substring(home_path.length);
-            set_title("%s (%s) - %s".printf(name, dir, App.NAME));
-        }
+        set_title(project.get_file_display_name());
     }
 
     public void do_error_dialog(string message) {

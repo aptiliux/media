@@ -18,6 +18,7 @@ class Recorder : Gtk.Window {
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
 
+    public const string NAME = "fillmore";
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
@@ -102,6 +103,7 @@ class Recorder : Gtk.Window {
         project = new Model.AudioProject();
         project.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;
+        project.name_changed += on_name_changed;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -424,5 +426,8 @@ class Recorder : Gtk.Window {
         do_error_dialog(message);
     }
 
+    void on_name_changed() {
+        set_title(project.get_file_display_name());
+    }
 }
 

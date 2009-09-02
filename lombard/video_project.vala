@@ -30,6 +30,10 @@ class VideoProject : Project {
         return 0.01;
     }
     
+    public override string get_app_name() {
+        return App.NAME;
+    }
+
     public override void add_track(Track track) {
         foreach (Track existing_track in tracks) {
             if (track.media_type() == existing_track.media_type()) {

@@ -75,6 +75,10 @@ class AudioProject : Project {
     override double get_version() {
         return 0.01;
     }
+    
+    public override string get_app_name() {
+        return Recorder.NAME;
+    }
 
     public override void add_track(Track track) {
         if (track.media_type() == MediaType.VIDEO) {

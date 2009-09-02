@@ -523,9 +523,15 @@ public abstract class Track {
                 return c.start;
         return get_length();
     }
+
+    public virtual void write_attributes(FileStream f) {
+        f.printf("type=\"%s\" name=\"%s\" ", name(), get_display_name());
+    }
     
     public void save(FileStream f) {
-        f.printf("  <track type=\"%s\" name=\"%s\">\n", name(), get_display_name());
+        f.printf("  <track ");
+        write_attributes(f);
+        f.printf(">\n");
         for (int i = 0; i < clips.size; i++)
             clips[i].save(f);
         f.puts("  </track>\n");
@@ -599,24 +605,29 @@ public class AudioTrack : Track {
         return MediaType.AUDIO;
     }
 
+    public override void write_attributes(FileStream f) {
+        base.write_attributes(f);
+        f.printf("volume=\"%f\" panorama=\"%f\" ", get_volume(), get_pan());
+    }
+    
     public void set_pan(double new_value) {
-        assert(new_value <= 1.0 && new_value >= -1);
+        assert(new_value <= 1.0 && new_value >= -1.0);
         pan.set_property("panorama", new_value);
     }
     
     public double get_pan() {
-        Value the_pan = 0;
+        Value the_pan = 0.0;
         pan.get_property("panorama", ref the_pan);
         return the_pan.get_double();
     }
     
     public void set_volume(double new_volume) {
-        assert(new_volume >= 0 && new_volume <= 10);
+        assert(new_volume >= 0.0 && new_volume <= 10.0);
         volume.set_property("volume", new_volume);
     }
     
     public double get_volume() {
-        Value the_volume = 0;
+        Value the_volume = 0.0;
         volume.get_property("volume", ref the_volume);
         return the_volume.get_double();
     }
