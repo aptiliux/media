@@ -525,6 +525,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     public virtual void add_clipfile(ClipFile clipfile) {
+        clipfiles.add(clipfile);
         clipfile_added(clipfile, add_clipfile_abc_order(clipfile));
     }
     

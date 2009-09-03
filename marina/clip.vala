@@ -284,10 +284,10 @@ public class ThumbnailFetcher : Fetcher {
         clipfile = f;
         seek_position = time;
         
-        filesrc = make_element("filesrc");
-        filesrc.set("location", f.filename);
+        SingleDecodeBin single_bin = new SingleDecodeBin (
+                                        Gst.Caps.from_string ("video/x-raw-rgb; video/x-raw-yuv"), 
+                                        "singledecoder", f.filename);
         
-        decodebin = (Gst.Bin) make_element("decodebin");
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
@@ -296,10 +296,9 @@ public class ThumbnailFetcher : Fetcher {
         
         colorspace = make_element("ffmpegcolorspace");
     
-        pipeline.add_many(filesrc, decodebin, thumbnail_sink, colorspace);
+        pipeline.add_many(single_bin, thumbnail_sink, colorspace);
         
-        filesrc.link(decodebin);
-        decodebin.pad_added += on_pad_added;
+        single_bin.pad_added += on_pad_added;
         
         colorspace.link(thumbnail_sink);
         
@@ -366,7 +365,7 @@ public class Clip {
     public int64 media_start;
     public int64 length;
     
-    public Gst.Element file_source;
+    public Gst.Bin file_source;
     
     bool connected;
 
@@ -383,15 +382,16 @@ public class Clip {
         this.name = name;
         this.connected = true;
         
-        file_source = make_element("gnlfilesource");
-        file_source.set("location", clipfile.filename);
+        file_source = (Gst.Bin) make_element("gnlsource");
+        Gst.Element sbin = new SingleDecodeBin(Gst.Caps.from_string(type == MediaType.AUDIO 
+                                               ? "audio/x-raw-int" 
+                                               : "video/x-raw-yuv; video/x-raw-rgb"),
+                                               "singledecoder", clipfile.filename);
+        file_source.add(sbin);
 
         set_media_start(media_start);
         set_duration(duration);
         set_start(start);
-        
-        if (type == MediaType.AUDIO)
-            file_source.set("caps", Gst.Caps.from_string("audio/x-raw-int"));
     }
     
     public void gnonlin_connect() { connected = true; }
@@ -440,14 +440,14 @@ public class Clip {
 
     public void set_media_start(int64 start) {
         if (connected)
-            file_source.set("media-start", start);
+            ((Gst.Element) file_source).set("media-start", start);
         this.media_start = start;
     }
     
     public void set_duration(int64 len) {
         if (connected) {
-            file_source.set("duration", len);
-            file_source.set("media-duration", len);
+            ((Gst.Element) file_source).set("duration", len);
+            ((Gst.Element) file_source).set("media-duration", len);
         }
         
         this.length = len;
@@ -456,7 +456,7 @@ public class Clip {
     
     public void set_start(int64 start) {
         if (connected)
-            file_source.set("start", start);
+            ((Gst.Element) file_source).set("start", start);
         this.start = start;
         moved();
     }

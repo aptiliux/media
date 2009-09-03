@@ -18,12 +18,13 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     Gst.Pad audio_pad;
     
     Gst.Pipeline pipeline;
-    Gst.Bin decodebin;
-    Gst.Element filesrc;
     Gst.Element filesink;
     Gst.Element video_convert;
     Gst.Element audio_convert;
     Gst.Element mux;
+    
+    Gst.Bin video_decoder;
+    Gst.Bin audio_decoder;
     
     int current_file_importing = 0;
     
@@ -207,23 +208,25 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         bus.message["eos"] += on_eos;
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-    
-        decodebin = (Gst.Bin) make_element("decodebin");
-        decodebin.pad_added += on_pad_added;
        
         mux = make_element("qtmux");
-        
-        filesrc = make_element("filesrc");
-        filesrc.set("location", f.clipfile.filename);
         
         filesink = make_element("filesink");
         filesink.set("location", append_extension(queued_filenames[current_file_importing], "mov"));
                 
-        pipeline.add_many(filesrc, decodebin, mux, filesink);
+        pipeline.add_many(mux, filesink);
         
         if (f.clipfile.is_of_type(MediaType.VIDEO)) {
             video_convert = make_element("ffmpegcolorspace");
             pipeline.add(video_convert);
+            
+            video_decoder = new SingleDecodeBin(Gst.Caps.from_string(
+                                                               "video/x-raw-yuv; video/x-raw-rgb"),
+                                                               "videodecodebin", 
+                                                               f.clipfile.filename);
+            video_decoder.pad_added += on_pad_added;
+            
+            pipeline.add(video_decoder);
             
             if (!video_convert.link(mux))
                 error("do_import: Cannot link video converter to mux!");
@@ -231,13 +234,17 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         if (f.clipfile.is_of_type(MediaType.AUDIO)) {
             audio_convert = make_element("audioconvert");
             pipeline.add(audio_convert);
+
+            audio_decoder = new SingleDecodeBin(Gst.Caps.from_string("audio/x-raw-int"), 
+                                                    "audiodecodebin", f.clipfile.filename);
+            audio_decoder.pad_added += on_pad_added;
+            
+            pipeline.add(audio_decoder);
             
             if (!audio_convert.link(mux))
                 error("do_import: Cannot link audio convert to mux!");
         }
 
-        if (!filesrc.link(decodebin))
-            error("do_import: Cannot link filesrc to decodebin!");
         if (!mux.link(filesink))
             error("do_import: Cannot link mux to filesink!");
 
