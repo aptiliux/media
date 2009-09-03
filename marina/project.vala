@@ -908,7 +908,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
             // state during an asynchronous load.  We wait until the loading is done, switch states,
             // and then, to get the image of the first frame, we set up a callback 
             // which seeks to position 0
-           
             bus_init();
             pipeline.set_state(Gst.State.PAUSED);
             play_state = PlayState.STOPPED;
@@ -937,7 +936,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
             load_error("already loading a project");
             return;
         }
-
         loader = new ProjectLoader(new MediaLoaderHandler(this), fname);
         loader.clip_ready += on_clip_ready;
         loader.load_started += on_load_started;
@@ -1060,6 +1058,11 @@ public abstract class Project : MultiFileProgressInterface, Object {
             pad.set_caps(audio_cap);
         }
         return silence;
+    }
+    
+    public bool is_project_extension(string filename) {
+        string extension = get_file_extension(filename);
+        return extension == LOMBARD_FILE_EXTENSION || extension == FILLMORE_FILE_EXTENSION;
     }
 
     public void do_command(Command the_command) {

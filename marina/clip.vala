@@ -240,7 +240,7 @@ public class ClipFetcher : Fetcher {
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         if (message.src != pipeline)
             return;
-            
+
         Gst.State old_state;
         Gst.State new_state;
         Gst.State pending;
@@ -248,7 +248,7 @@ public class ClipFetcher : Fetcher {
         message.parse_state_changed(out old_state, out new_state, out pending);
         if (new_state == old_state) 
             return;
-            
+
         if (new_state == Gst.State.PLAYING) {
             Gst.Pad? pad = get_pad("video");
             if (pad != null) {

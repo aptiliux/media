@@ -81,12 +81,8 @@ class TrackView : Gtk.Fixed {
         track.clip_removed += on_region_removed;
     }
     
-    static const Gtk.TargetEntry[] entries = {
-        { "text/uri-list", 0, 0 }
-    };
-
     construct {
-        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, entries, Gdk.DragAction.COPY);
+        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
     }
     
     public override void size_request(out Gtk.Requisition requisition) {
@@ -130,10 +126,15 @@ class TrackView : Gtk.Fixed {
                                       Gtk.SelectionData selection_data, uint info, uint time) {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
+        int number_of_files = a.length;
         foreach (string s in a) {
             string filename;
             try {
                 filename = GLib.Filename.from_uri(s);
+                if (number_of_files == 1 && timeline.project.is_project_extension(filename)) {
+                    timeline.project.load(filename);
+                    return;
+                }
             } catch (GLib.ConvertError e) { continue; }
 
             Model.ClipFile cf = timeline.project.find_clipfile(filename);
@@ -195,10 +196,12 @@ class TimeLine : Gtk.EventBox {
     public const int pixels_per_second = 60;
     
     public const int track_margin = 2;
-    
+
     public signal void selection_changed(RegionView? new_selection);
     
     public TimeLine(Recorder recorder) {
+        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
+
         this.project = recorder.project;
         this.recorder = recorder;
         
@@ -331,6 +334,23 @@ class TimeLine : Gtk.EventBox {
         if (view != null)
             view.on_button_release(event);
         return false;
+    }
+
+    public override void drag_data_received (Gdk.DragContext context, int x, int y,
+                                      Gtk.SelectionData selection_data, uint info, uint time) {
+        string[] a = selection_data.get_uris();
+        Gtk.drag_finish(context, true, false, time);
+        int number_of_files = a.length;
+        if (number_of_files > 1) {
+            return;
+        }
+
+        try {
+            string filename = GLib.Filename.from_uri(a[0]);
+            if (project.is_project_extension(filename)) {
+                project.load(filename);
+            }
+        } catch (GLib.ConvertError e) { }
     }
 }
 
