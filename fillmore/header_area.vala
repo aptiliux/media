@@ -47,11 +47,9 @@ class AudioTrackHeader : TrackHeader {
     public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
         base(track, header);
         pan = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
-        pan.set_update_policy(Gtk.UpdateType.DISCONTINUOUS); // only want a signal when we are done
         pan.value_changed += on_pan_value_changed;
         
         volume = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
-        volume.set_update_policy(Gtk.UpdateType.DISCONTINUOUS); // only want a signal when are done
         volume.value_changed += on_volume_value_changed;
 
         track.parameter_changed += on_parameter_changed;

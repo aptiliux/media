@@ -924,6 +924,9 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public void load(string? fname) {
         loader = null;
         command_list.clear();
+        saved_index = 0;
+        undo_changed(false);
+        
         project_file = fname;
         if (fname == null) {
             on_load_complete(null);
@@ -939,7 +942,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         loader.clip_ready += on_clip_ready;
         loader.load_started += on_load_started;
         loader.load_complete += on_load_complete;
-
         pipeline.set_state(Gst.State.NULL);
         play_state = PlayState.LOADING;
     }
@@ -1062,20 +1064,40 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
     public void do_command(Command the_command) {
         the_command.apply();
-        command_list.add(the_command);
+        Command? current_command = get_current_command();
+        if (current_command == null || !current_command.merge(the_command)) {
+            command_list.add(the_command);
+        }
         dirty_changed(true);
         undo_changed(can_undo);
     }
 
-    public void undo() {
+    Command? get_current_command() {
         int index = command_list.size - 1;
         if (index >= 0) {
-            Command the_command = command_list[index];
+            return command_list[index];
+        } else {
+            return null;
+        }
+    }
+    
+    public void undo() {
+        Command? the_command = get_current_command();
+        if (the_command != null) {
             command_list.remove(the_command);
             the_command.undo();
+            dirty_changed(is_dirty);
+            undo_changed(can_undo);
         }
-        dirty_changed(is_dirty);
-        undo_changed(can_undo);
+    }
+    
+    public string get_undo_title() {
+        Command? the_command = get_current_command();
+        if (the_command != null) {
+            return the_command.description();
+        } else {
+            return "";
+        }
     }
 
     public abstract double get_version();

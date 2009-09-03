@@ -24,14 +24,14 @@ class Recorder : Gtk.Window {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
         { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
-        { "Save", Gtk.STOCK_SAVE, "_Save", null, "Save project", on_project_save },
-        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", null, "Save project with new name", 
+        { "Save", Gtk.STOCK_SAVE, "_Save", "<Control>S", "Save project", on_project_save },
+        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>N", "Save project with new name", 
             on_project_save_as },
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
         { "Edit", null, "_Edit", null, null, null },
-        { "Undo", Gtk.STOCK_UNDO, null, null, null, on_undo },
+        { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
         { "Delete", Gtk.STOCK_DELETE, "_Delete", "Delete", null, on_delete },
 
         { "Track", null, "_Track", null, null, null },
@@ -472,6 +472,7 @@ class Recorder : Gtk.Window {
     void on_undo_changed(bool can_undo) {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
+        undo.set_label("Undo " + project.get_undo_title());
         undo.set_sensitive(can_undo);
     }
 }
