@@ -69,7 +69,7 @@ class App : Gtk.Window {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, null, on_open },
         { "Save", Gtk.STOCK_SAVE, null, null, null, on_save },
-        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", null, null, on_save_as },
+        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Shift><Control>S", null, on_save_as },
         { "Play", Gtk.STOCK_MEDIA_PLAY, "_Play / Pause", "space", null, on_play_pause },
         { "Export", null, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, Gtk.main_quit },
