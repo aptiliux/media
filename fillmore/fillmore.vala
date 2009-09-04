@@ -330,6 +330,7 @@ class Recorder : Gtk.Window {
                     break;
                 case Gtk.ResponseType.CLOSE:
                     break;
+                case Gtk.ResponseType.DELETE_EVENT: // when user presses escape.
                 case Gtk.ResponseType.CANCEL:
                     return;
                 default:

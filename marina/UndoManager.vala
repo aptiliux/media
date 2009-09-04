@@ -24,7 +24,7 @@ public class UndoManager {
     }
     
     public void mark_clean() {
-        saved_index = command_list.size - 1;
+        saved_index = command_list.size;
         dirty_changed(false);
     }
     
