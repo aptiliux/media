@@ -266,6 +266,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
         bus.message["eos"] += on_eos;    
+        bus.message["state-changed"] += on_state_change;
         set_gst_state(Gst.State.PAUSED);                  
     }
     
@@ -278,15 +279,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
     public void print_graph(Gst.Bin bin, string file_name) {
         Gst.debug_bin_to_dot_file_with_ts(bin, Gst.DebugGraphDetails.ALL, file_name);
-    }
-    
-    // We initialize this message here because there are problems
-    // with getting state changes on an asynchronous load from the
-    // command line, so we wait until the load is complete before
-    // allowing them to be sent
-    void bus_init() {
-        Gst.Bus bus = pipeline.get_bus();
-        bus.message["state-changed"] += on_state_change; 
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
@@ -897,7 +889,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
             // state during an asynchronous load.  We wait until the loading is done, switch states,
             // and then, to get the image of the first frame, we set up a callback 
             // which seeks to position 0
-            bus_init();
             pipeline.set_state(Gst.State.PAUSED);
             play_state = PlayState.STOPPED;
         
@@ -922,6 +913,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
             load_error("already loading a project");
             return;
         }
+        
         loader = new ProjectLoader(new MediaLoaderHandler(this), fname);
         loader.clip_ready += on_clip_ready;
         loader.load_started += on_load_started;
