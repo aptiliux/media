@@ -65,4 +65,58 @@ public class ParameterCommand : Command {
         }
     }
 }
+
+public class ClipCommand : Command {
+    Track track;
+    Clip clip;
+    int64 time;
+    
+    public ClipCommand(Track track, Clip clip, int64 time) {
+        this.track = track;
+        this.clip = clip;
+        this.time = time;
+    }
+    
+    public override void apply() {
+        track._append_at_time(clip, time);
+    }
+    
+    public override void undo() {
+        track.delete_clip(clip, false);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Create Clip";
+    }
+}
+
+public class TransactionCommand : Command {
+    bool open;
+    public TransactionCommand(bool open) {
+        this.open = open;
+    }
+    
+    public bool in_transaction() {
+        return open;
+    }
+    
+    public override void apply() {
+    }
+    
+    public override void undo() {
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        assert(false); // we should never display the description of a transaction
+        return "";
+    }
+}
 }

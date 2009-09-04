@@ -60,6 +60,7 @@ class App : Gtk.Window {
     
     Gtk.VBox vbox = null;
     Gtk.MenuBar menubar;
+    Gtk.UIManager manager;
     
     string project_filename;
 
@@ -75,6 +76,7 @@ class App : Gtk.Window {
         { "Quit", Gtk.STOCK_QUIT, null, null, null, Gtk.main_quit },
 
         { "Edit", null, "_Edit", null, null, null },
+        { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
         { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
         { "CutLift", null, "Lift Cut", "<Shift><Control>X", null, on_cut_lift },
         { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
@@ -121,6 +123,7 @@ class App : Gtk.Window {
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
+      <menuitem name="EditUndo" action="Undo" />
       <menuitem name="EditDelete" action="Delete"/>
       <menuitem name="EditDeleteLift" action="DeleteLift"/>
       <menuitem naem="EditCut" action="Cut"/>
@@ -196,7 +199,7 @@ class App : Gtk.Window {
         zoom_to_project_action = group.get_action("ZoomProject");
         library_view_action = (Gtk.ToggleAction) view_library_action_group.get_action("Library");
 
-        Gtk.UIManager manager = new Gtk.UIManager();
+        manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
         try {
             manager.add_ui_from_string(ui, -1);
@@ -216,6 +219,7 @@ class App : Gtk.Window {
         project.load_error += on_load_error;
         project.load_success += on_load_success;
         project.error_occurred += do_error_dialog;
+        project.undo_manager.undo_changed += on_undo_changed;
         // TODO: this is a hack to deal with project loading.  Lombard assumes one video
         // track and one audio track.  It was non-trivial to delete and recreate tracks.
         project.clear_tracks = false;
@@ -249,6 +253,8 @@ class App : Gtk.Window {
         
         timeline.drag_data_received += on_drag_data_received;
         library.drag_data_received += on_drag_data_received;
+
+        on_undo_changed(false);
         
         destroy += Gtk.main_quit;
         
@@ -635,6 +641,10 @@ class App : Gtk.Window {
     }
     
     // Edit commands
+
+    void on_undo() {
+        project.undo();
+    }
     
     void on_delete() {
         if (library.has_selection())
@@ -665,6 +675,13 @@ class App : Gtk.Window {
     
     void on_paste_over() {
         timeline.paste(true);
+    }
+
+    void on_undo_changed(bool can_undo) {
+        Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
+        assert(undo != null);
+        undo.set_label("Undo " + project.undo_manager.get_undo_title());
+        undo.set_sensitive(can_undo);
     }
 
     // Go commands

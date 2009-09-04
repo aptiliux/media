@@ -227,7 +227,7 @@ public abstract class Track {
         return clips.size - 1;
     }
     
-    public void do_clip_overwrite(Clip c) {
+    void do_clip_overwrite(Clip c) {
         int start_index = get_clip_from_time(c.start);
         int end_index = get_clip_from_time(c.end);
         
@@ -364,7 +364,7 @@ public abstract class Track {
      * if you arrange clips a few times, the current
      * position will become corrupted.
      */
-    public void shift_clips(int index, int64 shift) {
+    void shift_clips(int index, int64 shift) {
         for (int i = 0; i < clips.size; i++)
             clips[i].set_start(i >= index ? clips[i].start + shift
                                           : clips[i].start);
@@ -378,7 +378,7 @@ public abstract class Track {
         project.reseek();
     }
     
-    public void insert(int index, Clip clip, int64 pos) {
+    void insert(int index, Clip clip, int64 pos) {
         check(clip);
 
         // I reversed the following two lines as shift_clips sets information on
@@ -393,7 +393,7 @@ public abstract class Track {
         }
     }
     
-    public void put(int index, Clip c) {
+    void put(int index, Clip c) {
         check(c);
 
         composition.add(c.file_source);
@@ -403,8 +403,13 @@ public abstract class Track {
         clip_added(c);
     }
     
-    public void append_at_time(Clip c, int64 time) {
+    public void _append_at_time(Clip c, int64 time) {
         insert(clips.size, c, time);
+    }
+    
+    public void append_at_time(Clip c, int64 time) {
+        Command command = new ClipCommand(this, c, time);
+        project.do_command(command);
     }
     
     void remove_clip_at(int index) {
@@ -419,7 +424,9 @@ public abstract class Track {
         int index = get_clip_index(clip);
         
         remove_clip_at(index);
-        if (!ripple) shift_clips(index, clip.length);
+        if (!ripple) {
+            shift_clips(index, clip.length);
+        }
         
         clip_removed(clip);
     }

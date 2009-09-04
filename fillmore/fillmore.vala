@@ -25,8 +25,8 @@ class Recorder : Gtk.Window {
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
         { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
         { "Save", Gtk.STOCK_SAVE, "_Save", "<Control>S", "Save project", on_project_save },
-        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>N", "Save project with new name", 
-            on_project_save_as },
+        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>S", 
+            "Save project with new name", on_project_save_as },
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
@@ -35,7 +35,8 @@ class Recorder : Gtk.Window {
         { "Delete", Gtk.STOCK_DELETE, "_Delete", "Delete", null, on_delete },
 
         { "Track", null, "_Track", null, null, null },
-        { "NewTrack", Gtk.STOCK_ADD, "_New", null, "Create new track", on_track_new },
+        { "NewTrack", Gtk.STOCK_ADD, "_New", "<Control><Shift>N", 
+            "Create new track", on_track_new },
         { "Rename", null, "_Rename...", null, "Rename track", on_track_rename },
         { "DeleteTrack", null, "Re_move", null, "Delete track", on_track_remove },
         
@@ -107,8 +108,8 @@ class Recorder : Gtk.Window {
         project.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;
         project.name_changed += on_name_changed;
-        project.dirty_changed += on_dirty_changed;
-        project.undo_changed += on_undo_changed;
+        project.undo_manager.dirty_changed += on_dirty_changed;
+        project.undo_manager.undo_changed += on_undo_changed;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -320,7 +321,7 @@ class Recorder : Gtk.Window {
 
     void on_project_close() {
         project.closed -= on_project_close;
-        if (project.is_dirty) {
+        if (project.undo_manager.is_dirty) {
             switch(DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
                 case Gtk.ResponseType.ACCEPT:
                     if (!do_save()) {
@@ -336,6 +337,7 @@ class Recorder : Gtk.Window {
                     break;
             }
         }
+
         Gtk.main_quit();
     }
     
@@ -472,7 +474,7 @@ class Recorder : Gtk.Window {
     void on_undo_changed(bool can_undo) {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
-        undo.set_label("Undo " + project.get_undo_title());
+        undo.set_label("Undo " + project.undo_manager.get_undo_title());
         undo.set_sensitive(can_undo);
     }
 }

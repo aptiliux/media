@@ -168,7 +168,6 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
         
-        // TODO: why does clip have a start time?
         Clip clip = new Clip(clipfile, current_track.media_type(), clip_name, 
             0, media_start, duration);
         current_track.append_at_time(clip, start);
@@ -215,13 +214,10 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public int64 position;  // current play position in ns
     uint callback_id;
     FetcherCompletion fetcher_completion;
+    public UndoManager undo_manager;
+    
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
-
-    public int saved_index = 0;
-    public Gee.ArrayList<Command> command_list = new Gee.ArrayList<Command>();    
-    public bool is_dirty { get { return saved_index != command_list.size; } }
-    public bool can_undo { get { return command_list.size > 0; } }
 
     public signal void pre_export();
     public signal void post_export();
@@ -239,12 +235,11 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void clipfile_added(ClipFile c);
     public signal void cleared();
-    public signal void dirty_changed(bool is_dirty);
-    public signal void undo_changed(bool can_undo);
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
     public Project(string? filename) {
+        undo_manager = new UndoManager();
         this.project_file = filename;
 
         pipeline = new Gst.Pipeline("pipeline");
@@ -893,8 +888,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
     
     void on_load_complete(string? error) {
-        saved_index = 0;
-
+        undo_manager.reset();
         if (error != null) {
             clear();
             load_error(error);
@@ -917,9 +911,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
     // method executes or afterward.
     public void load(string? fname) {
         loader = null;
-        command_list.clear();
-        saved_index = 0;
-        undo_changed(false);
         
         project_file = fname;
         if (fname == null) {
@@ -961,9 +952,9 @@ public abstract class Project : MultiFileProgressInterface, Object {
         foreach (Track track in inactive_tracks) {
             track.save(f);
         }
-        f.printf("</marina>\n"); 
-        saved_index = command_list.size - 1;
-        dirty_changed(false);
+        f.printf("</marina>\n");
+        // TODO: clean up responsibility between dirty and undo
+        undo_manager.mark_clean();
     }
 
     public void close() {
@@ -1061,43 +1052,13 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     public void do_command(Command the_command) {
-        the_command.apply();
-        Command? current_command = get_current_command();
-        if (current_command == null || !current_command.merge(the_command)) {
-            command_list.add(the_command);
-        }
-        dirty_changed(true);
-        undo_changed(can_undo);
+        undo_manager.do_command(the_command);
     }
 
-    Command? get_current_command() {
-        int index = command_list.size - 1;
-        if (index >= 0) {
-            return command_list[index];
-        } else {
-            return null;
-        }
-    }
-    
     public void undo() {
-        Command? the_command = get_current_command();
-        if (the_command != null) {
-            command_list.remove(the_command);
-            the_command.undo();
-            dirty_changed(is_dirty);
-            undo_changed(can_undo);
-        }
+        undo_manager.undo();
     }
     
-    public string get_undo_title() {
-        Command? the_command = get_current_command();
-        if (the_command != null) {
-            return the_command.description();
-        } else {
-            return "";
-        }
-    }
-
     public abstract double get_version();
     public abstract string get_app_name();
 

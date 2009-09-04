@@ -77,6 +77,7 @@ class VideoProject : Project {
     }
 
     protected override void do_append(ClipFile clipfile, string name, int64 insert_time) {
+        undo_manager.start_transaction();
         if (clipfile.video_caps != null) {
             Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
             Track? track = find_video_track();
@@ -85,6 +86,7 @@ class VideoProject : Project {
             }
         }
         base.do_append(clipfile, name, insert_time);
+        undo_manager.end_transaction();
     }
     
     protected override void do_null_state_export() {
