@@ -237,7 +237,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public signal void track_removed(Track track);
     public signal void error_occurred(string error_message);
     
-    public signal void clipfile_added(ClipFile c, int position);
+    public signal void clipfile_added(ClipFile c);
     public signal void cleared();
     public signal void dirty_changed(bool is_dirty);
     public signal void undo_changed(bool can_undo);
@@ -272,6 +272,13 @@ public abstract class Project : MultiFileProgressInterface, Object {
         bus.message["warning"] += on_warning;
         bus.message["eos"] += on_eos;    
         set_gst_state(Gst.State.PAUSED);                  
+    }
+    
+    public ClipFile? get_clipfile(int index) {
+        if (index < 0 ||
+            index >= clipfiles.size)
+            return null;
+        return clipfiles[index];
     }
 
     public void print_graph(Gst.Bin bin, string file_name) {
@@ -512,21 +519,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
         set_name(filename);
     }
 
-    int add_clipfile_abc_order(ClipFile clipfile) {
-        int i = 0;
-        foreach (ClipFile f in clipfiles) {
-            if (stricmp(isolate_filename(clipfile.filename), isolate_filename(f.filename)) <= 0) {
-                break;
-            }
-            i++;
-        }
-        clipfiles.insert(i, clipfile);        
-        return i;
-    }
-
     public virtual void add_clipfile(ClipFile clipfile) {
         clipfiles.add(clipfile);
-        clipfile_added(clipfile, add_clipfile_abc_order(clipfile));
     }
     
     public bool remove_clipfile(string filename) {

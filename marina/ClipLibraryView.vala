@@ -18,6 +18,11 @@ public class ClipLibraryView : Gtk.EventBox {
     Gdk.Pixbuf default_audio_icon;
     Gdk.Pixbuf default_video_icon;
 
+    enum SortMode {
+        NONE,
+        ABC
+    }
+
     enum ColumnType {
         THUMBNAIL,
         NAME,
@@ -26,6 +31,8 @@ public class ClipLibraryView : Gtk.EventBox {
     }
 
     public signal void selection_changed(bool selected);
+
+    SortMode sort_mode;
 
     public ClipLibraryView(Model.Project p) {
         project = p;
@@ -73,6 +80,8 @@ public class ClipLibraryView : Gtk.EventBox {
 
         default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
         default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
+    
+        sort_mode = SortMode.ABC;
     }
     
     Gtk.TreePath? find_first_selected() {
@@ -248,7 +257,21 @@ public class ClipLibraryView : Gtk.EventBox {
                             ColumnType.FILENAME, f.filename, -1);          
     }
     
-    void on_clipfile_added(Model.ClipFile f, int position) {
+    int get_clipfile_position(Model.ClipFile f) {
+        if (sort_mode == SortMode.ABC) {
+            Model.ClipFile compare;
+            int i = 0;
+            
+            while ((compare = project.get_clipfile(i)) != null) {
+                if (stricmp(f.filename, compare.filename) <= 0)
+                    return i;
+                i++;
+            }
+        }
+        return -1;
+    }
+    
+    void on_clipfile_added(Model.ClipFile f) {
         Gtk.TreeIter it;
         
         if (find_clipfile(f, out it) >= 0) {
@@ -263,10 +286,11 @@ public class ClipLibraryView : Gtk.EventBox {
             f.updated += on_clipfile_updated;
         }
         
-        if (position == -1)
+        int pos = get_clipfile_position(f);
+        if (pos == -1)
             list_store.append(out it);
         else
-            list_store.insert(out it, position);
+            list_store.insert(out it, pos);
 
         update_iter(it, f);
     }

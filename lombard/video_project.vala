@@ -46,16 +46,17 @@ class VideoProject : Project {
     }
 
     public override void add_clipfile(ClipFile f) {
+        base.add_clipfile(f);
         if (f.is_of_type(MediaType.VIDEO)) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(f, 0);
             fetcher.ready += on_thumbnail_ready;
             pending.add(fetcher);
         } else
-            base.add_clipfile(f);
+            clipfile_added(f);
     }
 
     void on_thumbnail_ready(ThumbnailFetcher f) {
-        base.add_clipfile(f.clipfile);
+        clipfile_added(f.clipfile);
         pending.remove(f);
     }
 
