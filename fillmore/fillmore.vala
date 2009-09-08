@@ -267,7 +267,7 @@ class Recorder : Gtk.Window {
     void on_export() {
         string filename;
         if (DialogUtils.save(this, "Export", export_filters, out filename)) {
-            MultiFileProgress export_dialog = new MultiFileProgress(this, 1, "Export", project);
+            new MultiFileProgress(this, 1, "Export", project);
             project.start_export(filename);
         }
     }

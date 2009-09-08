@@ -161,7 +161,7 @@ public class ProjectLoader {
     string? file_name;
     LoaderHandler loader_handler;
     string text;
-    ulong text_len;
+    size_t text_len;
 
     bool loaded_file_header;
     string error;

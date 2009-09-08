@@ -184,7 +184,7 @@ public class ClipLibraryView : Gtk.EventBox {
                 uri = GLib.Filename.to_uri(s);
             } catch (GLib.ConvertError e) {
                 uri = s;        
-                warning("Cannot get URI for %s! (%s)\n".printf(s, e.message));
+                warning("Cannot get URI for %s! (%s)\n", s, e.message);
             }
             uri_array += uri;
         }
