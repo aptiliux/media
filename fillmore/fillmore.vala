@@ -460,6 +460,7 @@ class Recorder : Gtk.Window {
     
     public void on_load_error(string message) {
         do_error_dialog(message);
+        default_track_set();
     }
 
     void on_name_changed() {

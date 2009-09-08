@@ -880,21 +880,18 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
     
     void on_load_complete(string? error) {
-        undo_manager.reset();
+        undo_manager.reset();   
+             
         if (error != null) {
             clear();
             load_error(error);
-        } else {
-            // We do this here because there are problems with transitioning to the paused
-            // state during an asynchronous load.  We wait until the loading is done, switch states,
-            // and then, to get the image of the first frame, we set up a callback 
-            // which seeks to position 0
-            pipeline.set_state(Gst.State.PAUSED);
-            play_state = PlayState.STOPPED;
-        
+        } else {        
             load_success();
             name_changed(project_file);
         }
+
+        play_state = PlayState.STOPPED;
+        pipeline.set_state(Gst.State.PAUSED);
     }
     
     // Load a project file.  The load is asynchronous: it may continue after this method returns.
@@ -919,6 +916,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         loader.load_started += on_load_started;
         loader.load_complete += on_load_complete;
         pipeline.set_state(Gst.State.NULL);
+        
         play_state = PlayState.LOADING;
     }
     

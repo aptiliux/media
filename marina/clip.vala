@@ -154,7 +154,6 @@ public abstract class Fetcher {
     protected void do_error(string error) {
         error_string = error;
         pipeline.set_state(Gst.State.NULL);
-        ready();
     }
 
     protected void on_warning(Gst.Bus bus, Gst.Message message) {

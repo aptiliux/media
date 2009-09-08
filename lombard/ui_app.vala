@@ -337,7 +337,8 @@ class App : Gtk.Window {
     // Loader code
     
     public void load_file(string name, Model.LibraryImporter im) {
-        if (get_file_extension(name) == Model.Project.LOMBARD_FILE_EXTENSION)
+        if (get_file_extension(name) == Model.Project.LOMBARD_FILE_EXTENSION ||
+            get_file_extension(name) == Model.Project.FILLMORE_FILE_EXTENSION)
             load_project(name);
         else {
             im.add_file(name);
@@ -353,38 +354,18 @@ class App : Gtk.Window {
     }
     
     void on_open() {
-        Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Open Files", this, 
-                                                            Gtk.FileChooserAction.OPEN,
-                                                            Gtk.STOCK_CANCEL, 
-                                                            Gtk.ResponseType.CANCEL,
-                                                            Gtk.STOCK_OPEN, 
-                                                            Gtk.ResponseType.ACCEPT, null);
-        Gtk.FileFilter filter = new Gtk.FileFilter();
-        filter.set_name("Project Files");
-        filter.add_pattern(Model.Project.LOMBARD_FILE_FILTER);
-        
-        d.add_filter(filter);
-        
-        filter = new Gtk.FileFilter();
-        filter.set_name("All Files");
-        filter.add_pattern("*");
-        
-        d.add_filter(filter);
-
-        create_clip_importer(false);
-
-        d.set_select_multiple(true);
-        if (d.run() == Gtk.ResponseType.ACCEPT) {
-            foreach (string s in d.get_filenames()) {
+        GLib.SList<string> filenames;
+        if (DialogUtils.open(this, filters, true, true, out filenames)) {
+            create_clip_importer(false);
+            foreach (string s in filenames) {
                 string str;
                 try {
                     str = GLib.Filename.from_uri(s);
                 } catch (GLib.ConvertError e) { str = s; }
                 load_file(str, importer);
             }
-        }                                                    
-        d.destroy();
-        importer.start();
+            importer.start();
+        }
     }
 
     void do_save_dialog() {

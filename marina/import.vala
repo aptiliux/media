@@ -152,6 +152,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     void on_fetcher_ready(ClipFetcher f) {
         if (f.error_string != null) {
             error_occurred(f.error_string);
+            do_import_complete();
             return;
         }
         
