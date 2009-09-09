@@ -111,6 +111,7 @@ class Recorder : Gtk.Window {
         project.undo_manager.dirty_changed += on_dirty_changed;
         project.undo_manager.undo_changed += on_undo_changed;
         project.error_occurred += on_error_occurred;
+        project.playstate_changed += on_playstate_changed;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -479,6 +480,12 @@ class Recorder : Gtk.Window {
         assert(undo != null);
         undo.set_label("Undo " + project.undo_manager.get_undo_title());
         undo.set_sensitive(can_undo);
+    }
+
+    void on_playstate_changed(Model.PlayState playstate) {
+        if (playstate == Model.PlayState.STOPPED) {
+            play_button.set_active(false);
+        }
     }
     
     void on_error_occurred(string major_message, string? minor_message) {

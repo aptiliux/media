@@ -223,6 +223,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public signal void post_export();
     public signal void position_changed();
     public signal void callback_pulse();
+    public signal void playstate_changed(Model.PlayState playstate);
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
@@ -885,6 +886,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     protected virtual bool do_state_change() {
+        playstate_changed(play_state);
         switch (play_state) {
             case PlayState.LOADING:
                 loader.load();
