@@ -349,7 +349,7 @@ public class LibraryImporter {
     }
     
     void on_error_occurred(string error) {
-        project.error_occurred(error);
+        project.error_occurred("Error importing", error);
     }
     
     protected virtual void append_existing_clipfile(ClipFile f) {

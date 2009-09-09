@@ -585,10 +585,16 @@ namespace DialogUtils {
         return return_value;
     }
 
-    public void error(string title, string message) {
-        Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
+    public void error(string major_message, string? minor_message) {
+    
+        string message = "<span weight=\"bold\" size=\"larger\">" + major_message +
+            "</span>";
+        if (minor_message != null) {
+            message = message + "\n\n" + minor_message;
+        }
+        
+        Gtk.MessageDialog d = new Gtk.MessageDialog.with_markup(null, Gtk.DialogFlags.MODAL, 
                                 Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, message, null);
-        d.set_title(title);
         d.run();
         d.destroy();
     }

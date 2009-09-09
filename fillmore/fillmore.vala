@@ -110,6 +110,7 @@ class Recorder : Gtk.Window {
         project.name_changed += on_name_changed;
         project.undo_manager.dirty_changed += on_dirty_changed;
         project.undo_manager.undo_changed += on_undo_changed;
+        project.error_occurred += on_error_occurred;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -478,6 +479,10 @@ class Recorder : Gtk.Window {
         assert(undo != null);
         undo.set_label("Undo " + project.undo_manager.get_undo_title());
         undo.set_sensitive(can_undo);
+    }
+    
+    void on_error_occurred(string major_message, string? minor_message) {
+        DialogUtils.error(major_message, minor_message);
     }
 }
 

@@ -24,6 +24,7 @@ public abstract class Track {
 
     public signal void track_renamed(Track track);
     public signal void track_selection_changed(Track track);
+    public signal void error_occurred(string major_error, string? minor_error);
 
     public Track(Project project, string display_name) {
         this.project = project;
@@ -91,7 +92,7 @@ public abstract class Track {
         return false;
     }
 
-    protected virtual void check(Clip clip) { }
+    protected abstract bool check(Clip clip);
 
     void on_pad_removed (Gst.Bin bin, Gst.Pad pad) {
         pad_removed(this, bin, pad);
@@ -379,28 +380,28 @@ public abstract class Track {
     }
     
     void insert(int index, Clip clip, int64 pos) {
-        check(clip);
-
-        // I reversed the following two lines as shift_clips sets information on
-        // clips that aren't yet in the composition otherwise, which causes behavior
-        // like the position in the composition being incorrect when we start playing.
-        // This also fixes the lockup problem we were having.
-        if (composition != null) {
-            composition.add(clip.file_source);         
-            insert_at(index, clip, pos);
-            
-            clip_added(clip);
+        if (check(clip)) {
+            // I reversed the following two lines as shift_clips sets information on
+            // clips that aren't yet in the composition otherwise, which causes behavior
+            // like the position in the composition being incorrect when we start playing.
+            // This also fixes the lockup problem we were having.
+            if (composition != null) {
+                composition.add(clip.file_source);         
+                insert_at(index, clip, pos);
+                
+                clip_added(clip);
+            }
         }
     }
     
     void put(int index, Clip c) {
-        check(c);
-
-        composition.add(c.file_source);
-        clips.insert(index, c);
-        
-        project.reseek();
-        clip_added(c);
+        if (check(c)) {
+            composition.add(c.file_source);
+            clips.insert(index, c);
+            
+            project.reseek();
+            clip_added(c);
+        }
     }
     
     public void _append_at_time(Clip c, int64 time) {
@@ -579,6 +580,8 @@ public class AudioTrack : Track {
     
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
+        error_occurred += project.on_error_occurred;
+
         audio_convert = make_element_with_name("audioconvert",
             "audioconvert_%s".printf(display_name));
         audio_resample = make_element_with_name("audioresample",
@@ -693,6 +696,29 @@ public class AudioTrack : Track {
     
     public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         bin.unlink_many(audio_convert, audio_resample, level, pan, volume, track_element);
+    }
+    
+    public override bool check(Clip clip) {
+        if (clips.size == 0) {
+            return true;
+        }
+        
+        bool good = false;
+        int number_of_channels;
+        if (clip.clipfile.get_num_channels(out number_of_channels)) {
+            int track_channel_count;
+            if (clips[0].clipfile.get_num_channels(out track_channel_count)) {
+                good = track_channel_count == number_of_channels;
+            }
+        }
+        
+        if (!good) {
+            string sub_error = number_of_channels == 1 ?
+                "Mono clips cannot go on stereo tracks." :
+                "Stereo clips cannot go on mono tracks.";
+            error_occurred("Cannot add clip to track", sub_error);
+        }
+        return good;
     }
     
     void on_level_changed(Gst.Object source, double level_value) {

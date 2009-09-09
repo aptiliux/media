@@ -24,10 +24,10 @@ public class VideoTrack : Track {
         return blackness;
     }
 
-    protected override void check(Clip clip) {
+    protected override bool check(Clip clip) {
         Fraction rate1;
         Fraction rate2;
-        
+
         if (!get_framerate(out rate2))
             error ("Cannot get initial frame rate!");
         
@@ -36,6 +36,8 @@ public class VideoTrack : Track {
         
         if (!rate1.equal(rate2))
             error ("can't insert clip with different frame rate");
+
+        return true;
     }
     
     /* It would be nice if we could query or seek in frames using GST_FORMAT_DEFAULT, or ask

@@ -231,7 +231,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void track_added(Track track);
     public signal void track_removed(Track track);
-    public signal void error_occurred(string error_message);
+    public signal void error_occurred(string major_message, string? minor_message);
     
     public signal void clipfile_added(ClipFile c);
     public signal void cleared();
@@ -936,8 +936,12 @@ public abstract class Project : MultiFileProgressInterface, Object {
         play_state = PlayState.LOADING;
     }
     
+    public void on_error_occurred(string major_error, string? minor_error) {
+        error_occurred(major_error, minor_error);
+    }
+    
     public void on_load_error(string error_string) {
-        error_occurred(error_string);
+        error_occurred("Could not load file", error_string);
     }
     
     public int get_file_version() {
@@ -986,7 +990,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public void on_importer_clip_complete(ClipFetcher fetcher) {
         if (fetcher.error_string != null) {
-            error_occurred(fetcher.error_string);         
+            error_occurred("Error importing clip", fetcher.error_string);         
         } else {
             fetcher_completion.complete(fetcher);
         }        
@@ -1009,7 +1013,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     void on_fetcher_ready(ClipFetcher fetcher) {
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
-            error_occurred(fetcher.error_string);         
+            error_occurred("Error retrieving clip", fetcher.error_string);         
         } else {
             fetcher_completion.complete(fetcher);
         }
