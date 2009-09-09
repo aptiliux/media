@@ -67,22 +67,54 @@ public class ParameterCommand : Command {
 }
 
 public class ClipCommand : Command {
+    public enum Action { APPEND, DELETE }
     Track track;
     Clip clip;
     int64 time;
+    Action action;
+    bool ripple;
+    int index;
     
-    public ClipCommand(Track track, Clip clip, int64 time) {
+    public ClipCommand(Action action, Track track, Clip clip, int64 time, bool ripple) {
         this.track = track;
         this.clip = clip;
         this.time = time;
+        this.action = action;
+        this.ripple = ripple;
+        this.index = track.get_clip_index(clip);
     }
     
     public override void apply() {
-        track._append_at_time(clip, time);
+        switch(action) {
+            case Action.APPEND:
+                track._append_at_time(clip, time);
+                break;
+            case Action.DELETE:
+                track._delete_clip(clip, ripple);
+                break;
+            default:
+                assert(false);
+                break;
+        }
     }
     
     public override void undo() {
-        track.delete_clip(clip, false);
+        switch(action) {
+            case Action.APPEND:
+                track._delete_clip(clip, ripple);
+                break;
+            case Action.DELETE:
+                if (!ripple) {
+                    if (index != -1) {
+                        track.shift_clips(index, -clip.length);
+                    }
+                }
+                track.insert(index, clip, time);
+                break;
+            default:
+                assert(false);
+                break;
+        }
     }
     
     public override bool merge(Command command) {
@@ -90,7 +122,89 @@ public class ClipCommand : Command {
     }
     
     public override string description() {
-        return "Create Clip";
+        switch(action) {
+            case Action.APPEND:
+                return "Create Clip";
+            case Action.DELETE:
+                return "Delete Clip";
+            default:
+                assert(false);
+                return "";
+        }
+    }
+}
+
+public class ClipAddCommand : Command {
+    Track track;
+    Clip clip;
+    int64 delta;
+    bool overwrite;
+    
+    public ClipAddCommand(Track track, Clip clip, int64 original_time, 
+        int64 new_start, bool overwrite) {
+        this.track = track;
+        this.clip = clip;
+        this.delta = new_start - original_time;
+        this.overwrite = overwrite;
+    }
+    
+    public override void apply() {
+        track._add_clip_at(clip, clip.start, overwrite);
+    }
+    
+    public override void undo() {
+        track.remove_clip_from_array(track.get_clip_index(clip));     
+        track._add_clip_at(clip, clip.start - delta, overwrite);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Move Clip";
+    }
+}
+
+public class ClipSplit : Command {
+    Track track;
+    int64 time;
+    bool do_split;
+    
+    public enum Action { SPLIT, JOIN }
+
+    public ClipSplit(Action action, Track track, int64 time) {
+        this.track = track;
+        this.time = time;
+        do_split = action == Action.SPLIT;
+    }
+    
+    public override void apply() {
+        if (do_split) {
+            track._split_at(time);
+        } else {
+            track._join(time);
+        }
+    }
+    
+    public override void undo() {
+        if (do_split) {
+            track._join(time);
+        } else {
+            track._split_at(time);
+        }
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        if (do_split) {
+            return "Split Clip";
+        } else {
+            return "Join Clip";
+        }
     }
 }
 

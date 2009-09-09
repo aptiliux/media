@@ -186,10 +186,10 @@ public enum PlayState {
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
 public abstract class Project : MultiFileProgressInterface, Object {
-    public static const string FILLMORE_FILE_EXTENSION = "fill";
-    public static const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
-    public static const string LOMBARD_FILE_EXTENSION = "lom";
-    public static const string LOMBARD_FILE_FILTER = "*." + LOMBARD_FILE_EXTENSION;
+    public const string FILLMORE_FILE_EXTENSION = "fill";
+    public const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
+    public const string LOMBARD_FILE_EXTENSION = "lom";
+    public const string LOMBARD_FILE_FILTER = "*." + LOMBARD_FILE_EXTENSION;
 
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
@@ -403,9 +403,21 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
    
     public void split_at_playhead() {
+        undo_manager.start_transaction();
         foreach (Track track in tracks) {
-            track.split_at(position);
+            if (track.get_clip_by_position(position) != null) {
+                track.split_at(position);
+            }
         }
+        undo_manager.end_transaction();
+    }
+    
+    public void join_at_playhead() {
+        undo_manager.start_transaction();
+        foreach (Track track in tracks) {
+            track.join(position);
+        }
+        undo_manager.end_transaction();
     }
     
     public bool can_trim(out bool left) {
@@ -456,12 +468,14 @@ public abstract class Project : MultiFileProgressInterface, Object {
             return;
 
         Clip first_clip = null;
+        undo_manager.start_transaction();
         foreach (Track track in tracks) {
             Clip clip = track.get_clip_by_position(position);
             if (clip != null) {
                 track.trim(clip, position, left);
             }
         }
+        undo_manager.end_transaction();
             
         if (left && first_clip != null) {
             go(first_clip.start);
@@ -475,6 +489,15 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public bool playhead_on_clip() {
         foreach (Track track in tracks) {
             if (track.get_clip_by_position(position) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public bool playhead_on_contiguous_clip() {
+        foreach (Track track in tracks) {
+            if (track.are_contiguous_clips(position)) {
                 return true;
             }
         }

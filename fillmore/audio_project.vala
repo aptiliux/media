@@ -126,7 +126,7 @@ class AudioProject : Project {
         if (gst_state != Gst.State.NULL)
             error("can't record now: %s", gst_state.to_string());
 
-        record_track.add_clip_at(record_region, position, false);
+        record_track._add_clip_at(record_region, position, false);
         record_track.clip_added(record_region);
         audio_in = make_element("gconfaudiosrc");
         record_capsfilter = make_element("capsfilter");

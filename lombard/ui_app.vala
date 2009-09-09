@@ -51,6 +51,7 @@ class App : Gtk.Window {
     Gtk.Action revert_to_original_action;
     Gtk.Action clip_properties_action;
     Gtk.Action zoom_to_project_action;
+    Gtk.Action join_at_playhead_action;
     
     Gtk.ToggleAction library_view_action;
     
@@ -87,6 +88,7 @@ class App : Gtk.Window {
         { "DeleteLift", null, "Lift Delete", "<Shift>Delete", null, on_delete_lift },
         { "SplitAtPlayhead", null, "Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
+        { "JoinAtPlayhead", null, "Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "Revert to Original",
           "<Control>R", null, on_revert_to_original },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properties", "<Alt>Return", 
@@ -134,6 +136,7 @@ class App : Gtk.Window {
       <separator/>
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
+      <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
       <menuitem name="ClipRevertToOriginal" action="RevertToOriginal"/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
@@ -194,6 +197,7 @@ class App : Gtk.Window {
         paste_overwrite_action = group.get_action("PasteOver");
         split_at_playhead_action = group.get_action("SplitAtPlayhead");
         trim_to_playhead_action = group.get_action("TrimToPlayhead");
+        join_at_playhead_action = group.get_action("JoinAtPlayhead");
         revert_to_original_action = group.get_action("RevertToOriginal");
         clip_properties_action = group.get_action("ClipProperties");
         zoom_to_project_action = group.get_action("ZoomProject");
@@ -220,6 +224,7 @@ class App : Gtk.Window {
         project.load_success += on_load_success;
         project.error_occurred += do_error_dialog;
         project.undo_manager.undo_changed += on_undo_changed;
+
         // TODO: this is a hack to deal with project loading.  Lombard assumes one video
         // track and one audio track.  It was non-trivial to delete and recreate tracks.
         project.clear_tracks = false;
@@ -424,6 +429,10 @@ class App : Gtk.Window {
         project.split_at_playhead();
     }
     
+    public void on_join_at_playhead() {
+        project.join_at_playhead();
+    }
+    
     public void on_trim_to_playhead() {
         project.trim_to_playhead();
     }
@@ -501,6 +510,7 @@ class App : Gtk.Window {
         
         b = project.playhead_on_clip();
         split_at_playhead_action.set_sensitive(b);
+        join_at_playhead_action.set_sensitive(project.playhead_on_contiguous_clip());
         
         bool dir;
         trim_to_playhead_action.set_sensitive(project.can_trim(out dir));

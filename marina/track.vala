@@ -134,7 +134,7 @@ public abstract class Track {
         return false;
     }
     
-    public int get_insert_index(int64 time) {
+    int get_insert_index(int64 time) {
         int end_ret = 0;
         for (int i = 0; i < clips.size; i++) {
             Clip c = clips[i];
@@ -264,7 +264,16 @@ public abstract class Track {
         }        
     }    
     
-    public void add_clip_at(Clip c, int64 pos, bool overwrite) {
+    public void add_clip_at(Clip c, int64 pos, bool overwrite, int64 original_time) {
+        Command command = new ClipAddCommand(this, c, original_time, pos, overwrite);
+        project.do_command(command);
+    }
+    
+    public void _add_clip_at(Clip c, int64 pos, bool overwrite) {
+        if (pos < 0) {
+            pos = 0;
+        }
+        
         c.set_start(pos);
         if (overwrite)
             do_clip_overwrite(c);    
@@ -278,7 +287,7 @@ public abstract class Track {
     public void add_new_clip(Clip c, int64 pos, bool overwrite) {
         if (composition != null) {
             composition.add(c.file_source);
-            add_clip_at(c, pos, overwrite);
+            _add_clip_at(c, pos, overwrite);
             clip_added(c);
         }
     }
@@ -312,7 +321,7 @@ public abstract class Track {
              if (new_clip)
                 add_new_clip(clip, position, true);
              else
-                add_clip_at(clip, position, true);
+                _add_clip_at(clip, position, true);
                 
              return 0;
         } else {
@@ -365,7 +374,7 @@ public abstract class Track {
      * if you arrange clips a few times, the current
      * position will become corrupted.
      */
-    void shift_clips(int index, int64 shift) {
+    public void shift_clips(int index, int64 shift) {
         for (int i = 0; i < clips.size; i++)
             clips[i].set_start(i >= index ? clips[i].start + shift
                                           : clips[i].start);
@@ -379,7 +388,7 @@ public abstract class Track {
         project.reseek();
     }
     
-    void insert(int index, Clip clip, int64 pos) {
+    public void insert(int index, Clip clip, int64 pos) {
         if (check(clip)) {
             // I reversed the following two lines as shift_clips sets information on
             // clips that aren't yet in the composition otherwise, which causes behavior
@@ -409,7 +418,7 @@ public abstract class Track {
     }
     
     public void append_at_time(Clip c, int64 time) {
-        Command command = new ClipCommand(this, c, time);
+        Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time, true);
         project.do_command(command);
     }
     
@@ -420,6 +429,12 @@ public abstract class Track {
     }
     
     public void delete_clip(Clip clip, bool ripple) {
+        Command clip_command = new ClipCommand(ClipCommand.Action.DELETE, 
+            this, clip, clip.start, ripple);
+        project.do_command(clip_command);
+    }
+    
+    public void _delete_clip(Clip clip, bool ripple) {
         composition.remove(clip.file_source);
         clip.file_source.set_state(Gst.State.NULL);
         int index = get_clip_index(clip);
@@ -486,7 +501,22 @@ public abstract class Track {
         project.go(c.start);
     }
     
+    public bool are_contiguous_clips(int64 position) {
+        Clip right_clip = get_clip_by_position(position + 1);
+        Clip left_clip = get_clip_by_position(position - 1);
+        
+        return left_clip != null && right_clip != null && 
+            left_clip != right_clip &&
+            left_clip.clipfile == right_clip.clipfile &&
+            left_clip.end == right_clip.start;
+    }
+    
     public void split_at(int64 position) {
+        Command command = new ClipSplit(ClipSplit.Action.SPLIT, this, position);
+        project.do_command(command);
+    }
+    
+    public void _split_at(int64 position) {
         Clip c = get_clip_by_position(position);
         if (c == null)
             return;
@@ -501,14 +531,36 @@ public abstract class Track {
         insert(index, cn, position);  
     }  
     
+    public void join(int64 position) {
+        Command command = new ClipSplit(ClipSplit.Action.JOIN, this, position);
+        project.do_command(command);
+    }
+    
+    public void _join(int64 position) {
+        assert(are_contiguous_clips(position));
+        if (are_contiguous_clips(position)) {
+            Clip right_clip = get_clip_by_position(position + 1);
+            assert(right_clip != null);
+        
+            int right_clip_index = get_clip_index(right_clip);
+            assert(right_clip_index > 0);
+
+            int left_clip_index = right_clip_index - 1;
+            Clip left_clip = get_clip(left_clip_index);
+            left_clip.set_duration(right_clip.end);
+            remove_clip(right_clip_index);
+        }
+    }
+    
     public void trim(Clip c, int64 position, bool left) {
         int index = get_clip_index(c);
         int64 pos_diff;
-        
         if (left) {
             pos_diff = position - c.start;
             c.set_media_start(c.media_start + pos_diff);
-        } else pos_diff = c.end - position;
+        } else {
+            pos_diff = c.end - position;
+        }
         
         shift_clips(index + 1, -pos_diff);
         c.set_duration(c.length - pos_diff);

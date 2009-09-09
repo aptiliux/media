@@ -393,6 +393,10 @@ public class Clip {
         set_start(start);
     }
     
+    ~Clip() {
+        file_source.set_state(Gst.State.NULL);
+    }
+    
     public void gnonlin_connect() { connected = true; }
     public void gnonlin_disconnect() { connected = false; }
     

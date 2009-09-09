@@ -89,7 +89,7 @@ class TrackView : Gtk.Fixed {
 
             if (track.get_clip_index(timeline.drag_source_clip.clip) == -1) {
                 track.add_clip_at(timeline.drag_source_clip.clip, 
-                                        init_drag_time, false);
+                                        init_drag_time, false, init_drag_time);
                 timeline.drag_source_clip.ghost = false;
             }
         } else {
@@ -168,7 +168,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void cancel_drag() {
-        track.add_clip_at(timeline.selected_clip.clip, init_drag_time, false);
+        track.add_clip_at(timeline.selected_clip.clip, init_drag_time, false, init_drag_time);
         timeline.selected_clip.ghost = false;
         clear_drag();
     }
@@ -202,7 +202,7 @@ class TrackView : Gtk.Fixed {
                     } else {
                         track.add_clip_at(timeline.selected_clip.clip, 
                              drag_x_coord < TimeLine.BORDER ? 0: timeline.selected_clip.clip.start,
-                             timeline.shift_pressed);
+                             timeline.shift_pressed, init_drag_time);
                     }
                 }
                 timeline.selected_clip.ghost = false;
