@@ -235,6 +235,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void clipfile_added(ClipFile c);
     public signal void cleared();
+    public signal void level_changed(Gst.Object source, double level_value);
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
@@ -267,6 +268,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
         bus.message["warning"] += on_warning;
         bus.message["eos"] += on_eos;    
         bus.message["state-changed"] += on_state_change;
+        bus.message["element"] += on_element;
+        
         set_gst_state(Gst.State.PAUSED);                  
     }
     
@@ -821,10 +824,23 @@ public abstract class Project : MultiFileProgressInterface, Object {
             pipeline.set_state(Gst.State.NULL);
     }
     
+    void on_element(Gst.Bus bus, Gst.Message message) {
+        unowned Gst.Structure structure = message.get_structure();
+        
+        if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
+            message.src.set_property("interval", Gst.SECOND / 30);
+            double level_value = 0;
+            Gst.Value? rms = structure.get_value("rms");
+            Gst.Value? temp = rms.list_get_value(0);
+            level_value = temp.get_double(); // we are only dealing with mono for the moment
+            level_changed(message.src, level_value);
+        }
+    }
+    
     void on_state_change(Gst.Bus bus, Gst.Message message) {
         if (message.src != pipeline)
             return;
-            
+
         Gst.State old_state;
         Gst.State new_state;
         Gst.State pending;

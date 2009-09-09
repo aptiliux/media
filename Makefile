@@ -8,6 +8,7 @@ MARINA_TESTABLE_SOURCES =	ProjectLoader.vala \
 MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src))
 
 MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
+					AudioMeter.vala \
 					clip.vala \
 					ClipLibraryView.vala \
 					command.vala \

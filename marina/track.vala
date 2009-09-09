@@ -570,10 +570,12 @@ public abstract class Track {
 public class AudioTrack : Track {
     Gst.Element audio_convert;
     Gst.Element audio_resample;
+    Gst.Element level;
     Gst.Element pan;
     Gst.Element volume;
 
     public signal void parameter_changed(Parameter parameter, double new_value);
+    public signal void level_changed(double level_value);
     
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
@@ -581,11 +583,17 @@ public class AudioTrack : Track {
             "audioconvert_%s".printf(display_name));
         audio_resample = make_element_with_name("audioresample",
             "audioresample_%s".printf(display_name));
+        level = make_element("level");
  
         pan = make_element("audiopanorama");
         pan.set_property("panorama", 0);
         volume = make_element("volume");
         volume.set_property("volume", 10);
+
+        Value the_level = (uint64) (Gst.SECOND / 30);
+        level.set_property("interval", the_level);
+        Value true_value = true;
+        level.set_property("message", true_value);
         
         if (!project.pipeline.add(audio_convert)) {
             error("could not add audio_convert");
@@ -595,6 +603,10 @@ public class AudioTrack : Track {
             error("could not add audio_resample");
         }
         
+        if (!project.pipeline.add(level)) {
+            error("could not add level");
+        }
+        
         if (!project.pipeline.add(pan)) {
             error("could not add pan");
         }
@@ -602,6 +614,8 @@ public class AudioTrack : Track {
         if (!project.pipeline.add(volume)) {
             error("could not add volume");
         }
+        
+        project.level_changed += on_level_changed;
     }
 
     ~AudioTrack() {
@@ -672,13 +686,19 @@ public class AudioTrack : Track {
     }
     
     public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
-        if (!bin.link_many(audio_convert, audio_resample, pan, volume, track_element)) {
+        if (!bin.link_many(audio_convert, audio_resample, level, pan, volume, track_element)) {
             error("could not link_new_pad for audio track");
         }
     }
     
     public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
-        bin.unlink_many(audio_convert, audio_resample, pan, volume, track_element);
+        bin.unlink_many(audio_convert, audio_resample, level, pan, volume, track_element);
+    }
+    
+    void on_level_changed(Gst.Object source, double level_value) {
+        if (source == level) {
+            level_changed(level_value);
+        }
     }
 }
 }

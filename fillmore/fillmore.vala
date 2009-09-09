@@ -424,7 +424,7 @@ class Recorder : Gtk.Window {
     
     void on_record() {
         if (record_button.get_active()) {
-            project.record(selected_track());
+            project.record(selected_track() as Model.AudioTrack);
         } else {
             project.pause();
         }

@@ -27,7 +27,7 @@ class RecordFetcherCompletion : FetcherCompletion {
 }
 
 class AudioProject : Project {
-    Track record_track;
+    AudioTrack record_track;
     Clip record_region;
     Gst.Element audio_in;
     Gst.Element record_capsfilter;
@@ -86,6 +86,7 @@ class AudioProject : Project {
             inactive_tracks.add(track);
             return;
         }
+        
         base.add_track(track);
     }
     
@@ -105,7 +106,7 @@ class AudioProject : Project {
         }
     }
     
-    public void record(Track track) {
+    public void record(AudioTrack track) {
         play_state = PlayState.PRE_RECORD_NULL;
         set_gst_state(Gst.State.NULL);
         record_track = track;

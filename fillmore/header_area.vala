@@ -56,6 +56,8 @@ class AudioTrackHeader : TrackHeader {
 
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(track_label, true, true, 0);
+        View.AudioMeter meter = new View.AudioMeter(track);
+        vbox.add(meter);
         
         Gtk.HBox pan_hbox = new Gtk.HBox(false, 0);
         Gtk.Label pan_label = new Gtk.Label("P");
