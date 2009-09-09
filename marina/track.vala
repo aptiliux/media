@@ -512,7 +512,7 @@ public abstract class Track {
     }
     
     public void split_at(int64 position) {
-        Command command = new ClipSplit(ClipSplit.Action.SPLIT, this, position);
+        Command command = new ClipSplitCommand(ClipSplitCommand.Action.SPLIT, this, position);
         project.do_command(command);
     }
     
@@ -532,7 +532,7 @@ public abstract class Track {
     }  
     
     public void join(int64 position) {
-        Command command = new ClipSplit(ClipSplit.Action.JOIN, this, position);
+        Command command = new ClipSplitCommand(ClipSplitCommand.Action.JOIN, this, position);
         project.do_command(command);
     }
     
@@ -552,18 +552,20 @@ public abstract class Track {
         }
     }
     
-    public void trim(Clip c, int64 position, bool left) {
+    public void trim(Clip clip, int64 delta, bool left) {
+        Command command = new ClipTrimCommand(this, clip, delta, left);
+        project.do_command(command);
+    }
+    
+    public void _trim(Clip c, int64 delta, bool left) {
         int index = get_clip_index(c);
-        int64 pos_diff;
         if (left) {
-            pos_diff = position - c.start;
-            c.set_media_start(c.media_start + pos_diff);
-        } else {
-            pos_diff = c.end - position;
+            c.set_media_start(c.media_start + delta);
         }
         
-        shift_clips(index + 1, -pos_diff);
-        c.set_duration(c.length - pos_diff);
+        c.set_duration(c.length - delta);
+        
+        shift_clips(index + 1, -delta);
     }
     
     public int64 previous_edit(int64 pos) {

@@ -166,14 +166,14 @@ public class ClipAddCommand : Command {
     }
 }
 
-public class ClipSplit : Command {
+public class ClipSplitCommand : Command {
     Track track;
     int64 time;
     bool do_split;
     
     public enum Action { SPLIT, JOIN }
 
-    public ClipSplit(Action action, Track track, int64 time) {
+    public ClipSplitCommand(Action action, Track track, int64 time) {
         this.track = track;
         this.time = time;
         do_split = action == Action.SPLIT;
@@ -205,6 +205,36 @@ public class ClipSplit : Command {
         } else {
             return "Join Clip";
         }
+    }
+}
+
+public class ClipTrimCommand : Command {
+    Track track;
+    Clip clip;
+    int64 delta;
+    bool left;
+    
+    public ClipTrimCommand(Track track, Clip clip, int64 delta, bool left) {
+        this.track = track;
+        this.clip = clip;
+        this.delta = delta;
+        this.left = left;
+    }
+    
+    public override void apply() {
+        track._trim(clip, delta, left);
+    }
+    
+    public override void undo() {
+        track._trim(clip, -delta, left);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Trim To Playhead";
     }
 }
 

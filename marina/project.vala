@@ -464,15 +464,22 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public void trim_to_playhead() {
         bool left;
-        if (!can_trim(out left))
+        if (!can_trim(out left)) {
             return;
+        }
 
         Clip first_clip = null;
         undo_manager.start_transaction();
         foreach (Track track in tracks) {
             Clip clip = track.get_clip_by_position(position);
             if (clip != null) {
-                track.trim(clip, position, left);
+                int64 delta;
+                if (left) {
+                    delta = position - clip.start;
+                } else {
+                    delta = clip.end - position;
+                }
+                track.trim(clip, delta, left);
             }
         }
         undo_manager.end_transaction();
