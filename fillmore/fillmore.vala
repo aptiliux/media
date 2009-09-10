@@ -206,7 +206,7 @@ class Recorder : Gtk.Window {
         return widget;
     }
     
-    void on_selection_changed(TimeLine timeline, RegionView? new_selection) {
+    void on_selection_changed(TimeLine timeline, ClipView? new_selection) {
         delete_action.set_sensitive(new_selection != null);
     }
     
@@ -229,7 +229,7 @@ class Recorder : Gtk.Window {
     }
     
     public void scroll_to_end() {
-        int new_adjustment = TimeLine.time_to_xpos(project.get_length());
+        int new_adjustment = timeline.time_to_xpos(project.get_length());
         int window_width = timeline.parent.allocation.width;
         if (new_adjustment < timeline.parent.allocation.width) {
             new_adjustment = 0;
@@ -351,7 +351,7 @@ class Recorder : Gtk.Window {
     }
     
     void on_delete() {
-        Model.Clip clip = timeline.selected.region;
+        Model.Clip clip = timeline.selected.clip;
         selected_track().delete_clip(clip, false);
     }
     

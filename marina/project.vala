@@ -340,25 +340,27 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }
     }
     
-    public bool delete_gap(Track t, Gap g, bool single) {
-        if (single) {
-            t.delete_gap(g);
-            return true;
-        } else {
-            Gap temp = g;
-            foreach (Track track in tracks) {
-                if (track != t) {
-                    temp = temp.intersect(track.find_first_gap(temp.start));
-                }
-            }
+    Gap get_gap_intersection(Gap gap) {
+        Gap intersection = gap;
+        
+        foreach (Track track in tracks) {
+            intersection = intersection.intersect(track.find_first_gap(intersection.start));
+        }
+        
+        return intersection;
+    }
+    
+    public bool can_delete_gap(Gap gap) {
+        Gap intersection = get_gap_intersection(gap);        
+        return !intersection.is_empty();
+    }
+    
+    public void delete_gap(Gap gap) {
+        Gap intersection = get_gap_intersection(gap);
+        assert(!intersection.is_empty());
 
-            if (!temp.is_empty()) {
-                foreach (Track track in tracks) {
-                    track.delete_gap(temp);
-                }
-                return true;
-            }
-            return false;
+        foreach (Track track in tracks) {
+            track.delete_gap(intersection);
         }
     }
 
@@ -487,6 +489,15 @@ public abstract class Project : MultiFileProgressInterface, Object {
             
         if (left && first_clip != null) {
             go(first_clip.start);
+        }
+    }
+    
+    public void ripple_delete(Track instigator, int64 length, int64 clip_start, 
+            int64 clip_length) {
+        foreach (Track track in tracks) {
+            if (track != instigator) {
+                track.ripple_delete(length, clip_start, clip_length);
+            }
         }
     }
     

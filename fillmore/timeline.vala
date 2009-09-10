@@ -20,35 +20,6 @@ class Ruler : Gtk.DrawingArea {
     }
 }
 
-class RegionView : Gtk.DrawingArea {
-    public weak Model.Clip region;
-    public weak TrackView track_view;
-    
-    public RegionView(Model.Clip clip) {
-        region = clip;
-        clip.moved += update;
-    }
-    
-    construct {
-        set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        modify_bg(Gtk.StateType.NORMAL, parse_color("#da5"));
-        modify_bg(Gtk.StateType.SELECTED, parse_color("#d82"));
-    }
-    
-    public void update() {
-        track_view.update(this);
-    }
-    
-    public override bool expose_event (Gdk.EventExpose event) {
-        bool selected = track_view.timeline.selected == this;
-        window.draw_rectangle(style.bg_gc[selected ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL],
-                              true, allocation.x, allocation.y, allocation.width, allocation.height);
-        Pango.Layout layout = create_pango_layout(region.name);
-        Gdk.draw_layout(window, style.black_gc, allocation.x + 10, allocation.y + 14, layout);
-        return true;
-    }
-}
-
 class FillmoreFetcherCompletion : Model.FetcherCompletion {
     int64 time;
     
@@ -74,7 +45,7 @@ class TrackView : Gtk.Fixed {
     
     public const int width = 500;
     public const int height = 50;
-    
+        
     public TrackView(Model.Track t) {
         track = t;
         track.clip_added += on_region_added;
@@ -90,36 +61,29 @@ class TrackView : Gtk.Fixed {
         requisition.height = height;
     }
     
-    void update_size(RegionView rv) {
-        rv.set_size_request(TimeLine.time_to_xpos(rv.region.length), height);
+    public void on_region_added(Model.Clip clip) {
+        ClipView view = new ClipView(clip, timeline, TrackView.height);
+        view.clip_moved += update;
+        
+        put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
+        view.show();
     }
     
-    public void on_region_added(Model.Clip r) {
-        RegionView rv = new RegionView(r);
-        rv.track_view = this;
-        update_size(rv);
-        put(rv, TimeLine.time_to_xpos(rv.region.start), 0);
-        rv.show();
-    }
-    
-    public void on_region_removed(Model.Clip r) {
+    public void on_region_removed(Model.Clip clip) {
     // TODO revisit the dragging mechanism.  It would be good to have the clip
     // responsible for moving itself and removing itself rather than delegating
-    // to the timeline and to the TrackView.  Also, these classes may want to move
-    // to the common code
+    // to the timeline and to the TrackView
         foreach (Gtk.Widget w in get_children()) {
-            RegionView view = w as RegionView;
-            if (view.region == r) {
-                timeline.region_view_removed(view);
+            ClipView view = w as ClipView;
+            if (view.clip == clip) {
                 remove(view);
                 return;
             }
         }
     }
     
-    public void update(RegionView rv) {
-        update_size(rv);
-        move(rv, TimeLine.time_to_xpos(rv.region.start), 0);
+    public void update(ClipView rv) {
+        move(rv, timeline.time_to_xpos(rv.clip.start), TimeLine.BORDER);
     }
     
     public override void drag_data_received (Gdk.DragContext context, int x, int y,
@@ -159,10 +123,10 @@ class TrackView : Gtk.Fixed {
         timeline.recorder.select(track);
         
         foreach (Gtk.Widget w in get_children()) {
-            RegionView rv = (RegionView) w;
+            ClipView rv = (ClipView) w;
             if (rv.allocation.x <= event.x && event.x < rv.allocation.x + rv.allocation.width) {
                 timeline.select(rv);
-                drag = rv.region;
+                drag = rv.clip;
                 drag_mouse_x = (int) event.x; 
                 drag_region_x = rv.allocation.x;
                 return;
@@ -183,7 +147,7 @@ class TrackView : Gtk.Fixed {
     }
 }
 
-class TimeLine : Gtk.EventBox {
+class TimeLine : Gtk.EventBox, TimelineConverter {
     public weak Model.Project project;
     public weak Recorder recorder;
     
@@ -191,13 +155,14 @@ class TimeLine : Gtk.EventBox {
     Ruler ruler;
     Gdk.Color background_color = parse_color("#444");
 
-    public RegionView selected;
+    public ClipView selected;
     
     public const int pixels_per_second = 60;
     
     public const int track_margin = 2;
+    public const int BORDER = 1;
 
-    public signal void selection_changed(RegionView? new_selection);
+    public signal void selection_changed(ClipView? new_selection);
     
     public TimeLine(Recorder recorder) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
@@ -264,7 +229,7 @@ class TimeLine : Gtk.EventBox {
         return x * Gst.SECOND / pixels_per_second;
     }
     
-    public static int time_to_xpos(int64 time) {
+    public int time_to_xpos(int64 time) {
         return (int) (time * pixels_per_second / Gst.SECOND);
     }
     
@@ -281,21 +246,18 @@ class TimeLine : Gtk.EventBox {
         return true;
     }
     
-    public void select(RegionView? view) {
-        RegionView was_selected = selected;
+    public void select(ClipView? view) {
+        ClipView was_selected = selected;
         selected = view;
-        if (was_selected != null)
+        if (was_selected != null) {
+            was_selected.is_selected = false;
             was_selected.queue_draw();
-        if (selected != null)
-            selected.queue_draw();
-        selection_changed(view);
-    }
-    
-    public void region_view_removed(RegionView view) {
-        if (selected == view) {
-            selected = null;
-            selection_changed(null);
         }
+        if (selected != null) {
+            selected.is_selected = true;
+            selected.queue_draw();
+        }
+        selection_changed(view);
     }
     
     TrackView? findView(double y) {

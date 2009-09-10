@@ -22,7 +22,8 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 
 # TODO: lombard/video_track.vala is temporarily included in Marina.  This should go away soon.
 MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
-				lombard/video_track.vala
+				lombard/video_track.vala \
+				lombard/ui_clip.vala
 				
 MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
 MARINA_FLAGS = --vapidir ./vapi
@@ -54,7 +55,6 @@ LOMBARD_SOURCES = \
 	ui_app.vala \
 	ui_timeline.vala \
 	ui_track.vala \
-	ui_clip.vala \
 	video_project.vala
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))

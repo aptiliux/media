@@ -67,7 +67,7 @@ class StatusBar : Gtk.DrawingArea {
     }
 }
 
-class TimeLine : Gtk.EventBox {
+class TimeLine : Gtk.EventBox, TimelineConverter {
     public Model.VideoProject project;
     
     Ruler ruler;
@@ -227,14 +227,24 @@ class TimeLine : Gtk.EventBox {
         queue_draw();
     }
     
-    public void select_clip(ClipView? w) {
-        drag_source_clip = w;
-        selected_clip = w;
+    public void select_clip(ClipView? clip_view) {
+        drag_source_clip = clip_view;
+        if (selected_clip != null) {
+            selected_clip.is_selected = false;
+        }
+        selected_clip = clip_view;
+        if (selected_clip != null) {
+            selected_clip.is_selected = true;
+        }
         queue_draw();
         selection_changed(true);
     }
     
     public void unselect_clip() {
+        if (selected_clip != null) {
+            selected_clip.is_selected = false;
+        }
+        
         selected_clip = null;
         queue_draw();
         selection_changed(false);
@@ -254,27 +264,20 @@ class TimeLine : Gtk.EventBox {
     
     public void delete_selection(bool ripple) {
         if (selected_clip != null) {
-            selected_clip.trackview.track.delete_clip(selected_clip.clip, ripple);
-            
-            if (ripple) {
-                foreach (TrackView track in tracks) {
-                    if (selected_clip.trackview != track) {
-                        track.track.ripple_delete(selected_clip.clip.length, 
-                                            selected_clip.clip.start, selected_clip.clip.length);
-                    }
-                }
-            }
-            selected_clip.trackview.clear_drag();
+            selected_clip.delete_clip(ripple);
             select_clip(null);
         } else {
             if (gap_view != null) {
-                if (!project.delete_gap(gap_view.trackview.track, gap_view.gap, false)) {
-                  if (DialogUtils.delete_cancel("Confirm", "Really delete single-track gap?") ==
+                if (!project.can_delete_gap(gap_view.gap)) {
+                    if (DialogUtils.delete_cancel("Confirm", "Really delete single-track gap?") ==
                            Gtk.ResponseType.YES) {
-                       project.delete_gap(gap_view.trackview.track, gap_view.gap, true);       
-                    }                
+                        gap_view.remove();
+                    }
+                } else {
+                    project.delete_gap(gap_view.gap);
                 }
-                gap_view.trackview.unselect_gap();
+                
+                gap_view.unselect();
             }
         }
     }
@@ -406,12 +409,14 @@ class TimeLine : Gtk.EventBox {
     }
 
     public void set_control_pressed(bool c) {
-        if (c == control_pressed) return;
+        if (c == control_pressed) {
+            return;
+        }
         
         control_pressed = c;
-        if (selected_clip != null &&
-            selected_clip.trackview.dragging)
-            selected_clip.trackview.update_drag_clip();
+        if (selected_clip != null) {
+            selected_clip.update_drag();
+        }
         queue_draw();
     }
 
@@ -444,8 +449,8 @@ class TimeLine : Gtk.EventBox {
 
     public override bool button_press_event(Gdk.EventButton event) {
         if (gap_view != null)
-            gap_view.trackview.unselect_gap();
-        
+            gap_view.unselect();
+      
         drag = find_child(event.x, event.y);
         if (drag != null)
             drag.button_press_event(event);

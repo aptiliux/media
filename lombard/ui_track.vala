@@ -41,8 +41,30 @@ class TrackView : Gtk.Fixed {
         requisition.width += TimeLine.BORDER;    // right margin
     }
     
+    public void on_clip_moved(ClipView clip) {
+        set_clip_pos(clip);
+    }
+    
+    public void on_drag_updated(ClipView clip) {
+        if (dragging) {
+            update_drag_clip();
+        }
+    }
+    
+    public void on_clip_deleted(Model.Clip clip, bool ripple) {
+        track.delete_clip(clip, ripple);
+        if (ripple) {
+            track.project.ripple_delete(track, clip.length, clip.start, clip.length);
+        }
+        clear_drag();
+    }
+
     public void on_clip_added(Model.Track t, Model.Clip clip) {
-        ClipView view = new ClipView(clip, this);      
+        ClipView view = new ClipView(clip, this.timeline, TrackView.clip_height);
+        view.clip_moved += on_clip_moved;
+        view.drag_updated += on_drag_updated;
+        view.clip_deleted += on_clip_deleted;
+        
         put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
         view.show();
         
@@ -155,16 +177,31 @@ class TrackView : Gtk.Fixed {
                 Model.Gap g;
                 track.find_containing_gap(time, out g);
                 if (g.end > g.start) {
-                    timeline.gap_view = new GapView(g.start, g.end - g.start, this);
+                    int64 length = g.end - g.start;
+                    int width = timeline.time_to_xpos(g.start + length) -
+                        timeline.time_to_xpos(g.start);            
+                    
+                    timeline.gap_view = new GapView(g.start, length, 
+                        width, clip_height);
+                    timeline.gap_view.removed += on_gap_view_removed;
+                    timeline.gap_view.unselected += on_gap_view_unselected;
                     put(timeline.gap_view, timeline.time_to_xpos(g.start), TimeLine.BORDER);
                     timeline.gap_view.show();
                 }
-                
+
                 init_drag_x = -1;
                 timeline.select_clip(null);
             }
         }
         return false;
+    }
+    
+    void on_gap_view_removed(GapView gap_view) {
+        track.delete_gap(gap_view.gap);
+    }
+    
+    void on_gap_view_unselected(GapView gap_view) {
+        unselect_gap();
     }
     
     public void cancel_drag() {
