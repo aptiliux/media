@@ -585,10 +585,13 @@ namespace DialogUtils {
         return return_value;
     }
 
+    string bold_message(string message) {
+        return "<span weight=\"bold\" size=\"larger\">" + message +
+            "</span>";    
+    }
+
     public void error(string major_message, string? minor_message) {
-    
-        string message = "<span weight=\"bold\" size=\"larger\">" + major_message +
-            "</span>";
+        string message = bold_message(major_message);
         if (minor_message != null) {
             message = message + "\n\n" + minor_message;
         }
@@ -601,8 +604,9 @@ namespace DialogUtils {
 
     Gtk.ResponseType run_dialog(Gtk.Window? parent, Gtk.MessageType type, 
         string? title, string message, ButtonStruct[] buttons) {
-        Gtk.MessageDialog dialog = new Gtk.MessageDialog(parent, Gtk.DialogFlags.MODAL,
-                                        type, Gtk.ButtonsType.NONE, message, null);
+        string the_message = bold_message(message);
+        Gtk.MessageDialog dialog = new Gtk.MessageDialog.with_markup(parent, Gtk.DialogFlags.MODAL,
+                                        type, Gtk.ButtonsType.NONE, the_message, null);
         if (title != null) {
             dialog.set_title(title);
         }

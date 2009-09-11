@@ -488,7 +488,12 @@ public abstract class Track {
         project.go(0);
     }
     
-    public void revert_to_original(Clip c) {    
+    public void revert_to_original(Clip clip) {
+        Command command = new ClipRevertCommand(this, clip);
+        project.do_command(command);
+    }
+    
+    public void _revert_to_original(Clip c) {    
         int index = get_clip_index(c);
         if (index == -1)
             error("revert_to_original: Clip not in track array!");
@@ -544,10 +549,11 @@ public abstract class Track {
         
             int right_clip_index = get_clip_index(right_clip);
             assert(right_clip_index > 0);
-
+            
             int left_clip_index = right_clip_index - 1;
             Clip left_clip = get_clip(left_clip_index);
-            left_clip.set_duration(right_clip.end);
+            assert(left_clip != null);
+            left_clip.set_duration(right_clip.end - left_clip.start);
             remove_clip(right_clip_index);
         }
     }

@@ -56,7 +56,7 @@ public class UndoManager {
                 if (command is TransactionCommand) {
                     --index;
                     command = command_list[index];
-                    assert(index >= 0);//transactions should always be closed and non-empty
+                    assert(index >= 0); // transactions should always be closed and non-empty
                     assert(!(command is TransactionCommand));
                 }
             }

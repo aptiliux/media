@@ -18,6 +18,7 @@ public class ParameterCommand : Command {
     AudioTrack target;
     Parameter parameter;
     double delta;
+    
     public ParameterCommand(AudioTrack target, Parameter parameter, 
         double new_value, double old_value) {
         this.target = target;
@@ -238,8 +239,42 @@ public class ClipTrimCommand : Command {
     }
 }
 
+public class ClipRevertCommand : Command {
+    Track track;
+    Clip clip;
+    int64 left_delta;
+    int64 right_delta;
+    
+    public ClipRevertCommand(Track track, Clip clip) {
+        this.track = track;
+        this.clip = clip;
+    }
+
+    public override void apply() {
+        right_delta = clip.end;
+        left_delta = clip.media_start;
+        track._revert_to_original(clip);
+        left_delta -= clip.media_start;
+        right_delta = clip.end - right_delta - left_delta;
+    }
+    
+    public override void undo() {
+        track._trim(clip, left_delta, true);
+        track._trim(clip, right_delta, false);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Revert To Original";
+    }
+}
+
 public class TransactionCommand : Command {
     bool open;
+    
     public TransactionCommand(bool open) {
         this.open = open;
     }

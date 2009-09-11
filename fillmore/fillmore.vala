@@ -38,8 +38,8 @@ class Recorder : Gtk.Window {
         { "NewTrack", Gtk.STOCK_ADD, "_New", "<Control><Shift>N", 
             "Create new track", on_track_new },
         { "Rename", null, "_Rename...", null, "Rename track", on_track_rename },
-        { "DeleteTrack", null, "Re_move", null, "Delete track", on_track_remove },
-        
+        { "DeleteTrack", null, "_Delete Track", "<Control><Shift>Delete", 
+            "Delete track", on_track_remove },
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
