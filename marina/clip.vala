@@ -372,7 +372,7 @@ public class Clip {
         get { return start + length; }
     }
     
-    public signal void moved();
+    public signal void moved(Clip clip);
     
     public Clip(ClipFile clipfile, MediaType t, string name,
                 int64 start, int64 media_start, int64 duration) {
@@ -454,14 +454,14 @@ public class Clip {
         }
         
         this.length = len;
-        moved();
+        moved(this);
     }
     
     public void set_start(int64 start) {
         if (connected)
             ((Gst.Element) file_source).set("start", start);
         this.start = start;
-        moved();
+        moved(this);
     }
 
     public void save(FileStream f) {

@@ -84,7 +84,7 @@ public class ClipView : Gtk.DrawingArea {
         set_size_request(width + 1, height);
     }
     
-    public void on_clip_moved() {
+    public void on_clip_moved(Model.Clip clip) {
         adjust_size(height);
         clip_moved(this);
     }

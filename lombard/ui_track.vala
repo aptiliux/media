@@ -83,13 +83,13 @@ class TrackView : Gtk.Fixed {
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
             if (view != null) {
-                view.on_clip_moved();
+                view.on_clip_moved(view.clip);
             }
         }            
     }
 
     public void on_clip_removed(Model.Clip clip) {
-    // TODO revisit the dragging mechanism.  It would be good to have the clip
+    // TODO: revisit the dragging mechanism.  It would be good to have the clip
     // responsible for moving itself and removing itself rather than delegating
     // to the timeline and to the TrackView
         foreach (Gtk.Widget w in get_children()) {

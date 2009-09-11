@@ -32,7 +32,14 @@ class Recorder : Gtk.Window {
         
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
-        { "Delete", Gtk.STOCK_DELETE, "_Delete", "Delete", null, on_delete },
+        { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
+        { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
+        { "TrimToPlayhead", null, "_Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
+        { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
+        { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
+          "<Control>R", null, on_revert_to_original },
+        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
+            null, on_clip_properties },
 
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New", "<Control><Shift>N", 
@@ -68,6 +75,12 @@ class Recorder : Gtk.Window {
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
       <menuitem name="EditDelete" action="Delete"/>
+      <separator/>
+      <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
+      <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
+      <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
+      <menuitem name="ClipRevertToOriginal" action="RevertToOriginal"/>
+      <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack"/>
@@ -112,6 +125,8 @@ class Recorder : Gtk.Window {
         project.undo_manager.undo_changed += on_undo_changed;
         project.error_occurred += on_error_occurred;
         project.playstate_changed += on_playstate_changed;
+        project.position_changed += on_position_changed;
+        project.track_added += on_track_added;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -122,7 +137,6 @@ class Recorder : Gtk.Window {
         group.add_toggle_actions(toggle_entries, this);
 
         delete_action = group.get_action("Delete");    
-        delete_action.set_sensitive(false);
         record_action = group.get_action("Record");
         
         manager = new Gtk.UIManager();
@@ -139,6 +153,8 @@ class Recorder : Gtk.Window {
         
         timeline = new TimeLine(this);
         timeline.selection_changed += on_selection_changed;
+
+        update_menu();
         
         Gtk.HBox hbox = new Gtk.HBox(false, 0);
         header_area = new HeaderArea(this);
@@ -205,9 +221,52 @@ class Recorder : Gtk.Window {
             error("can't find widget");
         return widget;
     }
+
+    void set_sensitive_menu(string menu_path, bool sensitive) {
+        Gtk.MenuItem? the_menuitem = (Gtk.MenuItem?) get_widget(manager, menu_path);
+        if (the_menuitem == null) {
+            error("invalid menu path %s".printf(menu_path));
+        }
+        the_menuitem.set_sensitive(sensitive);
+    }
     
     void on_selection_changed(TimeLine timeline, ClipView? new_selection) {
-        delete_action.set_sensitive(new_selection != null);
+        update_menu();
+    }
+    
+    void on_position_changed() {
+        update_menu();
+    }
+    
+    void on_track_added(Model.Track track) {
+        track.clip_added += on_clip_added;
+        track.clip_removed += on_clip_removed;
+    }
+    
+    void on_clip_added(Model.Clip clip) {
+        clip.moved += on_clip_moved;
+        update_menu();
+    }
+    
+    void on_clip_removed(Model.Clip clip) {
+        update_menu();
+    }
+    
+    void on_clip_moved(Model.Clip clip) {
+        update_menu();
+    }
+    
+    void update_menu() {
+        bool selected = timeline.selected != null;
+        bool playhead_on_clip = project.playhead_on_clip();
+        delete_action.set_sensitive(selected);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipViewProperties", selected);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
+            selected && project.playhead_on_contiguous_clip());
+    
     }
     
     public void select(Model.Track track) {
@@ -355,6 +414,30 @@ class Recorder : Gtk.Window {
         selected_track().delete_clip(clip, false);
     }
     
+    public void on_split_at_playhead() {
+        project.split_at_playhead();
+    }
+    
+    public void on_join_at_playhead() {
+        project.join_at_playhead();
+    }
+    
+    public void on_trim_to_playhead() {
+        project.trim_to_playhead();
+    }
+    
+    public void on_revert_to_original() {
+        Model.Clip clip = timeline.selected.clip;
+        Model.Track? track = project.track_from_clip(clip);
+        if (track != null) {
+            track.revert_to_original(clip);
+        }
+    }
+  
+    public void on_clip_properties() {
+        DialogUtils.show_clip_properties(this, timeline.selected, null);
+    }
+
     // Track menu
 
     void on_track_new() {
@@ -462,7 +545,6 @@ class Recorder : Gtk.Window {
     
     public void on_load_error(string message) {
         do_error_dialog(message);
-        default_track_set();
     }
 
     void on_name_changed() {

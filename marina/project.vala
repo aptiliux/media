@@ -280,6 +280,17 @@ public abstract class Project : MultiFileProgressInterface, Object {
             return null;
         return clipfiles[index];
     }
+    
+    public Track? track_from_clip(Clip clip) {
+        foreach (Track track in tracks) {
+            foreach (Clip match in track.clips) {
+                if (match == clip) {
+                    return track;
+                }
+            }
+        }
+        return null;
+    }
 
     public void print_graph(Gst.Bin bin, string file_name) {
         Gst.debug_bin_to_dot_file_with_ts(bin, Gst.DebugGraphDetails.ALL, file_name);

@@ -79,25 +79,25 @@ class App : Gtk.Window {
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
         { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
-        { "CutLift", null, "Lift Cut", "<Shift><Control>X", null, on_cut_lift },
+        { "CutLift", null, "_Lift Cut", "<Shift><Control>X", null, on_cut_lift },
         { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
         { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
-        { "PasteOver", null, "Paste Overwrite", 
+        { "PasteOver", null, "Paste _Overwrite", 
           "<Shift><Control>V", null, on_paste_over },
         { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
-        { "DeleteLift", null, "Lift Delete", "<Shift>Delete", null, on_delete_lift },
-        { "SplitAtPlayhead", null, "Split at Playhead", "<Control>P", null, on_split_at_playhead },
-        { "TrimToPlayhead", null, "Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
-        { "JoinAtPlayhead", null, "Join at Playhead", "<Control>J", null, on_join_at_playhead },
-        { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "Revert to Original",
+        { "DeleteLift", null, "L_ift Delete", "<Shift>Delete", null, on_delete_lift },
+        { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
+        { "TrimToPlayhead", null, "_Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
+        { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
+        { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
           "<Control>R", null, on_revert_to_original },
-        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properties", "<Alt>Return", 
+        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
 
         { "View", null, "_View", null, null, null },
         { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _in", "equal", null, on_zoom_in },
         { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _out", "minus", null, on_zoom_out },
-        { "ZoomProject", null, "Fit to Window", "<Shift>Z", null, on_zoom_to_project },
+        { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Go", null, "_Go", null, null, null },
         { "Start", Gtk.STOCK_GOTO_FIRST, "_Start", "Home", null, on_go_start },
@@ -128,7 +128,7 @@ class App : Gtk.Window {
       <menuitem name="EditUndo" action="Undo" />
       <menuitem name="EditDelete" action="Delete"/>
       <menuitem name="EditDeleteLift" action="DeleteLift"/>
-      <menuitem naem="EditCut" action="Cut"/>
+      <menuitem name="EditCut" action="Cut"/>
       <menuitem name="EditCutLift" action="CutLift"/>
       <menuitem name="EditCopy" action="Copy"/>
       <menuitem name="EditPaste" action="Paste"/>
@@ -446,7 +446,9 @@ class App : Gtk.Window {
     }
   
     public void on_clip_properties() {
-        timeline.show_clip_properties(this);
+        Fraction? frames_per_second = null;
+        project.get_framerate_fraction(out frames_per_second);
+        DialogUtils.show_clip_properties(this, timeline.selected_clip, frames_per_second);
     }
     
     public void on_position_changed() {

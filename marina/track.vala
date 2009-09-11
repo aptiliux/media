@@ -385,7 +385,7 @@ public abstract class Track {
         clips.insert(i, clip);
         
         shift_clips(i + 1, clip.length);
-        project.reseek();
+        project.reseek(); // TODO: Project should reseek when signal received.
     }
     
     public void insert(int index, Clip clip, int64 pos) {
