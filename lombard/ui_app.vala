@@ -327,12 +327,12 @@ class App : Gtk.Window {
         set_title(project.get_file_display_name());
     }
 
-    public void do_error_dialog(string message) {
-        DialogUtils.error("Error", message);
+    public void do_error_dialog(string message, string? minor_message) {
+        DialogUtils.error(message, minor_message);
     }
     
     public void on_load_error(string message) {
-        do_error_dialog(message);
+        DialogUtils.error("Load error", message);
     }
     
     public void on_load_success() {
