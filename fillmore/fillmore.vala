@@ -92,6 +92,10 @@ class Recorder : Gtk.Window {
       <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
   </menubar>
+  <popup name="ClipContextMenu">
+    <menuitem name="ClipContextRevert" action="RevertToOriginal"/>
+    <menuitem name="ClipContextProperties" action="ClipProperties"/>
+  </popup>
   <toolbar name="Toolbar">
     <toolitem name="New" action="NewTrack"/>
     <separator/>
@@ -153,6 +157,7 @@ class Recorder : Gtk.Window {
         
         timeline = new TimeLine(this);
         timeline.selection_changed += on_selection_changed;
+        timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         update_menu();
         
@@ -259,13 +264,15 @@ class Recorder : Gtk.Window {
     void update_menu() {
         bool selected = timeline.selected != null;
         bool playhead_on_clip = project.playhead_on_clip();
+        bool selected_modified = selected ? timeline.selected.clip.is_trimmed() : false;
         delete_action.set_sensitive(selected);
         set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && selected_modified);
         set_sensitive_menu("/MenuBar/EditMenu/ClipViewProperties", selected);
         set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
             selected && project.playhead_on_contiguous_clip());
+        set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && selected_modified);
     
     }
     

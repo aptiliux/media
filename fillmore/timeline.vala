@@ -163,6 +163,7 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
     public const int BORDER = 1;
 
     public signal void selection_changed(ClipView? new_selection);
+    public Gtk.Menu context_menu;
     
     public TimeLine(Recorder recorder) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
@@ -293,8 +294,17 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
     
     public override bool button_release_event (Gdk.EventButton event) {
         TrackView view = findView(event.y);
-        if (view != null)
+        if (view != null) {
             view.on_button_release(event);
+        }
+        
+        if (selected != null && event.button == 3) {
+            context_menu.select_first(true);
+            context_menu.popup(null, null, null, 0, 0);
+        } else {
+            context_menu.popdown();
+        }
+
         return false;
     }
 
