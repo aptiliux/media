@@ -28,7 +28,6 @@ public class StatusBar : Gtk.DrawingArea {
                               allocation.x, allocation.y, allocation.width, allocation.height);  
 
         string time = provider.get_time_string(current_position);
-        stderr.printf("current_position is %" + int64.FORMAT + "\n", current_position);
 
         Pango.Layout layout = create_pango_layout(time);         
         Gdk.draw_layout(window, style.white_gc, allocation.x + 4, allocation.y + 2, layout);
