@@ -9,6 +9,7 @@ class Recorder : Gtk.Window {
     
     HeaderArea header_area;
     TimeLine timeline;
+    Model.TimeProvider provider;
     Gtk.Adjustment h_adjustment;
     int cursor_pos = -1;
     
@@ -40,6 +41,9 @@ class Recorder : Gtk.Window {
           "<Control>R", null, on_revert_to_original },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
+        { "View", null, "_View", null, null, null },
+        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _in", "equal", null, on_zoom_in },
+        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _out", "minus", null, on_zoom_out },
 
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New", "<Control><Shift>N", 
@@ -82,6 +86,10 @@ class Recorder : Gtk.Window {
       <menuitem name="ClipRevertToOriginal" action="RevertToOriginal"/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
+    <menu name="ViewMenu" action="View">
+        <menuitem name="ViewZoomIn" action="ZoomIn"/>
+        <menuitem name="ViewZoomOut" action="ZoomOut"/>
+    </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack"/>
       <menuitem name="TrackRename" action="Rename" />
@@ -121,6 +129,7 @@ class Recorder : Gtk.Window {
     };
     
     public Recorder(string? project_file) {
+        provider = new Model.SecondsTimeProvider();
         project = new Model.AudioProject();
         project.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;
@@ -155,14 +164,14 @@ class Recorder : Gtk.Window {
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
         on_undo_changed(false);
         
-        timeline = new TimeLine(this);
+        timeline = new TimeLine(this, provider);
         timeline.selection_changed += on_selection_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         update_menu();
         
         Gtk.HBox hbox = new Gtk.HBox(false, 0);
-        header_area = new HeaderArea(this);
+        header_area = new HeaderArea(this, provider, TimeLine.RULER_HEIGHT);
         hbox.pack_start(header_area, false, false, 0);
         
         Gtk.ScrolledWindow scrolled = new Gtk.ScrolledWindow(null, null);
@@ -295,7 +304,7 @@ class Recorder : Gtk.Window {
     }
     
     public void scroll_to_end() {
-        int new_adjustment = timeline.time_to_xpos(project.get_length());
+        int new_adjustment = timeline.provider.time_to_xpos(project.get_length());
         int window_width = timeline.parent.allocation.width;
         if (new_adjustment < timeline.parent.allocation.width) {
             new_adjustment = 0;
@@ -475,6 +484,15 @@ class Recorder : Gtk.Window {
 
     void on_track_remove() {
         project.remove_track(selected_track());
+    }
+    
+    // View menu
+    void on_zoom_in() {
+        timeline.zoom(0.1f);
+    }
+    
+    void on_zoom_out() {
+        timeline.zoom(-0.1f);
     }
     
     // Help menu

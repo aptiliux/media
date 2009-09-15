@@ -4,10 +4,6 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-public interface TimelineConverter : Object {
-    public abstract int time_to_xpos(int64 time);
-}
-
 public class GapView : Gtk.DrawingArea {
     public Model.Gap gap;
     Gdk.Color fill_color;
@@ -43,7 +39,7 @@ public class GapView : Gtk.DrawingArea {
 
 public class ClipView : Gtk.DrawingArea {
     public Model.Clip clip;
-    TimelineConverter timeline_converter;
+    weak Model.TimeProvider time_provider;
     public bool ghost;
     public bool is_selected;
     public int height; // TODO: We request size of height, but we aren't allocated this height.
@@ -57,9 +53,9 @@ public class ClipView : Gtk.DrawingArea {
     public signal void clip_moved(ClipView clip);
     public signal void drag_updated(ClipView clip);
     
-    public ClipView(Model.Clip clip, TimelineConverter timeline_converter, int height) {
+    public ClipView(Model.Clip clip, Model.TimeProvider time_provider, int height) {
         this.clip = clip;
-        this.timeline_converter = timeline_converter;
+        this.time_provider = time_provider;
         this.height = height;
         ghost = false;
         is_selected = false;
@@ -79,8 +75,8 @@ public class ClipView : Gtk.DrawingArea {
     // starting position.  This is because the clip's length may not be an integer number of
     // pixels, and may get rounded either up or down depending on the clip position.
     public void adjust_size(int height) {       
-        int width = timeline_converter.time_to_xpos(clip.start + clip.length) -
-                    timeline_converter.time_to_xpos(clip.start);                  
+        int width = time_provider.time_to_xpos(clip.start + clip.length) -
+                    time_provider.time_to_xpos(clip.start);                  
         set_size_request(width + 1, height);
     }
     

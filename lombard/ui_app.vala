@@ -27,7 +27,7 @@ class App : Gtk.Window {
     Model.VideoProject project;
     TimeLine timeline;
     ClipLibraryView library;
-    StatusBar status_bar;
+    View.StatusBar status_bar;
     
     Gtk.HPaned h_pane;
     
@@ -232,7 +232,7 @@ class App : Gtk.Window {
         project.add_track(new Model.VideoTrack(project));
         project.add_track(new Model.AudioTrack(project, "Audio Track"));
         
-        timeline = new TimeLine(project);
+        timeline = new TimeLine(project, project.time_provider);
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
         project.position_changed += on_position_changed;
@@ -241,7 +241,7 @@ class App : Gtk.Window {
         library = new ClipLibraryView(project);
         library.selection_changed += on_library_selection_changed;
         
-        status_bar = new StatusBar(project);
+        status_bar = new View.StatusBar(project, project.time_provider, TimeLine.BAR_HEIGHT);
         
         library_scrolled = new Gtk.ScrolledWindow(null, null);
         library_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
@@ -452,7 +452,7 @@ class App : Gtk.Window {
     }
     
     public void on_position_changed() {
-        int xpos = timeline.time_to_xpos(project.get_position());
+        int xpos = timeline.provider.time_to_xpos(project.get_position());
         scroll_to(xpos);
         if (project.is_playing())
             scroll_toward_center(xpos);  

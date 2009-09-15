@@ -60,12 +60,12 @@ class TrackView : Gtk.Fixed {
     }
 
     public void on_clip_added(Model.Track t, Model.Clip clip) {
-        ClipView view = new ClipView(clip, this.timeline, TrackView.clip_height);
+        ClipView view = new ClipView(clip, timeline.provider, TrackView.clip_height);
         view.clip_moved += on_clip_moved;
         view.drag_updated += on_drag_updated;
         view.clip_deleted += on_clip_deleted;
         
-        put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
+        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);       
         view.show();
         
         if (timeline.control_pressed) {
@@ -75,7 +75,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void set_clip_pos(ClipView view) {
-        move(view, timeline.time_to_xpos(view.clip.start), TimeLine.BORDER);
+        move(view, timeline.provider.time_to_xpos(view.clip.start), TimeLine.BORDER);
         queue_draw();
     }
     
@@ -130,7 +130,7 @@ class TrackView : Gtk.Fixed {
 
             remove(timeline.selected_clip);
             put(timeline.selected_clip, 
-                timeline.time_to_xpos(timeline.selected_clip.clip.start),
+                timeline.provider.time_to_xpos(timeline.selected_clip.clip.start),
                 TimeLine.BORDER);
             timeline.selected_clip.show();
         }
@@ -173,19 +173,19 @@ class TrackView : Gtk.Fixed {
                 init_drag_time = clip_view.clip.start;
                 dragging = false;  // not dragging until we've moved MIN_DRAG pixels
             } else {
-                int64 time = timeline.xpos_to_time(x);
+                int64 time = timeline.provider.xpos_to_time(x);
                 Model.Gap g;
                 track.find_containing_gap(time, out g);
                 if (g.end > g.start) {
                     int64 length = g.end - g.start;
-                    int width = timeline.time_to_xpos(g.start + length) -
-                        timeline.time_to_xpos(g.start);            
+                    int width = timeline.provider.time_to_xpos(g.start + length) -
+                        timeline.provider.time_to_xpos(g.start);            
                     
                     timeline.gap_view = new GapView(g.start, length, 
                         width, clip_height);
                     timeline.gap_view.removed += on_gap_view_removed;
                     timeline.gap_view.unselected += on_gap_view_unselected;
-                    put(timeline.gap_view, timeline.time_to_xpos(g.start), TimeLine.BORDER);
+                    put(timeline.gap_view, timeline.provider.time_to_xpos(g.start), TimeLine.BORDER);
                     timeline.gap_view.show();
                 }
 
@@ -251,9 +251,9 @@ class TrackView : Gtk.Fixed {
     
     int get_x_from_pos(int pos, bool after) {                
         if (after)
-            return timeline.BORDER + timeline.time_to_xsize(track.get_clip(pos).end);
+            return timeline.BORDER + timeline.provider.time_to_xsize(track.get_clip(pos).end);
         else
-            return timeline.BORDER + timeline.time_to_xsize(track.get_clip(pos).start);
+            return timeline.BORDER + timeline.provider.time_to_xsize(track.get_clip(pos).start);
     }
 
     void calc_drag_intersect() {
@@ -273,8 +273,8 @@ class TrackView : Gtk.Fixed {
         if (timeline.shift_pressed ||
             !drag_intersect) {
             timeline.project.snap_clip(timeline.selected_clip.clip, 
-                        timeline.pixel_snap_time);
-            drag_x_coord = timeline.time_to_xpos(timeline.selected_clip.clip.start);
+                        timeline.provider.get_pixel_snap_time());
+            drag_x_coord = timeline.provider.time_to_xpos(timeline.selected_clip.clip.start);
             drag_clip_destination = -1;
             calc_drag_intersect();
         } else {
@@ -289,7 +289,7 @@ class TrackView : Gtk.Fixed {
     
     public void do_clip_move(Model.Clip clip, int x) {
         curr_drag_x = x - drag_offset + timeline.BORDER;
-        timeline.selected_clip.clip.set_start(timeline.xpos_to_time(curr_drag_x));
+        timeline.selected_clip.clip.set_start(timeline.provider.xpos_to_time(curr_drag_x));
         
         update_intersect_state();
     }

@@ -186,6 +186,7 @@ public enum PlayState {
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
 public abstract class Project : MultiFileProgressInterface, Object {
+
     public const string FILLMORE_FILE_EXTENSION = "fill";
     public const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
     public const string LOMBARD_FILE_EXTENSION = "lom";
@@ -221,7 +222,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
     public signal void pre_export();
     public signal void post_export();
-    public signal void position_changed();
+    public signal void position_changed(int64 position);
     public signal void callback_pulse();
     public signal void playstate_changed(Model.PlayState playstate);
     
@@ -625,7 +626,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
                     go(get_length());
                     pause();
                 }
-                position_changed();
+                position_changed(time);
             } else if (play_state == PlayState.EXPORTING) {
                 if (time > get_length()) {
                     fraction_updated(1.0);
@@ -670,7 +671,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         // We ignore the return value of seek_simple(); sometimes it returns false even when
         // a seek succeeds.
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);
-        position_changed();
+        position_changed(pos);
     }
     
     public void reseek() { go(position); }

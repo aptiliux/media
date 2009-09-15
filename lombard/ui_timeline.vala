@@ -6,71 +6,10 @@
 
 using Gee;
 
-class Ruler : Gtk.DrawingArea {
-    TimeLine timeline;
-    
-    public Ruler(TimeLine timeline) {
-        this.timeline = timeline;
-        set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        modify_bg(Gtk.StateType.NORMAL, parse_color("#777"));
-        set_size_request(0, TimeLine.BAR_HEIGHT);
-    }
-    
-    public override bool expose_event(Gdk.EventExpose event) {
-        window.draw_rectangle(style.bg_gc[(int) Gtk.StateType.NORMAL],
-                            true, allocation.x, allocation.y, allocation.width, allocation.height);
-        return true;
-    }
-    
-    public override bool button_press_event(Gdk.EventButton event) {
-        timeline.update_pos((int) event.x);
-        return false;
-    }
-
-    public override bool motion_notify_event(Gdk.EventMotion event) {
-        timeline.update_pos((int) event.x);
-        return false;
-    }
-}
-
-class StatusBar : Gtk.DrawingArea {
-    Model.VideoProject project;
-    
-    public StatusBar(Model.VideoProject p) {
-        set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
-        set_size_request(0, TimeLine.BAR_HEIGHT);
-        project = p;
-        
-        project.position_changed += position_changed;
-    }
-    
-    public void position_changed() {
-        queue_draw();
-    }
-    
-    public override bool expose_event(Gdk.EventExpose e) {
-        window.draw_rectangle(style.bg_gc[(int) Gtk.StateType.NORMAL], true, 
-                              allocation.x, allocation.y, allocation.width, allocation.height);  
-
-        Fraction rate;
-        string time;
-        if (project.get_framerate_fraction(out rate))
-            time = frame_to_string(project.get_current_frame(), rate);
-        else
-            time = "00:00:00";
-
-        Pango.Layout layout = create_pango_layout(time);         
-        Gdk.draw_layout(window, style.white_gc, allocation.x + 4, allocation.y + 2, layout);
-                                
-        return true;
-    }
-}
-
-class TimeLine : Gtk.EventBox, TimelineConverter {
-    public Model.VideoProject project;
-    
-    Ruler ruler;
+class TimeLine : Gtk.EventBox {
+    public Model.Project project;
+    public weak Model.TimeProvider provider;
+    View.Ruler ruler;
     ArrayList<TrackView> tracks = new ArrayList<TrackView>();
     Gtk.VBox vbox;
     
@@ -84,40 +23,27 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
     
     public bool shift_pressed = false;
     public bool control_pressed = false;
-    
-    float pixel_percentage = 0.0f;
-    float pixel_min = 0.1f;
-    float pixel_max = 4505.0f;
-    float pixel_div;
-    public float pixels_per_second;
-    float pixels_per_frame;
 
-    public int pixels_per_large = 300;
-    public int pixels_per_medium = 50;
-    public int pixels_per_small = 20;
-
-    int small_pixel_frames = 0;
-    int medium_pixel_frames = 0;
-    int large_pixel_frames = 0;
-
-    int[] timeline_seconds = { 1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600, 900, 1200, 1800, 3600 };
-
-    public const int BORDER = 4;
     public const int BAR_HEIGHT = 20;
-    public const int PIXEL_SNAP_INTERVAL = 10;
-    
-    public int64 pixel_snap_time;
-    
+    public const int BORDER = 4;
+
     public signal void selection_changed(bool selected);
     public signal void track_changed();
+
+    float pixel_div;
+    float pixel_min = 0.1f;
+    float pixel_max = 4505.0f;
     
+    public const int RULER_HEIGHT = 20;
     public GapView gap_view;
 
-    public TimeLine(Model.VideoProject p) {
+    public TimeLine(Model.Project p, Model.TimeProvider provider) {
         project = p;
+        this.provider = provider;
         
         vbox = new Gtk.VBox(false, 0);
-        ruler = new Ruler(this);
+        ruler = new View.Ruler(provider, RULER_HEIGHT);
+        ruler.position_changed += on_ruler_position_changed;
         vbox.pack_start(ruler, false, false, 0);
         
         foreach (Model.Track track in project.tracks) {
@@ -133,75 +59,7 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         modify_fg(Gtk.StateType.NORMAL, parse_color("#f00"));
         
         pixel_div = pixel_max / pixel_min;
-        pixel_percentage = 0.0f;
-        calculate_pixel_step (0.5f);
-    }
-
-    int correct_seconds_value (float seconds, int div, int fps) {
-        
-        if (seconds < 1.0f) {
-            int frames = (int)(fps * seconds);
-            if (frames == 0)
-                return 1;
-                
-            if (div == 0)
-                div = fps;
-                
-            int mod = div % frames;
-            while (mod != 0) {
-                mod = div % (++frames);
-            }
-            return frames;
-        }
-        
-        int i;
-        int secs = (int) seconds;
-        for (i = timeline_seconds.length - 1; i > 0; i--) {
-            if (secs <= timeline_seconds[i] &&
-                secs >= timeline_seconds[i - 1]) {
-                if ((div % (timeline_seconds[i] * fps)) == 0)
-                    break;
-                if ((div % (timeline_seconds[i - 1] * fps)) == 0) {
-                    i--;
-                    break;
-                }
-            }
-        }
-        return timeline_seconds[i] * fps;
-    }
-    
-    void calculate_pixel_step(float inc) {
-        pixel_percentage += inc;    
-        if (pixel_percentage < 0.0f)
-            pixel_percentage = 0.0f;
-        else if (pixel_percentage > 1.0f)
-            pixel_percentage = 1.0f;
-         
-        pixels_per_second = pixel_min * GLib.Math.powf(pixel_div, pixel_percentage);
-            
-        int fps = project.get_framerate();
-        if (fps == 0)
-            fps = 30;          
-                    
-        large_pixel_frames = correct_seconds_value(pixels_per_large / pixels_per_second, 0, fps);
-        medium_pixel_frames = correct_seconds_value(pixels_per_medium / pixels_per_second, 
-                                                    large_pixel_frames, fps);
-        small_pixel_frames = correct_seconds_value(pixels_per_small / pixels_per_second, 
-                                                    medium_pixel_frames, fps);
-    
-        if (small_pixel_frames == medium_pixel_frames) {
-            int i = medium_pixel_frames;
-            
-            while (--i > 0) {
-                if ((medium_pixel_frames % i) == 0) {
-                    small_pixel_frames = i;
-                    break;
-                }
-            }
-        }
-    
-        pixels_per_frame = pixels_per_second / (float) fps;
-        pixel_snap_time = xsize_to_time(PIXEL_SNAP_INTERVAL);
+        provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
     }
     
     public void zoom_to_project(double width) {
@@ -211,15 +69,15 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
                     (width * Gst.SECOND) / ((double) project.get_length() * (double) pixel_min));
         double denominator = GLib.Math.log((double) pixel_div);
         
-        zoom((float) (numerator / denominator) - pixel_percentage);
+        zoom((float) (numerator / denominator) - provider.get_pixel_percentage());
     }
     
     public void zoom (float inc) {
-        calculate_pixel_step(inc);
+        provider.calculate_pixel_step(inc, pixel_min, pixel_div);
         foreach (TrackView track in tracks) {
             track.resize();
         }
-        project.position_changed();
+        project.position_changed(project.position);
         queue_draw();
     }
     
@@ -227,6 +85,10 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         queue_draw();
     }
     
+    public void on_ruler_position_changed(int x) {
+        update_pos(x);
+    }
+
     public void select_clip(ClipView? clip_view) {
         drag_source_clip = clip_view;
         if (selected_clip != null) {
@@ -312,78 +174,10 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         return do_ripple;
     }
     
-    public int64 xpos_to_time(int x) {
-        return xsize_to_time(x - BORDER);
-    }
-
-    public int64 xsize_to_time(int size) {
-        return (int64) ((float)(size * Gst.SECOND) / pixels_per_second);
-    }
-
-    public int time_to_xsize(int64 time) {
-        return (int) (time * pixels_per_second / Gst.SECOND);
-    }
-    
-    public int frame_to_xsize(int frame) {
-        return ((int) (frame * pixels_per_frame));
-    }
-    
-    public int time_to_xpos(int64 time) {
-        int pos = time_to_xsize(time) + BORDER;
-        
-        if (xpos_to_time(pos) != time)
-            pos++;
-        return pos;
-    }
-    
-    void draw_tick_marks() {
-        int x = BORDER;
-
-        Fraction r;
-        int fps;
-        if (!project.get_framerate_fraction(out r)) {
-            r.numerator = 2997;
-            r.denominator = 100;
-        }
-        fps = 30;
-
-        int frame = 0;
-        while (x <= allocation.width) {
-            x = frame_to_xsize(frame);
-            
-            if ((frame % medium_pixel_frames) == 0) {
-            
-                if (medium_pixel_frames == small_pixel_frames &&
-                    (medium_pixel_frames != large_pixel_frames &&
-                    frame % large_pixel_frames != 0))
-                    Gdk.draw_line(window, style.white_gc, x + BORDER, 0, x + BORDER, 2);
-                else
-                    Gdk.draw_line(window, style.white_gc, x + BORDER, 0, x + BORDER, 6);                
-                
-                if ((frame % large_pixel_frames) == 0) {
-                    Pango.Layout layout = create_pango_layout(frame_to_time(
-                                frame, r).to_string());
-                    Pango.FontDescription f = Pango.FontDescription.from_string("Sans 8");
-                            
-                    int w;
-                    int h;
-                    layout.set_font_description(f);
-                    layout.get_pixel_size (out w, out h);
-                      
-                    Gdk.draw_layout(window, style.white_gc, x - (w / 2) + BORDER, 7, layout);
-                }
-            } else {
-                Gdk.draw_line(window, style.white_gc, x + BORDER, 0, x + BORDER, 2);
-            }
-            frame += small_pixel_frames;
-        }
-    }
-    
     public override bool expose_event(Gdk.EventExpose event) {
         base.expose_event(event);
 
-        draw_tick_marks();
-        int xpos = time_to_xpos(project.position);
+        int xpos = provider.time_to_xpos(project.position);
         Gdk.draw_line(window, style.fg_gc[(int) Gtk.StateType.NORMAL],
                       xpos, 0,
                       xpos, allocation.height);
@@ -402,9 +196,9 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
     }
 
     public void update_pos(int event_x) {
-        int64 time = xpos_to_time(event_x);
+        int64 time = provider.xpos_to_time(event_x - BORDER);
         
-        project.snap_coord(out time, pixel_snap_time);
+        project.snap_coord(out time, provider.get_pixel_snap_time());
         project.go(time);
     }
 

@@ -65,6 +65,10 @@ public struct Fraction {
             return true;
         return false;
     }
+    
+    public int nearest_int() {
+        return (int) (((double) numerator / denominator) + 0.5);    
+    }
 }
 
 public struct TimeCode {
@@ -474,15 +478,32 @@ public string frame_to_string(int frame, Fraction rate) {
     return frame_to_time(frame, rate).to_string();
 }
 
-public string time_to_string(int64 time) {
+void breakup_time(int64 time, out int hours, out int minutes, out double seconds) {
     int64 the_time = time;
     int64 minute = Gst.SECOND * 60;
     int64 hour = minute * 60;
-    int hours = (int) (the_time / hour);
+    hours = (int) (the_time / hour);
     the_time = the_time % hour;
-    int minutes = (int) (the_time / minute);
+    minutes = (int) (the_time / minute);
     the_time = the_time % minute;
-    double seconds = (double) the_time / Gst.SECOND;
+    seconds = (double) the_time / Gst.SECOND;
+}
+
+public string time_to_HHMMSS(int64 time) {
+    int hours;
+    int minutes;
+    double seconds;
+
+    breakup_time(time, out hours, out minutes, out seconds);
+    return "%02d:%02d:%05.2lf".printf(hours, minutes, seconds);
+}
+
+public string time_to_string(int64 time) {
+    int hours;
+    int minutes;
+    double seconds;
+
+    breakup_time(time, out hours, out minutes, out seconds);
     string return_value = "%1.2lfs".printf(seconds);
     if (hours > 0 || minutes > 0) {
         return_value = "%dm ".printf(minutes) + return_value;

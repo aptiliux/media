@@ -111,7 +111,7 @@ class HeaderArea : Gtk.EventBox {
     Gtk.VBox vbox;
     public Gdk.Color background_color = parse_color("#666");
     
-    public HeaderArea(Recorder recorder) {
+    public HeaderArea(Recorder recorder, Model.TimeProvider provider, int height) {
         this.project = recorder.project;
         this.recorder = recorder;
         project.track_added += add_track;
@@ -122,11 +122,9 @@ class HeaderArea : Gtk.EventBox {
         
         vbox = new Gtk.VBox(false, 0);
         add(vbox);
+        Gtk.DrawingArea status_bar = new View.StatusBar(project, provider, height);
         
-        Gtk.DrawingArea dummy = new Gtk.DrawingArea();
-        dummy.set_size_request(0, Ruler.height);
-        dummy.modify_bg(Gtk.StateType.NORMAL, background_color);
-        vbox.pack_start(dummy, false, false, 0);
+        vbox.pack_start(status_bar, false, false, 0);
 
         vbox.pack_start(separator(), false, false, 0);
         

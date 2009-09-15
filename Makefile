@@ -15,7 +15,10 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					import.vala \
 					MultiFileProgress.vala \
 					project.vala \
+					Ruler.vala \
 					singledecodebin.vala \
+					StatusBar.vala \
+					TimeSystem.vala \
 					thumbnailsink.vala \
 					track.vala \
 					UndoManager.vala

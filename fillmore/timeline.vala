@@ -4,22 +4,6 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-class Ruler : Gtk.DrawingArea {
-    public const int height = 20;
-    
-    construct {
-        set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        modify_bg(Gtk.StateType.NORMAL, parse_color("#777"));
-        set_size_request(500, height);
-    }
-    
-    public override bool expose_event (Gdk.EventExpose event) {
-        window.draw_rectangle(style.bg_gc[Gtk.StateType.NORMAL],
-                              true, allocation.x, allocation.y, allocation.width, allocation.height);
-        return true;
-    }
-}
-
 class FillmoreFetcherCompletion : Model.FetcherCompletion {
     int64 time;
     
@@ -62,10 +46,10 @@ class TrackView : Gtk.Fixed {
     }
     
     public void on_region_added(Model.Clip clip) {
-        ClipView view = new ClipView(clip, timeline, TrackView.height);
+        ClipView view = new ClipView(clip, timeline.provider, TrackView.height);
         view.clip_moved += update;
         
-        put(view, timeline.time_to_xpos(clip.start), TimeLine.BORDER);       
+        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);       
         view.show();
     }
     
@@ -83,7 +67,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void update(ClipView rv) {
-        move(rv, timeline.time_to_xpos(rv.clip.start), TimeLine.BORDER);
+        move(rv, timeline.provider.time_to_xpos(rv.clip.start), TimeLine.BORDER);
     }
     
     public override void drag_data_received (Gdk.DragContext context, int x, int y,
@@ -103,10 +87,10 @@ class TrackView : Gtk.Fixed {
 
             Model.ClipFile cf = timeline.project.find_clipfile(filename);
             if (cf != null) {
-                on_clip_file_ready(cf, timeline.xpos_to_time(x));
+                on_clip_file_ready(cf, timeline.provider.xpos_to_time(x));
             } else {
                 FillmoreFetcherCompletion clip_fetcher_complete = 
-                    new FillmoreFetcherCompletion(timeline.xpos_to_time(x));
+                    new FillmoreFetcherCompletion(timeline.provider.xpos_to_time(x));
                 clip_fetcher_complete.fetch_complete += on_clip_file_ready;
                 timeline.project.create_clip_fetcher(clip_fetcher_complete, filename);
             }
@@ -119,7 +103,7 @@ class TrackView : Gtk.Fixed {
             time, 0, clip_file.length), time);
     }
 
-    public void on_button_press(Gdk.EventButton event) {
+    public override bool button_press_event(Gdk.EventButton event) {
         timeline.recorder.select(track);
         
         foreach (Gtk.Widget w in get_children()) {
@@ -129,54 +113,73 @@ class TrackView : Gtk.Fixed {
                 drag = rv.clip;
                 drag_mouse_x = (int) event.x; 
                 drag_region_x = rv.allocation.x;
-                return;
+                return true;
             }
         }
         timeline.select(null);
+        return true;
     }
     
-    public void on_motion_notify(Gdk.EventMotion event) {
+    public override bool motion_notify_event(Gdk.EventMotion event) {
         if (drag != null) {
             int new_x = drag_region_x + (int) event.x - drag_mouse_x;
-            drag.set_start(TimeLine.xpos_to_time(new_x));
+            drag.set_start(timeline.provider.xpos_to_time(new_x));
+            return true;
         }
+        return false;
     }
     
-    public void on_button_release(Gdk.EventButton event) {
+    public override bool button_release_event(Gdk.EventButton event) {
         drag = null;
+        return true;
+    }
+    
+    public void on_resized() {
+        foreach (Gtk.Widget w in get_children()) {
+            ClipView view = w as ClipView;
+            if (view != null) {
+                view.on_clip_moved(view.clip);
+            }
+        }            
     }
 }
 
-class TimeLine : Gtk.EventBox, TimelineConverter {
+class TimeLine : Gtk.EventBox {
     public weak Model.Project project;
     public weak Recorder recorder;
+    public Model.TimeProvider provider;
     
     Gtk.VBox vbox;
-    Ruler ruler;
+    View.Ruler ruler;
     Gdk.Color background_color = parse_color("#444");
 
     public ClipView selected;
     
-    public const int pixels_per_second = 60;
-    
     public const int track_margin = 2;
     public const int BORDER = 1;
-
+    float pixel_div;
+    float pixel_min = 0.1f;
+    float pixel_max = 4505.0f;
+    public const int RULER_HEIGHT = 20;
     public signal void selection_changed(ClipView? new_selection);
     public Gtk.Menu context_menu;
+
+    public signal void resized();
     
-    public TimeLine(Recorder recorder) {
+    public TimeLine(Recorder recorder, Model.TimeProvider provider) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
 
         this.project = recorder.project;
         this.recorder = recorder;
+        this.provider = provider;
         
         project.position_changed += update;
         project.track_added += add_track;
         project.track_removed += on_track_removed;
         
         vbox = new Gtk.VBox(false, 0);
-        ruler = new Ruler();
+        ruler = new View.Ruler(provider, RULER_HEIGHT);
+        ruler.position_changed += on_ruler_position_changed;
         vbox.pack_start(ruler, false, false, 0);
         vbox.pack_start(separator(), false, false, 0);
         add(vbox);
@@ -189,6 +192,8 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         modify_fg(Gtk.StateType.NORMAL, parse_color("#f00"));
         
         set_size_request(5000, 0);
+        pixel_div = pixel_max / pixel_min;
+        provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
     }
     
     Gtk.HSeparator separator() {
@@ -200,6 +205,7 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
     public void add_track(Model.Track track) {
         TrackView track_view = new TrackView(track);
         track_view.timeline = this;
+        resized += track_view.on_resized;
         vbox.pack_start(track_view, false, false, track_margin);
         vbox.pack_start(separator(), false, false, 0);
         vbox.show_all();
@@ -226,23 +232,15 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         vbox.remove(my_separator);
     }
     
-    public static int64 xpos_to_time(int x) {
-        return x * Gst.SECOND / pixels_per_second;
-    }
-    
-    public int time_to_xpos(int64 time) {
-        return (int) (time * pixels_per_second / Gst.SECOND);
-    }
-    
     public void update() {
         if (project.is_playing())
-            recorder.scroll_toward_center(time_to_xpos(project.position));
+            recorder.scroll_toward_center(provider.time_to_xpos(project.position));
         queue_draw();
     }
     
     public override bool expose_event (Gdk.EventExpose event) {
         base.expose_event(event);
-        int xpos = time_to_xpos(project.position);
+        int xpos = provider.time_to_xpos(project.position);
         Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, 500);
         return true;
     }
@@ -261,41 +259,36 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
         selection_changed(view);
     }
     
-    TrackView? findView(double y) {
-        foreach (Gtk.Widget w in vbox.get_children()) {
-            TrackView view = w as TrackView;
-            if (view != null &&
-                view.allocation.y <= y && y < view.allocation.y + view.allocation.height)
-                return view;
-        }
+    Gtk.Widget? find_child(double y) {
+        foreach (Gtk.Widget w in vbox.get_children())
+            if (w.allocation.y <= y && y < w.allocation.y + w.allocation.height)
+                return w;
         return null;
     }
     
     public override bool button_press_event (Gdk.EventButton event) {
-        if (ruler.allocation.y <= event.y &&
-                event.y < ruler.allocation.y + ruler.allocation.height) {
-            project.go(xpos_to_time((int) event.x));
-            return false;
+        Gtk.Widget? view = find_child(event.y);
+        if (view != null) {
+            return view.button_press_event(event);
         }
-        
-        TrackView view = findView(event.y);
-        if (view != null)
-            view.on_button_press(event);
-        else select(null);
+        else {
+            select(null);
+        }
         return false;
     }
     
     public override bool motion_notify_event (Gdk.EventMotion event) {
-        TrackView view = findView(event.y);
-        if (view != null)
-            view.on_motion_notify(event);
+        Gtk.Widget? view = find_child(event.y);
+        if (view != null) {
+            return view.motion_notify_event(event);
+        }
         return false;
     }
     
     public override bool button_release_event (Gdk.EventButton event) {
-        TrackView view = findView(event.y);
+        Gtk.Widget? view = find_child(event.y);
         if (view != null) {
-            view.on_button_release(event);
+            return view.button_release_event(event);
         }
         
         if (selected != null && event.button == 3) {
@@ -323,6 +316,17 @@ class TimeLine : Gtk.EventBox, TimelineConverter {
                 project.load(filename);
             }
         } catch (GLib.ConvertError e) { }
+    }
+    
+    public void on_ruler_position_changed(int x) {
+        project.go(provider.xpos_to_time(x));
+    }
+    
+    public void zoom (float inc) {
+        provider.calculate_pixel_step(inc, pixel_min, pixel_div);
+        resized();
+        project.position_changed(project.position);
+        queue_draw();
     }
 }
 

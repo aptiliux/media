@@ -6,17 +6,19 @@
 
 namespace Model {
 
-
 class VideoProject : Project {
     Gst.Element video_export_sink;
     Gst.Element sink;
     Gst.Element converter;
     Gtk.Widget output_widget;
     
+    public TimecodeTimeProvider time_provider;
+    
     Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
 
     public VideoProject(string? filename) {
-        base(filename);      
+        base(filename);
+        time_provider = new TimecodeTimeProvider();
         converter = make_element("ffmpegcolorspace");
         sink = make_element("xvimagesink");
         sink.set("force-aspect-ratio", true);
