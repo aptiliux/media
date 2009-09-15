@@ -21,13 +21,12 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					TimeSystem.vala \
 					thumbnailsink.vala \
 					track.vala \
-					UndoManager.vala
+					ui_clip.vala \
+					UndoManager.vala \
+					video_track.vala
 
-# TODO: lombard/video_track.vala is temporarily included in Marina.  This should go away soon.
 MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
-				lombard/video_track.vala \
-				lombard/ui_clip.vala
-				
+
 MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
 MARINA_FLAGS = --vapidir ./vapi
 
