@@ -12,6 +12,7 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					clip.vala \
 					ClipLibraryView.vala \
 					command.vala \
+					DialogUtils.vala \
 					import.vala \
 					MultiFileProgress.vala \
 					project.vala \
