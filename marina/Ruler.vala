@@ -14,20 +14,28 @@ public class Ruler : Gtk.DrawingArea {
     public Ruler(Model.TimeProvider provider, int height) {
         this.provider = provider;
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        modify_bg(Gtk.StateType.NORMAL, parse_color("#777"));
         set_size_request(0, height);
     }
     
     public override bool expose_event(Gdk.EventExpose event) {
-        window.draw_rectangle(style.bg_gc[(int) Gtk.StateType.NORMAL],
-                            true, allocation.x, allocation.y, allocation.width, allocation.height);
         int x = BORDER;
-
         int frame = 0;
+
+        Cairo.Context context = Gdk.cairo_create(window);
+        
+        Gdk.cairo_set_source_color(context, parse_color("#777"));        
+        context.rectangle(allocation.x, allocation.y, allocation.width, allocation.height);
+        context.fill();
+
+        context.set_antialias(Cairo.Antialias.NONE);
+        context.set_source_rgb(1.0, 1.0, 1.0);
         while (x <= allocation.width) {
             x = provider.frame_to_xsize(frame);
             int y = provider.get_pixel_height(frame);
-            Gdk.draw_line(window, style.white_gc, x + BORDER, 0, x + BORDER, y);
+            
+            context.move_to(x + BORDER, 0);
+            context.line_to(x + BORDER, y);
+            
             string? display_string = provider.get_display_string(frame);
             if (display_string != null) {
                 Pango.Layout layout = create_pango_layout(display_string);
@@ -47,6 +55,10 @@ public class Ruler : Gtk.DrawingArea {
             
             frame = provider.get_next_position(frame);
         }
+
+        context.set_line_width(1.0);
+        context.stroke();
+
         return true;
     }
     
