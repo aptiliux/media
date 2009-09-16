@@ -111,7 +111,7 @@ class HeaderArea : Gtk.EventBox {
     Gtk.VBox vbox;
     public Gdk.Color background_color = parse_color("#666");
     
-    public HeaderArea(Recorder recorder, Model.TimeProvider provider, int height) {
+    public HeaderArea(Recorder recorder, Model.TimeSystem provider, int height) {
         this.project = recorder.project;
         this.recorder = recorder;
         project.track_added += add_track;

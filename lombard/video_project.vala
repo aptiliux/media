@@ -12,13 +12,13 @@ class VideoProject : Project {
     Gst.Element converter;
     Gtk.Widget output_widget;
     
-    public TimecodeTimeProvider time_provider;
+    public TimecodeTimeSystem time_provider;
     
     Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
 
     public VideoProject(string? filename) {
         base(filename);
-        time_provider = new TimecodeTimeProvider();
+        time_provider = new TimecodeTimeSystem();
         converter = make_element("ffmpegcolorspace");
         sink = make_element("xvimagesink");
         sink.set("force-aspect-ratio", true);

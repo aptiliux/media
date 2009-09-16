@@ -8,7 +8,7 @@ using Gee;
 
 class TimeLine : Gtk.EventBox {
     public Model.Project project;
-    public weak Model.TimeProvider provider;
+    public weak Model.TimeSystem provider;
     View.Ruler ruler;
     ArrayList<TrackView> tracks = new ArrayList<TrackView>();
     Gtk.VBox vbox;
@@ -37,7 +37,7 @@ class TimeLine : Gtk.EventBox {
     public const int RULER_HEIGHT = 20;
     public GapView gap_view;
 
-    public TimeLine(Model.Project p, Model.TimeProvider provider) {
+    public TimeLine(Model.Project p, Model.TimeSystem provider) {
         project = p;
         this.provider = provider;
         
@@ -196,7 +196,7 @@ class TimeLine : Gtk.EventBox {
     }
 
     public void update_pos(int event_x) {
-        int64 time = provider.xpos_to_time(event_x - BORDER);
+        int64 time = provider.xpos_to_time(event_x);
         
         project.snap_coord(out time, provider.get_pixel_snap_time());
         project.go(time);

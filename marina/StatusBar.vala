@@ -6,10 +6,10 @@
 
 namespace View {
 public class StatusBar : Gtk.DrawingArea {
-    Model.TimeProvider provider;
+    Model.TimeSystem provider;
     int64 current_position = 0;
     
-    public StatusBar(Model.Project p, Model.TimeProvider provider, int height) {
+    public StatusBar(Model.Project p, Model.TimeSystem provider, int height) {
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
         modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
         set_size_request(0, height);

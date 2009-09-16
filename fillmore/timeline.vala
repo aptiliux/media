@@ -147,7 +147,7 @@ class TrackView : Gtk.Fixed {
 class TimeLine : Gtk.EventBox {
     public weak Model.Project project;
     public weak Recorder recorder;
-    public Model.TimeProvider provider;
+    public Model.TimeSystem provider;
     
     Gtk.VBox vbox;
     View.Ruler ruler;
@@ -166,7 +166,7 @@ class TimeLine : Gtk.EventBox {
 
     public signal void resized();
     
-    public TimeLine(Recorder recorder, Model.TimeProvider provider) {
+    public TimeLine(Recorder recorder, Model.TimeSystem provider) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
 
         this.project = recorder.project;
@@ -241,7 +241,10 @@ class TimeLine : Gtk.EventBox {
     public override bool expose_event (Gdk.EventExpose event) {
         base.expose_event(event);
         int xpos = provider.time_to_xpos(project.position);
-        Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, 500);
+        int separator_height = 2;
+        int line_length = RULER_HEIGHT + 
+            (TrackView.height + 2 * track_margin + separator_height) * project.tracks.size;
+        Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, line_length);
         return true;
     }
     

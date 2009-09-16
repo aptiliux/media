@@ -9,7 +9,7 @@ class Recorder : Gtk.Window {
     
     HeaderArea header_area;
     TimeLine timeline;
-    Model.TimeProvider provider;
+    Model.TimeSystem provider;
     Gtk.Adjustment h_adjustment;
     int cursor_pos = -1;
     
@@ -129,7 +129,7 @@ class Recorder : Gtk.Window {
     };
     
     public Recorder(string? project_file) {
-        provider = new Model.SecondsTimeProvider();
+        provider = new Model.TimecodeTimeSystem();
         project = new Model.AudioProject();
         project.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;

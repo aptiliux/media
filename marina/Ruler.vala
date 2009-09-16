@@ -6,12 +6,12 @@
  
 namespace View {
 public class Ruler : Gtk.DrawingArea {
-    weak Model.TimeProvider provider;
+    weak Model.TimeSystem provider;
     const int BORDER = 4;
 
     public signal void position_changed(int x);
     
-    public Ruler(Model.TimeProvider provider, int height) {
+    public Ruler(Model.TimeSystem provider, int height) {
         this.provider = provider;
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
         set_size_request(0, height);

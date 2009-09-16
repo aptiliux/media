@@ -39,7 +39,7 @@ public class GapView : Gtk.DrawingArea {
 
 public class ClipView : Gtk.DrawingArea {
     public Model.Clip clip;
-    weak Model.TimeProvider time_provider;
+    weak Model.TimeSystem time_provider;
     public bool ghost;
     public bool is_selected;
     public int height; // TODO: We request size of height, but we aren't allocated this height.
@@ -53,7 +53,7 @@ public class ClipView : Gtk.DrawingArea {
     public signal void clip_moved(ClipView clip);
     public signal void drag_updated(ClipView clip);
     
-    public ClipView(Model.Clip clip, Model.TimeProvider time_provider, int height) {
+    public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;

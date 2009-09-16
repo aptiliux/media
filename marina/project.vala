@@ -671,7 +671,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         // We ignore the return value of seek_simple(); sometimes it returns false even when
         // a seek succeeds.
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);
-        position_changed(pos);
+        position_changed(position);
     }
     
     public void reseek() { go(position); }

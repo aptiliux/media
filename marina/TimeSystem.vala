@@ -6,7 +6,7 @@
 
 namespace Model {
 
-public interface TimeProvider : Object {
+public interface TimeSystem : Object {
     public abstract void calculate_pixel_step(float inc, float pixel_min, float pixel_div);
     public abstract int64 xpos_to_time(int x);
     public abstract int time_to_xpos(int64 time);
@@ -21,7 +21,7 @@ public interface TimeProvider : Object {
     public abstract string get_time_string(int64 time);
 }
 
-public abstract class TimeProviderBase : Object {
+public abstract class TimeSystemBase : Object {
     public const int PIXEL_SNAP_INTERVAL = 10;
     protected int[] timeline_seconds = { 1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600, 
         900, 1200, 1800, 3600 };
@@ -29,6 +29,9 @@ public abstract class TimeProviderBase : Object {
     public float pixel_percentage = 0.0f;
     public float pixels_per_second;
     public int64 pixel_snap_time;
+    
+    const int BORDER = 4;  // TODO: should use same value as timeline.  will happen when this gets
+                            // refactored back into view code.
 
     protected int correct_seconds_value (float seconds, int div, int fps) {
         if (seconds < 1.0f) {
@@ -71,7 +74,7 @@ public abstract class TimeProviderBase : Object {
     }
 
     public int64 xpos_to_time(int x) {
-        return xsize_to_time(x);
+        return xsize_to_time(x - BORDER);
     }
 
     public int64 xsize_to_time(int size) {
@@ -83,7 +86,7 @@ public abstract class TimeProviderBase : Object {
     }
 
     public int time_to_xpos(int64 time) {
-        int pos = time_to_xsize(time);
+        int pos = time_to_xsize(time) + BORDER;
         
         if (xpos_to_time(pos) != time)
             pos++;
@@ -91,12 +94,8 @@ public abstract class TimeProviderBase : Object {
     }
 }
 
-public class TimecodeTimeProvider : TimeProvider, TimeProviderBase {
+public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
     float pixels_per_frame;
-
-    public int pixels_per_large = 300;
-    public int pixels_per_medium = 50;
-    public int pixels_per_small = 20;
 
     int small_pixel_frames = 0;
     int medium_pixel_frames = 0;
@@ -114,6 +113,10 @@ public class TimecodeTimeProvider : TimeProvider, TimeProviderBase {
     }
     
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
+        int pixels_per_large = 300;
+        int pixels_per_medium = 50;
+        int pixels_per_small = 20;
+
         pixel_percentage += inc;    
         if (pixel_percentage < 0.0f)
             pixel_percentage = 0.0f;
@@ -175,85 +178,6 @@ public class TimecodeTimeProvider : TimeProvider, TimeProviderBase {
         } else {
             return 2;
         }
-    }
-}
-
-public class SecondsTimeProvider : TimeProvider, TimeProviderBase {
-    int small_ticks;
-    int medium_ticks;
-    int large_ticks;
-    int pixels_per_large = 300;
-    int pixels_per_medium = 50;
-    int pixels_per_small = 20;
-       
-    public string get_time_string(int64 the_time) {
-        return time_to_HHMMSS(the_time);
-    }
-    
-    public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
-        pixel_percentage += inc;
-        pixels_per_second = pixel_min * GLib.Math.powf(pixel_div, pixel_percentage);
-
-        if (pixel_percentage < 0.0f)
-            pixel_percentage = 0.0f;
-        else if (pixel_percentage > 1.0f)
-            pixel_percentage = 1.0f;
-
-        large_ticks = correct_seconds_value(pixels_per_large / pixels_per_second, 0, 10);
-        medium_ticks = correct_seconds_value(pixels_per_medium / pixels_per_second, 
-                                                    large_ticks, 10);
-        small_ticks = correct_seconds_value(pixels_per_small / pixels_per_second, 
-                                                    medium_ticks, 10);
-    
-        if (small_ticks == medium_ticks) {
-            int i = medium_ticks;
-            
-            while (--i > 0) {
-                if ((medium_ticks % i) == 0) {
-                    small_ticks = i;
-                    break;
-                }
-            }
-        }
-    
-        pixel_snap_time = xsize_to_time(PIXEL_SNAP_INTERVAL);
-    }
-    
-    public int get_start_token() {
-        return 0;
-    }
-    
-    public int get_next_position(int token) {
-        return token + small_ticks;
-    }
-    
-    public int get_pixel_height(int token) {
-        if ((token % medium_ticks) == 0) {
-            if (medium_ticks == small_ticks &&
-                    (medium_ticks != large_ticks &&
-                    token % large_ticks != 0)) {
-                return 2;
-            }
-            else {
-                return 6;
-            }
-        } else {
-            return 2;
-        }
-    }
-    
-    public string? get_display_string(int token) {
-/*
-        if ((token % large_ticks) == 0) {
-            int64 time = xsize_to_time((int) (token * pixels_per_second));
-            return time_to_HHMMSS(time);
-        }
-*/
-        return null;
-    }
-    
-    public int frame_to_xsize(int frame) {
-        return frame;
     }
 }
 }
