@@ -23,6 +23,11 @@ class ThumbnailSink : Gst.BaseSink {
         add_pad_template(pad.get());        
     }
     
+    // This empty construct block eliminates a build warning about chaining up to a private
+    // constructor.
+    construct {
+    }
+    
     public ThumbnailSink() {
         set_sync(false);
     }
