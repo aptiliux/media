@@ -241,9 +241,7 @@ class TimeLine : Gtk.EventBox {
     public override bool expose_event (Gdk.EventExpose event) {
         base.expose_event(event);
         int xpos = provider.time_to_xpos(project.position);
-        int separator_height = 2;
-        int line_length = RULER_HEIGHT + 
-            (TrackView.height + 2 * track_margin + separator_height) * project.tracks.size;
+        int line_length = allocation.height;
         Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, line_length);
         return true;
     }

@@ -534,44 +534,31 @@ class App : Gtk.Window {
         update_menu();
     }
     
-    // constants from gdkkeysyms.h
-    const int GDK_LEFT = 0xff51;
-    const int GDK_UP = 0xff52;
-    const int GDK_RIGHT = 0xff53;
-    const int GDK_DOWN = 0xff54;
-    const int GDK_MINUS = 0x002d;
-    const int GDK_PLUS = 0x003d;
-    const int GDK_SHIFT_LEFT = 0xffe1;
-    const int GDK_SHIFT_RIGHT = 0xffe2;
-    const int GDK_ESCAPE = 0xff1b;
-    const int GDK_CONTROL_LEFT = 0xffe3;
-    const int GDK_CONTROL_RIGHT = 0xffe4;
-    
     // We must use a key press event to handle the up arrow and down arrow keys,
     // since GTK does not allow them to be used as accelerators.
     public override bool key_press_event(Gdk.EventKey event) {
         switch (event.keyval) {
-            case GDK_UP:
+            case KeySyms.UP:
                 project.go_previous();
                 return true;
-            case GDK_DOWN:
+            case KeySyms.DOWN:
                 project.go_next();
                 return true;
-            case GDK_LEFT:
+            case KeySyms.LEFT:
                 project.go_previous_frame();
                 return true;
-            case GDK_RIGHT:
+            case KeySyms.RIGHT:
                 project.go_next_frame();
                 return true;
-            case GDK_SHIFT_LEFT:
-            case GDK_SHIFT_RIGHT:
+            case KeySyms.SHIFT_LEFT:
+            case KeySyms.SHIFT_RIGHT:
                 timeline.set_shift_pressed(true);
                 return true;
-            case GDK_ESCAPE:
+            case KeySyms.ESCAPE:
                 timeline.escape_pressed();
                 return true;
-            case GDK_CONTROL_LEFT:
-            case GDK_CONTROL_RIGHT:
+            case KeySyms.CONTROL_LEFT:
+            case KeySyms.CONTROL_RIGHT:
                 timeline.set_control_pressed(true);
                 return true;
         }
@@ -580,12 +567,12 @@ class App : Gtk.Window {
     
     public override bool key_release_event(Gdk.EventKey event) {
         switch (event.keyval) {
-            case GDK_SHIFT_LEFT:
-            case GDK_SHIFT_RIGHT:
+            case KeySyms.SHIFT_LEFT:
+            case KeySyms.SHIFT_RIGHT:
                 timeline.set_shift_pressed(false);
                 return true;
-            case GDK_CONTROL_LEFT:
-            case GDK_CONTROL_RIGHT:
+            case KeySyms.CONTROL_LEFT:
+            case KeySyms.CONTROL_RIGHT:
                 timeline.set_control_pressed(false);
                 return true;
         }
@@ -673,7 +660,7 @@ class App : Gtk.Window {
     void on_undo_changed(bool can_undo) {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
-        undo.set_label("Undo " + project.undo_manager.get_undo_title());
+        undo.set_label("_Undo " + project.undo_manager.get_undo_title());
         undo.set_sensitive(can_undo);
     }
 

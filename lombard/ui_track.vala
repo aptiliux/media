@@ -95,6 +95,10 @@ class TrackView : Gtk.Fixed {
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
             if (view.clip == clip) {
+                if (timeline.selected_clip == view) {
+                    timeline.select_clip(null);
+                }
+                
                 remove(view);
                 timeline.track_changed();
                 return;

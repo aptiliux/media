@@ -161,14 +161,6 @@ class VideoProject : Project {
         output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
     }
 
-    public int get_current_frame() {
-        VideoTrack? video_track = find_video_track();
-        if (video_track != null) {
-            return video_track.get_current_frame(position);
-        }
-        return 0;
-    }
-
     public void go_previous_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {
@@ -186,22 +178,12 @@ class VideoProject : Project {
     public bool get_framerate_fraction(out Fraction rate) {
         foreach (Track track in tracks) {
             VideoTrack video_track = track as VideoTrack;
-            if (video_track.get_framerate(out rate))
+            if (video_track != null && video_track.get_framerate(out rate))
                 return true;
         }
         return false;
     }
 
-    public int get_framerate() {
-        Fraction r;
-        if (!get_framerate_fraction(out r))
-            return 0;
-        
-        if (is_drop_frame_rate(r))
-            return 30;
-        return r.numerator / r.denominator;
-    }
-    
     public override Gst.Element? get_track_element(Track track) {
         if (track is VideoTrack) {
             return converter;

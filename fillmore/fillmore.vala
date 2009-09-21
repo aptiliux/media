@@ -338,6 +338,18 @@ class Recorder : Gtk.Window {
         int x = int.max(0, xpos - cursor_pos);
         h_adjustment.set_value(x);
     }
+
+    public override bool key_press_event(Gdk.EventKey event) {
+        switch(event.keyval) {
+            case KeySyms.LEFT:
+                project.go(project.position - Gst.SECOND);
+                return true;
+            case KeySyms.RIGHT:
+                project.go(project.position + Gst.SECOND);
+                return true;
+        }
+        return base.key_press_event(event);
+    }
     
     // File menu
     
@@ -585,7 +597,7 @@ class Recorder : Gtk.Window {
     void on_undo_changed(bool can_undo) {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
-        undo.set_label("Undo " + project.undo_manager.get_undo_title());
+        undo.set_label("_Undo " + project.undo_manager.get_undo_title());
         undo.set_sensitive(can_undo);
     }
 
