@@ -29,6 +29,7 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
 
 MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
+MARINA_FLAGS = --vapidir ./vapi
 
 GLOBAL_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0 --pkg gstreamer-base-0.10
 
