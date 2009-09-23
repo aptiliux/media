@@ -143,7 +143,7 @@ class Recorder : Gtk.Window {
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
-        set_size_request(600, 400);
+        set_default_size(600, 400);
         
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
