@@ -93,11 +93,21 @@ class ProjectLoaderSuite : TestSuite {
 
         current_document = 0;
         project_documents = {
-            ValidDocument(true, "<marina><track><clip /><clip /></track>" +
-                                "<track><clip /></track></marina>"),
-            ValidDocument(true, "<marina />"),
-            ValidDocument(true, "<marina><track /></marina>"),
-            ValidDocument(true, "<marina><track><clip /></track></marina>"),
+           ValidDocument(true, "<marina><library></library><tracks><track><clip /><clip /></track>"
+                               + "<track><clip /></track></tracks></marina>"),
+            ValidDocument(true, "<marina><library></library><tracks><track /></tracks></marina>"),
+            
+            ValidDocument(true, 
+                    "<marina><library></library><tracks><track><clip /></track></tracks></marina>"),
+                    
+            ValidDocument(false, "<marina><tracks></tracks><library></library></marina>"),
+            
+            ValidDocument(false, "<marina><library></library><track></track></marina>"),
+            
+            ValidDocument(false, 
+                      "<marina><library><clip /></library><tracks><clipfile /></tracks></marina>"),
+                       
+            ValidDocument(false, "<marina />"),            
             ValidDocument(false, "<track />"),
             ValidDocument(false, "<clip />"),
             ValidDocument(false, "<marina><clip /></marina>"),

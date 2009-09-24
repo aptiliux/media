@@ -6,21 +6,6 @@
 
 using Gee;
 
-class LombardFetcherCompletion : Model.FetcherCompletion {
-    Model.Project project;
-    
-    public LombardFetcherCompletion(Model.Project project) {
-        base();
-        this.project = project;
-    }
-    
-    public override void complete(Model.ClipFetcher fetch) {
-        base.complete(fetch);
-        project.add_clipfile(fetch.clipfile);
-        project.append(fetch.clipfile);
-    }
-}
-
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
@@ -221,7 +206,7 @@ class App : Gtk.Window {
         project = new Model.VideoProject(project_filename);
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
-        project.load_success += on_load_success;
+        project.load_complete += on_load_complete;
         project.error_occurred += do_error_dialog;
         project.undo_manager.undo_changed += on_undo_changed;
 
@@ -251,7 +236,6 @@ class App : Gtk.Window {
         
         add_accel_group(manager.get_accel_group());
         
-        set_project_name(null);
         Gtk.drag_dest_set(timeline, Gtk.DestDefaults.ALL, drag_target_entries, 
                                                                   Gdk.DragAction.COPY);
         Gtk.drag_dest_set(library, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
@@ -335,8 +319,9 @@ class App : Gtk.Window {
         DialogUtils.error("Load error", message);
     }
     
-    public void on_load_success() {
+    public void on_load_complete() {
         on_zoom_to_project();
+        queue_draw();
     }
     
     // Loader code

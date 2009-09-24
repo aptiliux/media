@@ -8,7 +8,8 @@ namespace Model {
 
 public class LoaderHandler {
     public signal void load_error(string error_message);
-
+    public signal void complete();
+    
     public LoaderHandler() {
     }
     
@@ -23,6 +24,13 @@ public class LoaderHandler {
     public virtual bool commit_clip(string[] attr_names, string[] attr_values) {
         return true;
     }
+    
+    public virtual bool commit_clipfile(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+
+    public virtual void leave_library() {
+    }
 
     public virtual void leave_marina() {
     }    
@@ -31,6 +39,10 @@ public class LoaderHandler {
     }
     
     public virtual void leave_clip() {
+    }
+    
+    public virtual void leave_clipfile() {
+        
     }
 }
 
@@ -75,7 +87,7 @@ public class XmlTreeLoader {
 class ProjectBuilder {
     LoaderHandler handler;
 
-    public signal void error_occurred(string? error);
+    public signal void error_occurred(string error);
     
     public ProjectBuilder(LoaderHandler handler) {
         this.handler = handler;
@@ -86,7 +98,7 @@ class ProjectBuilder {
             return true;
         }
         
-        error_occurred("expected %s, got %s".printf(node.name, node.name));
+        error_occurred("expected %s, got %s".printf(expected_name, node.name));
         return false;
     }
     
@@ -97,8 +109,6 @@ class ProjectBuilder {
                     error_occurred("clip cannot have children");
                 }
                 handler.leave_clip();
-            } else {
-                error_occurred("improper clip node");
             }
         }
     }
@@ -110,23 +120,51 @@ class ProjectBuilder {
                     handle_clip(child);
                 }
                 handler.leave_track();
-            } else {
-                error_occurred("improper track node");
             }
         }
     }
 
-    public void build_project(XmlElement root) {
-        if (check_name("marina", root)) {
-            if (handler.commit_marina(root.attribute_names, root.attribute_values)) {
-                foreach (XmlElement child in root.children) {
-                    handle_track(child);
-                }
-                handler.leave_marina();
-            } else {
-                error_occurred("improper marina node");
-            }
+    void handle_library(XmlElement library) {
+        foreach (XmlElement child in library.children) {
+            if (!handler.commit_clipfile(child.attribute_names, child.attribute_values))
+                error_occurred("Improper library node");
         }
+        
+        handler.leave_library();
+    }
+    
+    void handle_tracks(XmlElement tracks) {
+        foreach (XmlElement child in tracks.children) {
+            handle_track(child);
+        }
+    }
+
+    public bool check_project(XmlElement? root) {
+        if (root == null) {
+            error_occurred("Invalid XML file!");
+            return false;
+        }
+        
+        if (check_name("marina", root) &&
+            handler.commit_marina(root.attribute_names, root.attribute_values)) {
+            if (root.children.size != 2) {
+                error_occurred("Improper number of children!");
+                return false;
+            }
+            
+            if (!check_name("library", root.children[0]) ||
+                !check_name("tracks", root.children[1]))
+                return false;
+        } else
+            return false;
+        return true;
+    }
+
+    public void build_project(XmlElement? root) {  
+        handle_library(root.children[0]);
+        handle_tracks(root.children[1]);
+        
+        handler.leave_marina();
     }
 }
 
@@ -163,109 +201,45 @@ public class ProjectLoader {
     string text;
     size_t text_len;
 
-    bool loaded_file_header;
-    string error;
-
-    Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
-
-    public signal void clip_ready(ClipFile clip_file);
     public signal void load_started(string filename);
-    public signal void load_complete(string? error);
+    public signal void load_complete();
+    public signal void load_error(string error);
     
     public ProjectLoader(LoaderHandler loader_handler, string? file_name) {
         this.file_name = file_name;
         this.loader_handler = loader_handler;
         loader_handler.load_error += on_load_error;
+        loader_handler.complete += on_handler_complete;
     }
     
     void on_load_error(string error) {
-        load_complete(error);
+        load_error(error);
     }
     
-    void parse(MarkupParser parser) {
-        MarkupParseContext context =
-            new MarkupParseContext(parser, (MarkupParseFlags) 0, this, null);
-            
-        try {
-            context.parse(text, (long) text_len);
-        } catch (MarkupError e) {
-            error = e.message;
-        }
-    }
-
-    void fetcher_callback(ClipFetcher f) {
-        if (f.error_string != null && error == null)
-            error = "%s: %s".printf(f.clipfile.filename, f.error_string);
-        else clip_ready(f.clipfile);
-        pending.remove(f);
-        
-        if (pending.size == 0) {
-            load_ready();
-        }
-    }
-
-    void load_ready() {
-        if (error == null) {
-            // Now that all ClipFetchers have completed, parse the XML again and
-            // create Clip objects.
-            XmlTreeLoader tree_loader = new XmlTreeLoader(text);
-            
-            ProjectBuilder builder = new ProjectBuilder(loader_handler);
-            builder.build_project(tree_loader.root);
-        }
-        
-        load_complete(error);
-    }    
-    
-    void xml_start_clipfile(GLib.MarkupParseContext c, string name, 
-                            string[] attr_names, string[] attr_values) throws MarkupError {
-        
-        if (!loaded_file_header) {
-            if (name != "marina")
-                throw new MarkupError.INVALID_CONTENT("Missing header!");
-                
-            if (attr_names.length < 1 ||
-                attr_names[0] != "version") {
-                throw new MarkupError.INVALID_CONTENT("Corrupted header!");
-            }
-         
-            loaded_file_header = true;
-        } else if (name == "clip")
-            for (int i = 0; i < attr_names.length; i++)
-                if (attr_names[i] == "filename") {
-                    string filename = attr_values[i];
-                    foreach (ClipFetcher fetcher in pending)
-                        if (fetcher.get_filename() == filename)
-                            return;     // we're already fetching this clipfile
-
-                    ClipFetcher fetcher = new ClipFetcher(filename);
-                    pending.add(fetcher);
-                    fetcher.ready += fetcher_callback;
-                    return;
-                }
+    void on_handler_complete() {
+        load_complete();    
     }
     
     public void load() {
         try {
             FileUtils.get_contents(file_name, out text, out text_len);
         } catch (FileError e) {
-            load_complete(e.message);
+            load_error(e.message);
+            load_complete();
             return;
         }
-        load_started(file_name);
-
-        // Parse the XML and start a ClipFetcher for each clip referenced.
-        MarkupParser parser = { xml_start_clipfile, null, null, null };
-        parse(parser);
-
-        // TODO: this is for the degenerate case where there are no clips to be fetched
-        // should be handled more gracefully
-        if (error == null && pending.size == 0) {
-            load_ready();
+        
+        XmlTreeLoader tree_loader = new XmlTreeLoader(text);
+        
+        ProjectBuilder builder = new ProjectBuilder(loader_handler);
+        builder.error_occurred += on_load_error;
+        
+        if (builder.check_project(tree_loader.root)) {
+            load_started(file_name);
+            builder.build_project(tree_loader.root);
         }
-
-        if (error != null || pending.size == 0)
-            load_complete(error);
+        else
+            load_complete(); 
     }
 }
 }

@@ -49,7 +49,8 @@ class VideoProject : Project {
 
     public override void add_clipfile(ClipFile f) {
         base.add_clipfile(f);
-        if (f.is_of_type(MediaType.VIDEO)) {
+        if (f.is_online() &&
+            f.is_of_type(MediaType.VIDEO)) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(f, 0);
             fetcher.ready += on_thumbnail_ready;
             pending.add(fetcher);

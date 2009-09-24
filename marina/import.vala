@@ -131,8 +131,13 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         } else
             total_time += our_fetcher.clipfile.length;
   
-        current_file_importing++;         
-        process_curr_file();
+        current_file_importing++;      
+        
+        if (current_file_importing <= filenames.size)
+            process_curr_file();
+        else
+            warning ("do_import_complete: current_file_importing out of bounds! %d %d".printf(
+                                                          current_file_importing, filenames.size));
     }
     
     bool need_to_import(ClipFetcher f) {

@@ -65,11 +65,11 @@ class TrackView : Gtk.Fixed {
         view.drag_updated += on_drag_updated;
         view.clip_deleted += on_clip_deleted;
         
-        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);       
+        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);
         view.show();
         
         if (timeline.control_pressed) {
-            timeline.selected_clip = view;
+            timeline.select_clip(view);
         }
         timeline.track_changed();
     }

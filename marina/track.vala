@@ -30,6 +30,8 @@ public abstract class Track {
         this.project = project;
         this.display_name = display_name;
 
+        error_occurred += project.on_error_occurred;
+
         composition = (Gst.Bin) make_element_with_name("gnlcomposition", display_name);
         
         default_source = make_element_with_name("gnlsource", "track_default_source");
@@ -278,17 +280,35 @@ public abstract class Track {
         if (overwrite)
             do_clip_overwrite(c);    
         
-        clips.insert(get_insert_index(c.start), c);    
+        clips.insert(get_insert_index(c.start), c);
         project.reseek();
     }
 
     // This function adds a new clip to the timeline; in that it adds it to
     // the Gnonlin composition and also adds a new ClipView object
     public void add_new_clip(Clip c, int64 pos, bool overwrite) {
-        if (composition != null) {
-            composition.add(c.file_source);
-            _add_clip_at(c, pos, overwrite);
-            clip_added(c);
+        c.updated += on_clip_updated;
+        if (!check(c))
+            return;
+        
+        if (c.clipfile.is_online()) {
+            if (composition != null) {
+                composition.add(c.file_source);
+            }
+        }
+        _add_clip_at(c, pos, overwrite);
+        clip_added(c);
+    }
+    
+    void on_clip_updated(Clip c) {
+        if (c.clipfile.is_online()) {
+            if (composition != null) {
+                composition.add(c.file_source);
+            }            
+        } else {
+            if (composition != null) {
+                composition.remove(c.file_source);
+            }    
         }
     }
 
@@ -596,12 +616,12 @@ public abstract class Track {
     }
     
     public void save(FileStream f) {
-        f.printf("  <track ");
+        f.printf("    <track ");
         write_attributes(f);
         f.printf(">\n");
         for (int i = 0; i < clips.size; i++)
-            clips[i].save(f);
-        f.puts("  </track>\n");
+            clips[i].save(f, project.get_clipfile_index(clips[i].clipfile));
+        f.puts("    </track>\n");
     }
     
     public string get_display_name() {
@@ -639,7 +659,6 @@ public class AudioTrack : Track {
     
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
-        error_occurred += project.on_error_occurred;
 
         audio_convert = make_element_with_name("audioconvert",
             "audioconvert_%s".printf(display_name));
@@ -757,7 +776,18 @@ public class AudioTrack : Track {
         bin.unlink_many(audio_convert, audio_resample, level, pan, volume, track_element);
     }
     
+    bool get_num_channels(out int num) {
+        for (int i = 0; i < clips.size; i++) {
+            if (clips[i].clipfile.is_online())
+                return clips[i].clipfile.get_num_channels(out num);
+        }
+        return false;
+    }
+    
     public override bool check(Clip clip) {
+        if (!clip.clipfile.is_online())
+            return true;
+        
         if (clips.size == 0) {
             return true;
         }
@@ -766,7 +796,7 @@ public class AudioTrack : Track {
         int number_of_channels;
         if (clip.clipfile.get_num_channels(out number_of_channels)) {
             int track_channel_count;
-            if (clips[0].clipfile.get_num_channels(out track_channel_count)) {
+            if (get_num_channels(out track_channel_count)) {
                 good = track_channel_count == number_of_channels;
             }
         }

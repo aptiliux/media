@@ -49,7 +49,7 @@ class TrackView : Gtk.Fixed {
         ClipView view = new ClipView(clip, timeline.provider, TrackView.height);
         view.clip_moved += update;
         
-        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);       
+        put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);   
         view.show();
     }
     

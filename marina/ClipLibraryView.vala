@@ -17,6 +17,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
     Gdk.Pixbuf default_audio_icon;
     Gdk.Pixbuf default_video_icon;
+    Gdk.Pixbuf default_error_icon;
 
     enum SortMode {
         NONE,
@@ -80,6 +81,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
         default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
         default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
+        default_error_icon = icon_theme.load_icon("error", 32, (Gtk.IconLookupFlags) 0);
     
         sort_mode = SortMode.ABC;
     }
@@ -247,9 +249,16 @@ public class ClipLibraryView : Gtk.EventBox {
     void update_iter(Gtk.TreeIter it, Model.ClipFile f) {
         TimeCode t  = project.get_clip_time(f);
         
-        Gdk.Pixbuf icon = f.thumbnail == null ? (f.is_of_type(Model.MediaType.VIDEO) ? 
-                                                default_video_icon : default_audio_icon) 
-                                              : f.thumbnail;
+        Gdk.Pixbuf icon;
+        
+        if (f.is_online()) {
+            if (f.thumbnail == null)
+                icon = (f.is_of_type(Model.MediaType.VIDEO) ? 
+                                                        default_video_icon : default_audio_icon);
+            else
+                icon = f.thumbnail;
+        } else
+            icon = default_error_icon;
                                          
         list_store.set(it, ColumnType.THUMBNAIL, icon,
                             ColumnType.NAME, isolate_filename(f.filename), 
@@ -283,7 +292,6 @@ public class ClipLibraryView : Gtk.EventBox {
                 tree_view.show();
             }
             num_clipfiles++;
-            f.updated += on_clipfile_updated;
         }
         
         int pos = get_clipfile_position(f);

@@ -33,6 +33,8 @@ public class ClipFile {
     public string filename;
     public int64 length;
     
+    bool online;
+    
     public Gst.Caps video_caps;    // or null if no video
     public Gst.Caps audio_caps;    // or null if no audio
     public Gdk.Pixbuf thumbnail = null;
@@ -42,6 +44,15 @@ public class ClipFile {
     public ClipFile(string filename, int64 length = 0) {
         this.filename = filename;
         this.length = length;
+        online = false;
+    }
+    
+    public bool is_online() {
+        return online;
+    }
+    
+    public void set_online(bool o) {
+        online = o;
     }
 
     public void set_thumbnail(Gdk.Pixbuf b) {
@@ -172,8 +183,12 @@ public abstract class Fetcher {
 }
 
 public class ClipFetcher : Fetcher {  
+    public signal void clipfile_online(bool online);
+
     public ClipFetcher(string filename) {
         clipfile = new ClipFile(filename);
+        
+        clipfile_online += clipfile.set_online;
         
         filesrc = make_element("filesrc");
         filesrc.set("location", filename);
@@ -265,6 +280,8 @@ public class ClipFetcher : Fetcher {
                 do_error("Can't fetch length");
                 return;
             }
+            
+            clipfile_online(true);
             pipeline.set_state(Gst.State.NULL);                                  
         } else if (new_state == Gst.State.NULL) {
             ready();
@@ -373,13 +390,14 @@ public class Clip {
     }
     
     public signal void moved(Clip clip);
+    public signal void updated();
     
     public Clip(ClipFile clipfile, MediaType t, string name,
                 int64 start, int64 media_start, int64 duration) {
         this.clipfile = clipfile;
         this.type = t;
         this.name = name;
-        this.connected = true;
+        this.connected = clipfile.is_online();
         
         file_source = (Gst.Bin) make_element("gnlsource");
         Gst.Element sbin = new SingleDecodeBin(Gst.Caps.from_string(type == MediaType.AUDIO 
@@ -391,6 +409,8 @@ public class Clip {
         set_media_start(media_start);
         set_duration(duration);
         set_start(start);
+        
+        clipfile.updated += on_clipfile_updated;
     }
     
     ~Clip() {
@@ -399,6 +419,23 @@ public class Clip {
     
     public void gnonlin_connect() { connected = true; }
     public void gnonlin_disconnect() { connected = false; }
+    
+    void on_clipfile_updated(ClipFile f) {
+        if (f.is_online()) {
+            if (!connected) {
+                connected = true;
+
+                set_media_start(media_start);
+                set_duration(length);
+                set_start(start);      
+            }
+        } else {
+            if (connected) {
+                connected = false;
+            }
+        }
+        updated();
+    }
     
     public bool overlap_pos(int64 start, int64 length) {
         return start < this.start + this.length &&
@@ -438,6 +475,8 @@ public class Clip {
     }
 
     public bool is_trimmed() {
+        if (!clipfile.is_online()) 
+            return false;
         return length != clipfile.length;
     }
 
@@ -464,11 +503,11 @@ public class Clip {
         moved(this);
     }
 
-    public void save(FileStream f) {
+    public void save(FileStream f, int id) {
         f.printf(
-            "  <clip filename=\"%s\" name=\"%s\" start=\"%" + int64.FORMAT + "\" " +
+            "      <clip id=\"%d\" name=\"%s\" start=\"%" + int64.FORMAT + "\" " +
                     "media-start=\"%" + int64.FORMAT + "\" duration=\"%" + int64.FORMAT + "\"/>\n",
-            clipfile.filename, name, start, media_start, length);
+                    id, name, start, media_start, length);
     }
 }
 

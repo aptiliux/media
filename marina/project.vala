@@ -9,6 +9,9 @@ public class MediaLoaderHandler : LoaderHandler {
     protected weak Project the_project;
     protected Track current_track;
     
+    Gee.ArrayList<ClipFetcher> clipfetchers = new Gee.ArrayList<ClipFetcher>();
+    int num_clipfiles_complete;
+    
     public MediaLoaderHandler(Project the_project) {
         this.the_project = the_project;
         current_track = null;
@@ -16,7 +19,8 @@ public class MediaLoaderHandler : LoaderHandler {
     
     public override bool commit_marina(string[] attr_names, string[] attr_values) {
         int number_of_attributes = attr_names.length;
-        if (number_of_attributes != 1) {
+        if (number_of_attributes != 1 ||
+            attr_names[0] != "version") {
             load_error("Missing version information");
             return false;
         }
@@ -26,6 +30,8 @@ public class MediaLoaderHandler : LoaderHandler {
                 the_project.get_file_version(), attr_values[0].to_int()));
             return false;
         }
+        
+        num_clipfiles_complete = 0;
         return true;
     }
     
@@ -85,7 +91,7 @@ public class MediaLoaderHandler : LoaderHandler {
             if (the_project.clear_tracks) {
                 the_project.add_track(current_track);
             }
-            
+
             return true;
         } else if (type == "video") {
             if (the_project.clear_tracks) {
@@ -108,15 +114,15 @@ public class MediaLoaderHandler : LoaderHandler {
         assert(current_track != null);
         
         int number_of_attributes = attr_names.length;
-        string? filename = null;
+        int id = -1;
         string? clip_name = null;
         int64 start = -1;
         int64 media_start = -1;
         int64 duration = -1;
         for (int i = 0; i < number_of_attributes; i++) {
         switch (attr_names[i]) {
-            case "filename":
-                filename = attr_values[i];
+            case "id":
+                id = attr_values[i].to_int();
                 break;
             case "name":
                 clip_name = attr_values[i];
@@ -137,8 +143,8 @@ public class MediaLoaderHandler : LoaderHandler {
             }
         }
         
-        if (filename == null) {
-            load_error("missing filename");
+        if (id == -1) {
+            load_error("missing clip id");
             return false;
         }
         
@@ -162,16 +168,56 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        ClipFile clipfile = the_project.find_clipfile(filename);
-        if (clipfile == null) {
-            load_error("clip file %s was not loaded".printf(filename));
+        if (id >= clipfetchers.size) {
+            load_error("clip file id %s was not loaded".printf(clip_name));
             return false;
         }
         
-        Clip clip = new Clip(clipfile, current_track.media_type(), clip_name, 
-            0, media_start, duration);
-        current_track.append_at_time(clip, start);
+        Clip clip = new Clip(clipfetchers[id].clipfile, current_track.media_type(), clip_name, 
+            start, media_start, duration);
+        current_track.add_new_clip(clip, start, false);
         return true;
+    }
+    
+    void fetcher_ready(ClipFetcher f) {
+        if (f.error_string != null)
+            load_error("%s: %s".printf(f.clipfile.filename, f.error_string));
+
+        the_project.add_clipfile(f.clipfile);
+        f.clipfile.updated();
+        
+        num_clipfiles_complete++;
+        if (num_clipfiles_complete == clipfetchers.size)
+            complete();
+    }
+    
+    public override bool commit_clipfile(string[] attr_names, string[] attr_values) {
+        string filename = null;
+        int id = -1;
+
+        for (int i = 0; i < attr_names.length; i++) {
+            if (attr_names[i] == "filename") {
+                filename = attr_values[i];
+            } else if (attr_names[i] == "id") {
+                id = attr_values[i].to_int();
+            }
+        }
+        
+        if (filename == null)
+            load_error("Invalid clipfile filename!");
+        if (id < 0)
+            load_error("Invalid clipfile id!");     
+        
+        ClipFetcher fetcher = new ClipFetcher(filename);
+        fetcher.ready += fetcher_ready;
+        clipfetchers.insert(id, fetcher);        
+        
+        return true;
+    }
+    
+    public override void leave_library() {
+        if (clipfetchers.size == 0)
+            complete();
     }
 }
 
@@ -228,7 +274,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
-    public signal void load_success();
+    public signal void load_complete();
     public signal void closed();
     
     public signal void track_added(Track track);
@@ -280,6 +326,16 @@ public abstract class Project : MultiFileProgressInterface, Object {
             index >= clipfiles.size)
             return null;
         return clipfiles[index];
+    }
+    
+    public int get_clipfile_index(ClipFile find) {
+        int i = 0;
+        foreach (ClipFile f in clipfiles) {
+            if (f == find)
+                return i;
+            i++;
+        }
+        return -1;
     }
     
     public Track? track_from_clip(Clip clip) {
@@ -552,15 +608,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         pipeline.set_state(Gst.State.NULL);
         tracks.remove(track);
         track_removed(track);
-    }
-    
-    public void on_clip_ready(ClipFile clipfile) {
-        add_clipfile(clipfile);
-    }
-    
-    public void on_load_started(string filename) {
-        clear();
-        set_name(filename);
     }
 
     public virtual void add_clipfile(ClipFile clipfile) {
@@ -912,7 +959,10 @@ public abstract class Project : MultiFileProgressInterface, Object {
         playstate_changed(play_state);
         switch (play_state) {
             case PlayState.LOADING:
-                loader.load();
+                if (gst_state == Gst.State.NULL) {
+                    clear();                
+                    loader.load();
+                }
                 return true;
             case PlayState.STOPPED:
                 if (gst_state != Gst.State.PAUSED) {
@@ -949,45 +999,42 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }
         return false;
     }
-    
-    void on_load_complete(string? error) {
-        undo_manager.reset();   
-             
-        if (error != null) {
-            clear();
-            load_error(error);
-        } else {        
-            load_success();
-            name_changed(project_file);
-        }
 
+    public void on_load_started(string filename) {
+        project_file = filename;
+    }
+    
+    void on_load_error(string error) {
+        load_error(error);
+    }
+    
+    void on_load_complete() {
+        undo_manager.reset();
+        
+        set_name(project_file);
+        
         play_state = PlayState.STOPPED;
         pipeline.set_state(Gst.State.PAUSED);
+        
+        load_complete(); 
     }
     
     // Load a project file.  The load is asynchronous: it may continue after this method returns.
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
     public void load(string? fname) {
-        loader = null;
-        
-        project_file = fname;
+        set_name(null);
         if (fname == null) {
-            on_load_complete(null);
-            return;
-        }
-        
-        if (loader != null) {
-            load_error("already loading a project");
             return;
         }
         
         loader = new ProjectLoader(new MediaLoaderHandler(this), fname);
-        loader.clip_ready += on_clip_ready;
-        loader.load_started += on_load_started;
-        loader.load_complete += on_load_complete;
-        pipeline.set_state(Gst.State.NULL);
         
+        loader.load_started += on_load_started;
+        loader.load_error += on_load_error;
+        loader.load_complete += on_load_complete;
+        
+        pipeline.set_state(Gst.State.NULL);
         play_state = PlayState.LOADING;
     }
     
@@ -995,12 +1042,18 @@ public abstract class Project : MultiFileProgressInterface, Object {
         error_occurred(major_error, minor_error);
     }
     
-    public void on_load_error(string error_string) {
-        error_occurred("Could not load file", error_string);
+    public int get_file_version() {
+        return 2;
     }
     
-    public int get_file_version() {
-        return 1;
+    public void save_library(FileStream f) {
+        f.printf("  <library>\n");
+        
+        for (int i = 0; i < clipfiles.size; i++) {
+            f.printf("    <clipfile filename=\"%s\" id=\"%d\"/>\n", clipfiles[i].filename, i);
+        }
+        
+        f.printf("  </library>\n");
     }
     
     public void save(string? filename) {
@@ -1010,6 +1063,10 @@ public abstract class Project : MultiFileProgressInterface, Object {
         FileStream f = FileStream.open(project_file, "w");
         
         f.printf("<marina version=\"%d\">\n", get_file_version());
+        
+        save_library(f);
+        
+        f.printf("  <tracks>\n");
         foreach (Track track in tracks) {
             track.save(f);
         }
@@ -1017,6 +1074,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
         foreach (Track track in inactive_tracks) {
             track.save(f);
         }
+        f.printf("  </tracks>\n");
+        
         f.printf("</marina>\n");
         // TODO: clean up responsibility between dirty and undo
         undo_manager.mark_clean();
@@ -1051,13 +1110,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }        
     }
 
-    public ClipFetcher create_import_clip_fetcher(FetcherCompletion fc, string filename) {
-        ClipFetcher f = new ClipFetcher(filename);
-        fetcher_completion = fc;
-        
-        return f;
-    }
-
     public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {
         ClipFetcher fetcher = new ClipFetcher(filename);
         this.fetcher_completion = fetcher_completion;
@@ -1070,6 +1122,8 @@ public abstract class Project : MultiFileProgressInterface, Object {
         if (fetcher.error_string != null) {
             error_occurred("Error retrieving clip", fetcher.error_string);         
         } else {
+            if (get_clipfile_index(fetcher.clipfile) == -1)
+                add_clipfile(fetcher.clipfile);
             fetcher_completion.complete(fetcher);
         }
     }

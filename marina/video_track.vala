@@ -28,15 +28,23 @@ public class VideoTrack : Track {
         Fraction rate1;
         Fraction rate2;
 
-        if (!get_framerate(out rate2))
-            error ("Cannot get initial frame rate!");
-        
-        if (!clip.clipfile.get_frame_rate(out rate1))
-            error("can't get frame rate");
-        
-        if (!rate1.equal(rate2))
-            error ("can't insert clip with different frame rate");
+        if (!clip.clipfile.is_online())
+            return true;
 
+        if (!get_framerate(out rate2)) {
+            error_occurred("Cannot get initial frame rate!", null);
+            return false;
+        }
+        
+        if (!clip.clipfile.get_frame_rate(out rate1)) {
+            error_occurred("can't get frame rate", null);
+            return false;
+        }
+        
+        if (!rate1.equal(rate2)) {
+            error_occurred("can't insert clip with different frame rate", null);
+            return false;
+        }
         return true;
     }
     
@@ -90,7 +98,12 @@ public class VideoTrack : Track {
             rate.denominator = 100;
             return true;
         }
-        return clips[0].clipfile.get_frame_rate(out rate);
+        
+        for (int i = 0; i < clips.size; i++) {
+            if (clips[i].clipfile.is_online())
+                return clips[i].clipfile.get_frame_rate(out rate);
+        }
+        return false;
     }
 
     public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {

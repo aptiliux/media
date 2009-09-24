@@ -101,7 +101,8 @@ public class ClipView : Gtk.DrawingArea {
             weak Gdk.Color fill = is_selected ? color_selected : color_normal;
                                                                              
             bool left_trimmed = clip.media_start != 0;
-            bool right_trimmed = clip.media_start + clip.length != clip.clipfile.length;
+            bool right_trimmed = clip.clipfile.is_online() ? 
+                                  (clip.media_start + clip.length != clip.clipfile.length) : false;
                 
             if (!left_trimmed && !right_trimmed) {
                 draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
