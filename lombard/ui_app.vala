@@ -59,7 +59,7 @@ class App : Gtk.Window {
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Shift><Control>S", null, on_save_as },
         { "Play", Gtk.STOCK_MEDIA_PLAY, "_Play / Pause", "space", null, on_play_pause },
         { "Export", null, "_Export...", "<Control>E", null, on_export },
-        { "Quit", Gtk.STOCK_QUIT, null, null, null, Gtk.main_quit },
+        { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
 
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
@@ -245,10 +245,37 @@ class App : Gtk.Window {
 
         on_undo_changed(false);
         
-        destroy += Gtk.main_quit;
+        delete_event += on_delete_event;
         
         update_menu();
         show_all();
+    }
+    
+    bool on_delete_event() {
+        on_quit();
+        return true;
+    }
+    
+    void on_quit() {
+        if (project.undo_manager.is_dirty) {
+            switch (DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
+                case Gtk.ResponseType.ACCEPT:
+                    if (!do_save()) {
+                        return;
+                    }
+                    break;
+                case Gtk.ResponseType.CLOSE:
+                    break;
+                case Gtk.ResponseType.DELETE_EVENT: // when user presses escape.
+                case Gtk.ResponseType.CANCEL:
+                    return;
+                default:
+                    assert(false);
+                    break;
+            }
+        }
+
+        Gtk.main_quit();           
     }
     
     void toggle_library(bool showing) {
@@ -358,11 +385,13 @@ class App : Gtk.Window {
         }
     }
 
-    void do_save_dialog() {
+    bool do_save_dialog() {
         string filename;
         if (DialogUtils.save(this, "Save Project", filters, out filename)) {
             project.save(filename);
+            return true;
         }
+        return false;
     }
     
     void on_save_as() {
@@ -370,18 +399,20 @@ class App : Gtk.Window {
     }
     
     void on_save() {
-        if (project.project_file == null)
-            do_save_dialog();
-        else save_project(null);
+        do_save();
+    }
+
+    bool do_save() {
+        if (project.project_file != null) {
+            project.save(null);
+            return true;
+        }
+        return do_save_dialog();
     }
     
     public void load_project(string filename) {
         project.load(filename);
     }
-    
-    void save_project(string? filename) {
-        project.save(filename);
-    }          
     
     const float SCROLL_MARGIN = 0.05f;
     
