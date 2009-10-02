@@ -18,6 +18,7 @@ public abstract class Track {
     public signal void track_renamed(Track track);
     public signal void track_selection_changed(Track track);
     public signal void track_hidden(Track track);
+    public signal void track_removed(Track track);
     public signal void error_occurred(string major_error, string? minor_error);
 
     public Track(Project project, string display_name) {
@@ -220,14 +221,17 @@ public abstract class Track {
         project.reseek();
     }
 
-    // This function adds a new clip to the timeline; in that it adds it to
-    // the Gnonlin composition and also adds a new ClipView object
     public void add_new_clip(Clip c, int64 pos, bool overwrite) {
         if (!check(c))
             return;
 
         _add_clip_at(c, pos, overwrite);
+        c.updated += on_clip_updated;
         clip_added(c);
+    }
+    
+    public virtual void on_clip_updated(Clip clip) {
+    
     }
     
     public void ripple_delete(int64 length, int64 clip_start, int64 clip_length) {
@@ -332,6 +336,7 @@ public abstract class Track {
             // like the position in the composition being incorrect when we start playing.
             // This also fixes the lockup problem we were having.
             insert_at(index, clip, pos);
+            clip.updated += on_clip_updated;
             clip_added(clip);
         }
     }
@@ -341,6 +346,7 @@ public abstract class Track {
             clips.insert(index, c);
             
             project.reseek();
+            c.updated += on_clip_updated;
             clip_added(c);
         }
     }
@@ -568,11 +574,11 @@ public class AudioTrack : Track {
     double volume;
 
     public signal void parameter_changed(Parameter parameter, double new_value);
-    public signal void level_changed(double level_value);
+    public signal void level_changed(double level_left, double level_right);
+    public signal void channel_count_changed(int channel_count);
     
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
-
     }
 
     protected override string name() { return "audio"; }
@@ -630,7 +636,7 @@ public class AudioTrack : Track {
         return volume;
     }
 
-    bool get_num_channels(out int num) {
+    public bool get_num_channels(out int num) {
         for (int i = 0; i < clips.size; i++) {
             if (clips[i].clipfile.is_online())
                 return clips[i].clipfile.get_num_channels(out num);
@@ -639,10 +645,15 @@ public class AudioTrack : Track {
     }
     
     public override bool check(Clip clip) {
-        if (!clip.clipfile.is_online())
+        if (!clip.clipfile.is_online()) {
             return true;
+        }
         
         if (clips.size == 0) {
+            int number_of_channels = 0;
+            if (clip.clipfile.get_num_channels(out number_of_channels)) {
+                channel_count_changed(number_of_channels);
+            }
             return true;
         }
         
@@ -654,7 +665,7 @@ public class AudioTrack : Track {
                 good = track_channel_count == number_of_channels;
             }
         }
-        
+
         if (!good) {
             string sub_error = number_of_channels == 1 ?
                 "Mono clips cannot go on stereo tracks." :
@@ -664,8 +675,17 @@ public class AudioTrack : Track {
         return good;
     }
     
-    public void on_level_changed(double level_value) {
-        level_changed(level_value);
+    public void on_level_changed(double level_left, double level_right) {
+        level_changed(level_left, level_right);
+    }
+
+    public override void on_clip_updated(Clip clip) {
+        if (clip.clipfile.is_online()) {
+            int number_of_channels = 0;
+            if (get_num_channels(out number_of_channels)) {
+                channel_count_changed(number_of_channels);
+            }
+        }
     }
 }
 }

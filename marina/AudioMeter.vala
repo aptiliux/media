@@ -5,63 +5,81 @@
  */
 namespace View {
 public class AudioMeter : Gtk.DrawingArea {
-    Cairo.ImageSurface meter;
+    Cairo.ImageSurface meter = null;
     Cairo.ImageSurface silkscreen;
     
-    double current_level;
+    bool stereo = false;
+    double current_level_left = -100;
+    double current_level_right = -100;
     const double minDB = -70;
     
     public AudioMeter(Model.AudioTrack track) {
-        meter = null;
-        current_level = -100;
-        this.requisition.height = 5;
+        int number_of_channels;
+        if (track.get_num_channels(out number_of_channels)) {
+            stereo = number_of_channels < 1;
+        }
+
+        this.requisition.height = 10;
         expose_event += on_expose_event;
         track.level_changed += on_level_changed;
+        track.channel_count_changed += on_channel_count_changed;
     }
-    
+
+    void initialize_meter() {
+        meter = new Cairo.ImageSurface(Cairo.Format.ARGB32, 
+            allocation.width, allocation.height);
+        Cairo.Context context2 = new Cairo.Context(meter);
+        Cairo.Pattern pat = new Cairo.Pattern.linear(0, 0, allocation.width, 0);
+        pat.add_color_stop_rgb(0, 0.1, 1, 0.4);
+        pat.add_color_stop_rgb(0.8, 1, 1, 0);
+        pat.add_color_stop_rgb(1, 1, 0, 0);
+        context2.set_source(pat);
+        context2.rectangle(0, 0, allocation.width, allocation.height);
+        context2.fill();
+
+        silkscreen = new Cairo.ImageSurface(Cairo.Format.ARGB32,
+            allocation.width, allocation.height);
+        context2 = new Cairo.Context(silkscreen);
+        context2.set_source_rgba(0, 0, 0, 0);
+        context2.rectangle(0, 0, allocation.width, allocation.height);
+        context2.fill();
+
+        // draw the segment edges
+        for (int i=0;i<20;++i) {
+            context2.set_source_rgba(0, 0, 0, 1);
+            context2.rectangle(i * allocation.width / 20, 0, 3, allocation.height);
+            context2.fill();
+        }
+
+        // draw a bevel around the edge
+        context2.set_line_width(1.1);
+        context2.set_source_rgba(0.9, 0.9, 0.9, 0.5);
+        context2.rectangle(0, 0, allocation.width, allocation.height);
+        context2.stroke();
+    }
+
     public bool on_expose_event(Gdk.EventExpose event) {
         Gdk.Window window = get_window();
         Cairo.Context context = Gdk.cairo_create(window);
         if (meter == null) {
-            meter = new Cairo.ImageSurface(Cairo.Format.ARGB32, 
-                allocation.width, allocation.height);
-            Cairo.Context context2 = new Cairo.Context(meter);
-            Cairo.Pattern pat = new Cairo.Pattern.linear(0, 0, allocation.width, 0);
-            pat.add_color_stop_rgb(0, 0.1, 1, 0.4);
-            pat.add_color_stop_rgb(0.8, 1, 1, 0);
-            pat.add_color_stop_rgb(1, 1, 0, 0);
-            context2.set_source(pat);
-            context2.rectangle(0, 0, allocation.width, allocation.height);
-            context2.fill();
-            
-            silkscreen = new Cairo.ImageSurface(Cairo.Format.ARGB32,
-                allocation.width, allocation.height);
-            context2 = new Cairo.Context(silkscreen);
-            context2.set_source_rgba(0, 0, 0, 0);
-            context2.rectangle(0, 0, allocation.width, allocation.height);
-            context2.fill();
-            
-            // draw the segment edges
-            for (int i=0;i<20;++i) {
-                context2.set_source_rgba(0, 0, 0, 1);
-                context2.rectangle(i * allocation.width / 20, 0, 3, allocation.height);
-                context2.fill();
-            }
-            
-            // draw a bevel around the edge
-            context2.set_line_width(1.1);
-            context2.set_source_rgba(0.9, 0.9, 0.9, 0.5);
-            context2.rectangle(0, 0, allocation.width, allocation.height);
-            context2.stroke();
+            initialize_meter();
         }
 
-        int width = (int) ((current_level - minDB) * allocation.width / -minDB);
         context.set_source_rgb(0, 0, 0);
         context.rectangle(0, 0, allocation.width, allocation.height);
         context.fill();
-        
+
+        int bar_height = stereo ? (allocation.height / 2) - 1 : allocation.height - 2;
+
         context.set_source_surface(meter, 0, 0);
-        context.rectangle(0, 0, width, allocation.height);
+        int width = (int) ((current_level_left - minDB) * allocation.width / -minDB);
+        context.rectangle(0, 1, width, bar_height);
+
+        if (stereo) {
+            width = (int) ((current_level_right - minDB) * allocation.width / -minDB);
+            context.rectangle(0, bar_height + 2, width, bar_height);
+        }
+
         context.clip();
         context.paint_with_alpha(1);
 
@@ -71,11 +89,16 @@ public class AudioMeter : Gtk.DrawingArea {
 
         return true;
     }
-    
-    public void on_level_changed(double level) {
-        current_level = level < minDB ? minDB : level;
+
+    public void on_level_changed(double level_left, double level_right) {
+        current_level_left = level_left < minDB ? minDB : level_left;
+        current_level_right = level_right < minDB ? minDB : level_right;
         Gdk.Window window = get_window();
         window.invalidate_rect(null, false);
+    }
+
+    public void on_channel_count_changed(int number_of_channels) {
+        stereo = number_of_channels > 1;
     }
 }
 }

@@ -9,7 +9,7 @@ public enum PlayState {
     PRE_PLAY, PLAYING,
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
     PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
-    LOADING, 
+    PRE_LOAD, LOADING, 
     CLOSING, CLOSED
 }
 
@@ -43,8 +43,6 @@ class MediaClip {
     }
 
     void on_clip_removed() {
-        if (file_source == null) {
-        }
         composition.remove((Gst.Bin)file_source);
         clip_removed(this);
     }
@@ -96,11 +94,14 @@ public abstract class MediaTrack {
     
     protected Gst.Element default_source;
     protected Gst.Element sink;    
+    
+    public signal void track_removed(MediaTrack track);
 
     public MediaTrack(MediaEngine media_engine, Model.Track track) {
         clips = new Gee.ArrayList<MediaClip>();
         this.media_engine = media_engine;
         track.clip_added += on_clip_added;
+        track.track_removed += on_track_removed;
         
         media_engine.pre_export += on_pre_export;
         media_engine.post_export += on_post_export;
@@ -127,7 +128,6 @@ public abstract class MediaTrack {
         media_engine.pipeline.add(composition);
         composition.pad_added += on_pad_added;
         composition.pad_removed += on_pad_removed;
-
     }
     
     ~MediaTrack() {
@@ -155,6 +155,7 @@ public abstract class MediaTrack {
     }
     
     void on_media_clip_removed(MediaClip clip) {
+        clip.clip_removed -= on_media_clip_removed;
         clips.remove(clip);
     }
     
@@ -169,7 +170,11 @@ public abstract class MediaTrack {
     void on_track_hidden(Model.Track track) {
         media_engine.pipeline.remove(composition);
         composition = null;
-    }    
+    }
+    
+    void on_track_removed(Model.Track track) {
+        track_removed(this);
+    }
 
     void on_pre_export(int64 length) {
         default_source.set("duration", length);
@@ -266,13 +271,15 @@ public class MediaAudioTrack : MediaTrack {
         }
         
         media_engine.level_changed += on_level_changed;
+        level_changed += track.on_level_changed;
     }
     
     ~MediaAudioTrack() {
-        media_engine.pipeline.remove_many(audio_convert, audio_resample, pan, volume);
+        media_engine.level_changed -= on_level_changed;
+        media_engine.pipeline.remove_many(audio_convert, audio_resample, pan, volume, level);
     }
 
-    public signal void level_changed(double level_value);
+    public signal void level_changed(double level_left, double level_right);
 
     void on_parameter_changed(Model.Parameter parameter, double new_value) {
         switch(parameter) {
@@ -285,9 +292,9 @@ public class MediaAudioTrack : MediaTrack {
         }    
     }
 
-    void on_level_changed(Gst.Object source, double level_value) {
+    void on_level_changed(Gst.Object source, double level_left, double level_right) {
         if (source == level) {
-            level_changed(level_value);
+            level_changed(level_left, level_right);
         }
     }
 
@@ -341,12 +348,12 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     weak Model.Project project;
 
-    public signal void playstate_changed(PlayState playstate);
+    public signal void playstate_changed();
     public signal void position_changed(int64 position);
     public signal void pre_export(int64 length);
     public signal void post_export();
     public signal void callback_pulse();
-    public signal void level_changed(Gst.Object source, double level_value);
+    public signal void level_changed(Gst.Object source, double level_left, double level_right);
     public signal void record_completed();
     public signal void link_for_playback(Gst.Element mux);
     public signal void link_for_export(Gst.Element mux);
@@ -487,12 +494,17 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         unowned Gst.Structure structure = message.get_structure();
         
         if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
-            message.src.set_property("interval", Gst.SECOND / 30);
-            double level_value = 0;
             Gst.Value? rms = structure.get_value("rms");
+            uint size = rms.list_get_size();
             Gst.Value? temp = rms.list_get_value(0);
-            level_value = temp.get_double(); // we are only dealing with mono for the moment
-            level_changed(message.src, level_value);
+            double level_left = temp.get_double();
+            double level_right = level_left;
+
+            if (size > 1) {
+                temp = rms.list_get_value(1);
+                level_right = temp.get_double();
+            }
+            level_changed(message.src, level_left, level_right);
         }
     }
 
@@ -513,8 +525,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         do_state_change();
     }
 
-    protected virtual bool do_state_change() {
-        playstate_changed(play_state);
+    protected bool do_state_change() {
+        playstate_changed();
         switch (play_state) {
             case PlayState.STOPPED:
                 if (gst_state != Gst.State.PAUSED) {
@@ -789,7 +801,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         } else {
             play_state = PlayState.CLOSED;
         }
-        playstate_changed(play_state);
+        playstate_changed();
     }
 
     public void post_record() {
@@ -880,6 +892,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                 break;
         }
         
+        media_track.track_removed += on_track_removed;
+        
         tracks.add(media_track);
     }
 
@@ -888,11 +902,14 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         MediaAudioTrack? audio_track = null;
         if (model_track != null) {
             audio_track = new MediaAudioTrack(this, model_track);
-            audio_track.level_changed += model_track.on_level_changed;
         } else {
             assert(false);
         }
         return audio_track;
+    }
+    
+    void on_track_removed(MediaTrack track) {
+        tracks.remove(track);
     }
 }
 }

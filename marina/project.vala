@@ -271,19 +271,20 @@ public abstract class Project {
         media_engine.playstate_changed += on_playstate_changed;
     }
     
-    public void on_playstate_changed(PlayState playstate) {
-        switch (playstate) {
+    public void on_playstate_changed() {
+        switch (media_engine.play_state) {
             case PlayState.STOPPED:
                 ClearTrackMeters();
                 break;
-            case PlayState.LOADING:
+            case PlayState.PRE_LOAD:
+                media_engine.play_state = PlayState.LOADING;
                 loader.load();
                 break;
             case PlayState.CLOSED:
                 closed();
                 break;
         }
-        playstate_changed(playstate);
+        playstate_changed(media_engine.play_state);
     }
     
     public ClipFile? get_clipfile(int index) {
@@ -642,9 +643,14 @@ public abstract class Project {
     }
 
     public void clear() {
+        if (clear_tracks) {
+            media_engine.set_gst_state(Gst.State.NULL);
+        }
+        
         foreach (Track track in tracks) {
             track.delete_all_clips();
             if (clear_tracks) {
+                track.track_removed(track);
                 track_removed(track);
             }
         }
@@ -688,6 +694,7 @@ public abstract class Project {
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
     public void load(string? fname) {
+        clear();
         set_name(null);
         if (fname == null) {
             return;
@@ -700,7 +707,7 @@ public abstract class Project {
         loader.load_complete += on_load_complete;
         loader.load_complete += media_engine.on_load_complete;
         media_engine.pipeline.set_state(Gst.State.NULL);
-        media_engine.play_state = PlayState.LOADING;
+        media_engine.play_state = PlayState.PRE_LOAD;
     }
     
     public void on_error_occurred(string major_error, string? minor_error) {
@@ -793,7 +800,7 @@ public abstract class Project {
         foreach (Track track in tracks) {
             AudioTrack audio_track = track as AudioTrack;
             if (audio_track != null) {
-                audio_track.level_changed(-100);
+                audio_track.level_changed(-100, -100);
             }
         }
     }

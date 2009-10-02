@@ -126,8 +126,9 @@ public class ClipFile {
     
     public bool get_num_channels(out int channels) {
         Gst.Structure s;
-        if (!get_caps_structure(MediaType.AUDIO, out s))
+        if (!get_caps_structure(MediaType.AUDIO, out s)) {
             return false;
+        }
         
         return s.get_int("channels", out channels);        
     }    
@@ -424,7 +425,7 @@ public class Clip {
     }
     
     public signal void moved(Clip clip);
-    public signal void updated();
+    public signal void updated(Clip clip);
     public signal void media_start_changed(int64 media_start);
     public signal void duration_changed(int64 duration);
     public signal void start_changed(int64 start);
@@ -463,7 +464,7 @@ public class Clip {
                 connected = false;
             }
         }
-        updated();
+        updated(this);
     }
     
     public bool overlap_pos(int64 start, int64 length) {
