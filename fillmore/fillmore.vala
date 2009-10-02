@@ -131,15 +131,16 @@ class Recorder : Gtk.Window {
     public Recorder(string? project_file) {
         provider = new Model.TimecodeTimeSystem();
         project = new Model.AudioProject();
-        project.callback_pulse += on_callback_pulse;
+        project.media_engine.callback_pulse += on_callback_pulse;
         project.load_error += on_load_error;
         project.name_changed += on_name_changed;
         project.undo_manager.dirty_changed += on_dirty_changed;
         project.undo_manager.undo_changed += on_undo_changed;
         project.error_occurred += on_error_occurred;
         project.playstate_changed += on_playstate_changed;
-        project.position_changed += on_position_changed;
+        project.media_engine.position_changed += on_position_changed;
         project.track_added += on_track_added;
+        project.load_complete += on_load_complete;
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -202,6 +203,7 @@ class Recorder : Gtk.Window {
         if (project_file == null) {
             default_track_set();
         }
+        project.media_engine.pipeline.set_state(Gst.State.PAUSED);
     }
 
     void default_track_set() {
@@ -342,10 +344,10 @@ class Recorder : Gtk.Window {
     public override bool key_press_event(Gdk.EventKey event) {
         switch(event.keyval) {
             case KeySyms.LEFT:
-                project.go(project.position - Gst.SECOND);
+                project.media_engine.go(project.transport_get_position() - Gst.SECOND);
                 return true;
             case KeySyms.RIGHT:
-                project.go(project.position + Gst.SECOND);
+                project.media_engine.go(project.transport_get_position() + Gst.SECOND);
                 return true;
         }
         return base.key_press_event(event);
@@ -356,8 +358,8 @@ class Recorder : Gtk.Window {
     void on_export() {
         string filename;
         if (DialogUtils.save(this, "Export", export_filters, out filename)) {
-            new MultiFileProgress(this, 1, "Export", project);
-            project.start_export(filename);
+            new MultiFileProgress(this, 1, "Export", project.media_engine);
+            project.media_engine.start_export(filename);
         }
     }
     
@@ -518,13 +520,13 @@ class Recorder : Gtk.Window {
     }
     
     void on_save_graph() {
-        project.print_graph(project.pipeline, "save_graph");
+        project.print_graph(project.media_engine.pipeline, "save_graph");
     }
 
     // toolbar
     
     void on_rewind() {
-        project.go(0);
+        project.media_engine.go(0);
         scroll_to_beginning();
     }
     
@@ -534,21 +536,21 @@ class Recorder : Gtk.Window {
     }
 
     void on_play() {
-        if (project.is_recording()) {
+        if (project.transport_is_recording()) {
             record_button.set_active(false);
             play_button.set_active(false);
-            project.pause();
+            project.media_engine.pause();
         } else if (play_button.get_active())
-            project.do_play(Model.PlayState.PLAYING);
+            project.media_engine.do_play(PlayState.PLAYING);
         else
-            project.pause();
+            project.media_engine.pause();
     }
     
     void on_record() {
         if (record_button.get_active()) {
             project.record(selected_track() as Model.AudioTrack);
         } else {
-            project.pause();
+            project.media_engine.pause();
         }
     }
         
@@ -584,6 +586,10 @@ class Recorder : Gtk.Window {
         do_error_dialog(message);
     }
 
+    public void on_load_complete() {
+        project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+    }
+    
     void on_name_changed() {
         set_title(project.get_file_display_name());
     }
@@ -601,8 +607,8 @@ class Recorder : Gtk.Window {
         undo.set_sensitive(can_undo);
     }
 
-    void on_playstate_changed(Model.PlayState playstate) {
-        if (playstate == Model.PlayState.STOPPED) {
+    void on_playstate_changed(PlayState playstate) {
+        if (playstate == PlayState.STOPPED) {
             play_button.set_active(false);
         }
     }

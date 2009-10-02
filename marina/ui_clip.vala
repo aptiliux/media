@@ -75,7 +75,7 @@ public class ClipView : Gtk.DrawingArea {
     // starting position.  This is because the clip's length may not be an integer number of
     // pixels, and may get rounded either up or down depending on the clip position.
     public void adjust_size(int height) {       
-        int width = time_provider.time_to_xpos(clip.start + clip.length) -
+        int width = time_provider.time_to_xpos(clip.start + clip.duration) -
                     time_provider.time_to_xpos(clip.start);                  
         set_size_request(width + 1, height);
     }
@@ -102,7 +102,7 @@ public class ClipView : Gtk.DrawingArea {
                                                                              
             bool left_trimmed = clip.media_start != 0;
             bool right_trimmed = clip.clipfile.is_online() ? 
-                                  (clip.media_start + clip.length != clip.clipfile.length) : false;
+                                  (clip.media_start + clip.duration != clip.clipfile.length) : false;
                 
             if (!left_trimmed && !right_trimmed) {
                 draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,

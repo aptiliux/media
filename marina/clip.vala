@@ -375,46 +375,74 @@ public class ThumbnailFetcher : Fetcher {
 public class Clip {
     public ClipFile clipfile;
     public MediaType type;
-    
+    // TODO: If a clip is being recorded, we don't want to set duration in the MediaClip file.
+    // Address when handling multiple track recording.  This is an ugly hack.
+    public bool is_recording;
     public string name;
-    public int64 start;
-    public int64 media_start;
-    public int64 length;
+    int64 _start;
+    public int64 start { 
+        get {
+            return _start;
+        } 
+        
+        set {
+            _start = value;
+            start_changed(_start);
+            moved(this);
+        }
+    }
     
-    public Gst.Bin file_source;
+    int64 _media_start;
+    public int64 media_start { 
+        get {
+            return _media_start;
+        } 
+        
+        set {
+            _media_start = value;
+            media_start_changed(_media_start);
+            moved(this);
+        }
+    }
+    
+    int64 _duration;
+    public int64 duration { 
+        get {
+            return _duration;
+        }
+        set {
+            _duration = value;
+            duration_changed(_duration);
+            moved(this);
+        }
+    }
     
     bool connected;
 
     public int64 end {
-        get { return start + length; }
+        get { return start + duration; }
     }
     
     public signal void moved(Clip clip);
     public signal void updated();
+    public signal void media_start_changed(int64 media_start);
+    public signal void duration_changed(int64 duration);
+    public signal void start_changed(int64 start);
+    public signal void removed(Clip clip);
     
     public Clip(ClipFile clipfile, MediaType t, string name,
-                int64 start, int64 media_start, int64 duration) {
+                int64 start, int64 media_start, int64 duration, bool is_recording) {
+        this.is_recording = is_recording;
         this.clipfile = clipfile;
         this.type = t;
         this.name = name;
         this.connected = clipfile.is_online();
         
-        file_source = (Gst.Bin) make_element("gnlsource");
-        Gst.Element sbin = new SingleDecodeBin(Gst.Caps.from_string(type == MediaType.AUDIO 
-                                               ? "audio/x-raw-int" 
-                                               : "video/x-raw-yuv; video/x-raw-rgb"),
-                                               "singledecoder", clipfile.filename);
-        file_source.add(sbin);
-
-        set_media_start(media_start);
-        set_duration(duration);
-        set_start(start);
+        this.media_start = media_start;
+        this.duration = duration;
+        this.start = start;
         
         clipfile.updated += on_clipfile_updated;
-    }
-    
-    ~Clip() {
-        file_source.set_state(Gst.State.NULL);
     }
     
     public void gnonlin_connect() { connected = true; }
@@ -424,10 +452,11 @@ public class Clip {
         if (f.is_online()) {
             if (!connected) {
                 connected = true;
-
-                set_media_start(media_start);
-                set_duration(length);
-                set_start(start);      
+                // TODO: Assigning to oneself has the side-effect of firing signals.
+                // fire signals directly
+                media_start = media_start;
+                duration = duration;
+                start = start;
             }
         } else {
             if (connected) {
@@ -438,22 +467,22 @@ public class Clip {
     }
     
     public bool overlap_pos(int64 start, int64 length) {
-        return start < this.start + this.length &&
+        return start < this.start + this.duration &&
                 this.start < start + length;
     }
     
     public bool snap(Clip other, int64 pad) {
         if (time_in_range(start, other.start, pad)) {
-            set_start(other.start);
+            start = other.start;
             return true;
         } else if (time_in_range(start, other.end, pad)) {
-            set_start(other.end);
+            start = other.end;
             return true;
         } else if (time_in_range(end, other.start, pad)) {
-            set_start(other.start - length);
+            start = other.start - duration;
             return true;
         } else if (time_in_range(end, other.end, pad)) {
-            set_start(other.end - length);
+            start = other.end - duration;
             return true;
         }
         return false;
@@ -471,43 +500,20 @@ public class Clip {
     }
     
     public Clip copy() {
-        return new Clip(clipfile, type, name, start, media_start, length);
+        return new Clip(clipfile, type, name, start, media_start, duration, false);
     }
 
     public bool is_trimmed() {
         if (!clipfile.is_online()) 
             return false;
-        return length != clipfile.length;
-    }
-
-    public void set_media_start(int64 start) {
-        if (connected)
-            ((Gst.Element) file_source).set("media-start", start);
-        this.media_start = start;
-    }
-    
-    public void set_duration(int64 len) {
-        if (connected) {
-            ((Gst.Element) file_source).set("duration", len);
-            ((Gst.Element) file_source).set("media-duration", len);
-        }
-        
-        this.length = len;
-        moved(this);
-    }
-    
-    public void set_start(int64 start) {
-        if (connected)
-            ((Gst.Element) file_source).set("start", start);
-        this.start = start;
-        moved(this);
+        return duration != clipfile.length;
     }
 
     public void save(FileStream f, int id) {
         f.printf(
             "      <clip id=\"%d\" name=\"%s\" start=\"%" + int64.FORMAT + "\" " +
                     "media-start=\"%" + int64.FORMAT + "\" duration=\"%" + int64.FORMAT + "\"/>\n",
-                    id, name, start, media_start, length);
+                    id, name, start, media_start, duration);
     }
 }
 

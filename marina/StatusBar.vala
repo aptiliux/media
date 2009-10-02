@@ -14,7 +14,7 @@ public class StatusBar : Gtk.DrawingArea {
         modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
         set_size_request(0, height);
         
-        p.position_changed += on_position_changed;
+        p.media_engine.position_changed += on_position_changed;
         this.provider = provider;
     }
     

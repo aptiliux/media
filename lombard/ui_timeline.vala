@@ -50,7 +50,7 @@ class TimeLine : Gtk.EventBox {
             tracks.add(new TrackView(track, this));
         }
         
-        project.position_changed += on_position_changed;
+        project.media_engine.position_changed += on_position_changed;
         vbox.pack_start(find_video_track_view(), false, false, 0);
         vbox.pack_start(find_audio_track_view(), false, false, 0);
         add(vbox);
@@ -77,7 +77,7 @@ class TimeLine : Gtk.EventBox {
         foreach (TrackView track in tracks) {
             track.resize();
         }
-        project.position_changed(project.position);
+        project.media_engine.position_changed(project.transport_get_position());
         queue_draw();
     }
     
@@ -155,7 +155,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void paste(bool over) {
-        do_paste(clipboard_clip.copy(), project.position, over, true);
+        do_paste(clipboard_clip.copy(), project.transport_get_position(), over, true);
     }
     
     public int do_paste(Model.Clip c, int64 pos, bool over, bool new_clip) {
@@ -168,7 +168,7 @@ class TimeLine : Gtk.EventBox {
                 "Cannot paste clip onto another clip.");
         } else if (do_ripple == 1) {
             TrackView other = (view == tracks[0]) ? tracks[1] : tracks[0];
-            other.track.ripple_paste(c.length, pos);
+            other.track.ripple_paste(c.duration, pos);
         }
         queue_draw();
         return do_ripple;
@@ -177,7 +177,7 @@ class TimeLine : Gtk.EventBox {
     public override bool expose_event(Gdk.EventExpose event) {
         base.expose_event(event);
 
-        int xpos = provider.time_to_xpos(project.position);
+        int xpos = provider.time_to_xpos(project.transport_get_position());
         Gdk.draw_line(window, style.fg_gc[(int) Gtk.StateType.NORMAL],
                       xpos, 0,
                       xpos, allocation.height);
@@ -199,7 +199,7 @@ class TimeLine : Gtk.EventBox {
         int64 time = provider.xpos_to_time(event_x);
         
         project.snap_coord(out time, provider.get_pixel_snap_time());
-        project.go(time);
+        project.media_engine.go(time);
     }
 
     public void set_control_pressed(bool c) {

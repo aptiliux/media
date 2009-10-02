@@ -174,7 +174,7 @@ public class MediaLoaderHandler : LoaderHandler {
         }
         
         Clip clip = new Clip(clipfetchers[id].clipfile, current_track.media_type(), clip_name, 
-            start, media_start, duration);
+            start, media_start, duration, false);
         current_track.add_new_clip(clip, start, false);
         return true;
     }
@@ -221,56 +221,33 @@ public class MediaLoaderHandler : LoaderHandler {
     }
 }
 
-public enum PlayState {
-    STOPPED,
-    PRE_PLAY, PLAYING,
-    PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
-    PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
-    LOADING, CLOSING
-}
-
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
-public abstract class Project : MultiFileProgressInterface, Object {
+public abstract class Project {
 
     public const string FILLMORE_FILE_EXTENSION = "fill";
     public const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
     public const string LOMBARD_FILE_EXTENSION = "lom";
     public const string LOMBARD_FILE_FILTER = "*." + LOMBARD_FILE_EXTENSION;
 
-    protected Gst.State gst_state;
-    protected PlayState play_state = PlayState.STOPPED;
-    
-    Gst.Element file_sink;
-    Gst.Element mux;
-    Gst.Element export_sink;
-    public Gst.Pipeline pipeline;
-    public Gst.Element audio_sink;
-    public Gst.Element adder;
-    public Gst.Element capsfilter;
-
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
     public Gee.ArrayList<Track> inactive_tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
     Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
+    // TODO: media_engine is a member of project only temporarily.  It will be
+    // less work to move it to fillmore/lombard once we have a transport class.
+    public View.MediaEngine media_engine;
 
     public string project_file;
     public ProjectLoader loader;
 
-    public bool playing;
-    public int64 position;  // current play position in ns
-    uint callback_id;
     FetcherCompletion fetcher_completion;
     public UndoManager undo_manager;
     
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
 
-    public signal void pre_export();
-    public signal void post_export();
-    public signal void position_changed(int64 position);
-    public signal void callback_pulse();
-    public signal void playstate_changed(Model.PlayState playstate);
+    public signal void playstate_changed(PlayState playstate);
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
@@ -283,42 +260,27 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public signal void clipfile_added(ClipFile c);
     public signal void cleared();
-    public signal void level_changed(Gst.Object source, double level_value);
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
-    public Project(string? filename) {
+    public Project(string? filename, bool include_video) {
         undo_manager = new UndoManager();
-        this.project_file = filename;
-
-        pipeline = new Gst.Pipeline("pipeline");
-        pipeline.set_auto_flush_bus(false);
-
-        Gst.Element silence = get_audio_silence();
-
-        adder = make_element("adder");
-
-        capsfilter = make_element("capsfilter");
-        capsfilter.set("caps", get_project_audio_caps());
-
-        audio_sink = make_element("gconfaudiosink");
-        Gst.Element audio_convert = make_element_with_name("audioconvert", "projectconvert");
-        pipeline.add_many(silence, audio_convert, adder, capsfilter, audio_sink);
-
-        if (!silence.link_many(audio_convert, adder, capsfilter, audio_sink)) {
-            error("silence: couldn't link");
+        project_file = filename;
+        media_engine = new View.MediaEngine(this, include_video);
+        track_added += media_engine.on_track_added;
+        media_engine.playstate_changed += on_playstate_changed;
+    }
+    
+    public void on_playstate_changed(PlayState playstate) {
+        switch (playstate) {
+            case PlayState.LOADING:
+                loader.load();
+                break;
+            case PlayState.CLOSED:
+                closed();
+                break;
         }
-
-        Gst.Bus bus = pipeline.get_bus();
-
-        bus.add_signal_watch();
-        bus.message["error"] += on_error;
-        bus.message["warning"] += on_warning;
-        bus.message["eos"] += on_eos;    
-        bus.message["state-changed"] += on_state_change;
-        bus.message["element"] += on_element;
-        
-        set_gst_state(Gst.State.PAUSED);                  
+        playstate_changed(playstate);
     }
     
     public ClipFile? get_clipfile(int index) {
@@ -352,38 +314,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public void print_graph(Gst.Bin bin, string file_name) {
         Gst.debug_bin_to_dot_file_with_ts(bin, Gst.DebugGraphDetails.ALL, file_name);
     }
-    
-    void on_warning(Gst.Bus bus, Gst.Message message) {
-        Error error;
-        string text;
-        message.parse_warning(out error, out text);
-        warning("%s", text);
-    }
-    
-    void on_error(Gst.Bus bus, Gst.Message message) {
-        Error error;
-        string text;
-        message.parse_error(out error, out text);
-        warning("%s", text);
-    }
-    
-    protected virtual bool do_state_changed(Gst.State state, PlayState play_state) {
-        if (gst_state == Gst.State.PAUSED) {
-            if (play_state == PlayState.PRE_PLAY) {
-                do_play(PlayState.PLAYING);
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    protected void do_play(PlayState new_state) {
-        seek(Gst.SeekFlags.FLUSH, position);
 
-        play_state = new_state;
-        play();
-    }
-    
     public int64 get_length() {
         int64 max = 0;
         foreach (Track track in tracks) {
@@ -434,7 +365,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
 
     protected virtual void do_append(ClipFile clipfile, string name, int64 insert_time) {
         if (clipfile.audio_caps != null) {
-            Clip clip = new Clip(clipfile, MediaType.AUDIO, name, 0, 0, clipfile.length);
+            Clip clip = new Clip(clipfile, MediaType.AUDIO, name, 0, 0, clipfile.length, false);
             Track? track = find_audio_track();
             if (track != null) {
                 track.append_at_time(clip, insert_time);
@@ -456,28 +387,11 @@ public abstract class Project : MultiFileProgressInterface, Object {
         reseek();
     }
 
-    public virtual Gst.Element? get_track_element(Track track) {
-        if (track is AudioTrack) {
-            return adder;
-        }
-        
-        assert(false); // shouldn't be able to get here
-        return null;
-    }
-    
-    public void on_pad_added(Track track, Gst.Bin bin, Gst.Pad pad) {
-        track.link_new_pad(bin, pad, get_track_element(track));
-    }
-    
-    public void on_pad_removed(Track track, Gst.Bin bin, Gst.Pad pad) {
-        track.unlink_pad(bin, pad, get_track_element(track));
-    }
-   
     public void split_at_playhead() {
         undo_manager.start_transaction();
         foreach (Track track in tracks) {
-            if (track.get_clip_by_position(position) != null) {
-                track.split_at(position);
+            if (track.get_clip_by_position(transport_get_position()) != null) {
+                track.split_at(transport_get_position());
             }
         }
         undo_manager.end_transaction();
@@ -486,7 +400,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     public void join_at_playhead() {
         undo_manager.start_transaction();
         foreach (Track track in tracks) {
-            track.join(position);
+            track.join(transport_get_position());
         }
         undo_manager.end_transaction();
     }
@@ -503,7 +417,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         bool start_same = true;
         bool end_same = true;
         foreach (Track track in tracks) {
-            Clip clip = track.get_clip_by_position(position);
+            Clip clip = track.get_clip_by_position(transport_get_position());
             if (first_clip != null && clip != null) {
                 start_same = start_same && start == clip.start;
                 end_same = end_same && end == clip.end;
@@ -529,7 +443,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }
         
         // which half of the clip are we closer to?
-        left = (position - first_clip.start < first_clip.length / 2);
+        left = (transport_get_position() - first_clip.start < first_clip.duration / 2);
         return true;
     }
     
@@ -542,13 +456,13 @@ public abstract class Project : MultiFileProgressInterface, Object {
         Clip first_clip = null;
         undo_manager.start_transaction();
         foreach (Track track in tracks) {
-            Clip clip = track.get_clip_by_position(position);
+            Clip clip = track.get_clip_by_position(transport_get_position());
             if (clip != null) {
                 int64 delta;
                 if (left) {
-                    delta = position - clip.start;
+                    delta = transport_get_position() - clip.start;
                 } else {
-                    delta = clip.end - position;
+                    delta = clip.end - transport_get_position();
                 }
                 track.trim(clip, delta, left);
             }
@@ -556,10 +470,14 @@ public abstract class Project : MultiFileProgressInterface, Object {
         undo_manager.end_transaction();
             
         if (left && first_clip != null) {
-            go(first_clip.start);
+            transport_go(first_clip.start);
         }
     }
     
+    public void transport_go(int64 position) {
+        media_engine.go(position);
+    }
+
     public void ripple_delete(Track instigator, int64 length, int64 clip_start, 
             int64 clip_length) {
         foreach (Track track in tracks) {
@@ -569,13 +487,18 @@ public abstract class Project : MultiFileProgressInterface, Object {
         }
     }
     
-    public bool is_playing() {
-        return playing;
+    public bool transport_is_playing() {
+        return media_engine.playing;
+    }
+
+    public bool transport_is_recording() {
+        return media_engine.play_state == PlayState.PRE_RECORD ||
+               media_engine.play_state == PlayState.RECORDING;
     }
     
     public bool playhead_on_clip() {
         foreach (Track track in tracks) {
-            if (track.get_clip_by_position(position) != null) {
+            if (track.get_clip_by_position(transport_get_position()) != null) {
                 return true;
             }
         }
@@ -584,7 +507,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public bool playhead_on_contiguous_clip() {
         foreach (Track track in tracks) {
-            if (track.are_contiguous_clips(position)) {
+            if (track.are_contiguous_clips(transport_get_position())) {
                 return true;
             }
         }
@@ -593,8 +516,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
     
     public virtual void add_track(Track track) {
         track.clip_removed += on_clip_removed;
-        track.pad_added += on_pad_added;
-        track.pad_removed += on_pad_removed;
         tracks.add(track);
         track_added(track);
     }
@@ -605,7 +526,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
     
     public void remove_track(Track track) {
-        pipeline.set_state(Gst.State.NULL);
+        media_engine.pipeline.set_state(Gst.State.NULL);
         tracks.remove(track);
         track_removed(track);
     }
@@ -655,109 +576,43 @@ public abstract class Project : MultiFileProgressInterface, Object {
         return null;
     }
     
-    bool on_callback() {
-        if ((play_state == PlayState.STOPPED && !playing) ||
-            (play_state == PlayState.POST_RECORD)) {
-            callback_id = 0;
-            return false;
-        }
+    public void reseek() { transport_go(transport_get_position()); }
 
-        Gst.Format format = Gst.Format.TIME;
-        int64 time = 0;
-        if (pipeline.query_position(ref format, out time) && format == Gst.Format.TIME) {
-            position = time;
-            callback_pulse();
-            
-            if (play_state == PlayState.PLAYING) {
-                if (position >= get_length()) {
-                    go(get_length());
-                    pause();
-                }
-                position_changed(time);
-            } else if (play_state == PlayState.EXPORTING) {
-                if (time > get_length()) {
-                    fraction_updated(1.0);
-                }
-                else
-                    fraction_updated(time / (double) get_length());
-            }
-        }
-        return true;
-    }
-    
-    void play() {
-        if (playing)
-            return;
-
-        assert(gst_state == Gst.State.PAUSED);
-        set_gst_state(Gst.State.PLAYING);
-        if (callback_id == 0)
-            callback_id = Timeout.add(50, on_callback);
-        playing = true;
-    }
-    
-    public virtual void pause() {
-        if (!playing)
-            return;
-
-        play_state = PlayState.STOPPED;
-        set_gst_state(Gst.State.PAUSED);
-        playing = false;
-    }
-
-    public void go(int64 pos) {
-        if (position == pos) {
-            pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);        
-            return;
-        }
-        if (pos < 0) 
-            position = 0;
-        else
-            position = pos;
-        
-        // We ignore the return value of seek_simple(); sometimes it returns false even when
-        // a seek succeeds.
-        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);
-        position_changed(position);
-    }
-    
-    public void reseek() { go(position); }
-    
-    public void go_start() { go(0); }
+    public void go_start() { transport_go(0); }
   
-    public void go_end() { go(get_length()); }
+    public void go_end() { transport_go(get_length()); }
     
     public void go_previous() {
-        int64 start_pos = position;
+        int64 start_pos = transport_get_position();
         
         // If we're currently playing, we jump to the previous clip if we're within the first
         // second of the current clip.
-        if (playing)
+        if (transport_is_playing())
             start_pos -= 1 * Gst.SECOND;
         
         int64 new_position = 0;
         foreach (Track track in tracks) {
             new_position = int64.max(new_position, track.previous_edit(start_pos));
         }
-        go(new_position);
+        transport_go(new_position);
     }
     
     public void go_next() {
         int64 new_position = 0;
         foreach (Track track in tracks) {
-            if (track.get_length() > position) {
+            if (track.get_length() > transport_get_position()) {
                 if (new_position != 0) {
-                    new_position = int64.min(new_position, track.next_edit(position));
+                    new_position = int64.min(new_position, track.next_edit(transport_get_position()));
                 } else {
-                    new_position = track.next_edit(position);
+                    new_position = track.next_edit(transport_get_position());
                 }
             }
         }
-        go(new_position);
+        transport_go(new_position);
     }
     
-    public int64 get_position() {
-        return position;
+    public int64 transport_get_position() {
+        return media_engine.position;
     }
     
     public void set_name(string? filename) {
@@ -810,196 +665,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         return false;
     }
     
-    public void start_export(string filename) {
-        play_state = PlayState.PRE_EXPORT_NULL;    
-        file_sink = make_element("filesink");
-        file_sink.set("location", filename);
-        
-        if (!pipeline.add(file_sink)) {
-            error("could not add file_sink");
-        }
-        
-        mux = make_element("oggmux");
-        if (!pipeline.add(mux)) {
-            error("could not add oggmux to pipeline");
-        }
-
-        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
-        pipeline.set_state(Gst.State.NULL);
-        link_for_export(mux);            
-
-        file_updated(filename, 0);
-    }
-    
-    void cancel() {
-        play_state = PlayState.CANCEL_EXPORT;
-        pipeline.set_state(Gst.State.NULL);
-    }
-    
-    // TODO: Rework this
-    public void complete() {
-        pipeline.set_state(Gst.State.NULL);
-    }
-    
-    protected virtual void do_null_state_export() {
-        pre_export();
-        if (!mux.link(file_sink)) {
-            error("could not link mux and file_sink");
-        }
-        play_state = PlayState.PRE_EXPORT;
-        pipeline.set_state(Gst.State.PAUSED);
-    }
-    
-    void do_paused_state_export() {
-        play_state = PlayState.EXPORTING;
-              
-        if (callback_id == 0)
-            callback_id = Timeout.add(50, on_callback);
-        
-        pipeline.set_state(Gst.State.PLAYING);        
-    }
-    
-    protected virtual void do_end_export(bool deleted) {
-        if (deleted) {
-            string str;
-            file_sink.get("location", out str);
-            GLib.FileUtils.remove(str);
-        }
-        link_for_playback(mux);
-    }
-
-    void end_export(bool deleted) {
-        play_state = PlayState.STOPPED;
-        do_end_export(deleted);
-
-        pipeline.remove_many(mux, file_sink);
-        
-        callback_id = 0;
-        pipeline.set_state(Gst.State.PAUSED);
-        post_export();
-    }
-
-    protected virtual void link_for_export(Gst.Element mux) {
-        capsfilter.unlink(audio_sink);
-        capsfilter.set("caps", get_project_audio_export_caps());
-
-        if (!pipeline.remove(audio_sink))
-            error("couldn't remove for audio");
-
-        get_export_sink();
-        pipeline.add(export_sink);
-
-        if (!capsfilter.link(export_sink)) {
-            error("could not link capsfilter to export_sink");
-        }
-        
-        if (!export_sink.link(mux)) {
-            error("could not link export sink to mux");
-        }
-    }
-    
-    protected virtual void link_for_playback(Gst.Element mux) {
-        export_sink.unlink(mux);
-        capsfilter.unlink(export_sink);
-        capsfilter.set("caps", get_project_audio_caps());
-
-        if (!pipeline.remove(export_sink)) {
-            error("could not remove export_sink");
-        }
-
-        if (!pipeline.add(audio_sink)) {
-            error("could not add audio_sink to pipeline");
-        }
-
-        if (!capsfilter.link(audio_sink)) {
-            error("could not link capsfilter to audio_sink");
-        }
-    }
-
-    protected void get_export_sink() {
-        export_sink = make_element("vorbisenc");
-    }
-    
-    void on_eos(Gst.Bus bus, Gst.Message message) {
-        if (play_state == PlayState.EXPORTING)
-            pipeline.set_state(Gst.State.NULL);
-    }
-    
-    void on_element(Gst.Bus bus, Gst.Message message) {
-        unowned Gst.Structure structure = message.get_structure();
-        
-        if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
-            message.src.set_property("interval", Gst.SECOND / 30);
-            double level_value = 0;
-            Gst.Value? rms = structure.get_value("rms");
-            Gst.Value? temp = rms.list_get_value(0);
-            level_value = temp.get_double(); // we are only dealing with mono for the moment
-            level_changed(message.src, level_value);
-        }
-    }
-    
-    void on_state_change(Gst.Bus bus, Gst.Message message) {
-        if (message.src != pipeline)
-            return;
-
-        Gst.State old_state;
-        Gst.State new_state;
-        Gst.State pending;
-
-        message.parse_state_changed(out old_state, out new_state, out pending);
-
-        if (new_state == gst_state)
-            return;
-
-        gst_state = new_state;
-        do_state_change();
-    }
-
-    protected virtual bool do_state_change() {
-        playstate_changed(play_state);
-        switch (play_state) {
-            case PlayState.LOADING:
-                if (gst_state == Gst.State.NULL) {
-                    clear();                
-                    loader.load();
-                }
-                return true;
-            case PlayState.STOPPED:
-                if (gst_state != Gst.State.PAUSED) {
-                    pipeline.set_state(Gst.State.PAUSED);
-                } else {
-                    go(position);
-                }
-                return true;
-            case PlayState.PRE_EXPORT_NULL:
-                if (gst_state != Gst.State.NULL)
-                    return false;
-                do_null_state_export();
-                return true;
-            case PlayState.PRE_EXPORT:
-                if (gst_state != Gst.State.PAUSED)
-                    return false;
-                do_paused_state_export();
-                return true;
-            case PlayState.EXPORTING:
-                if (gst_state != Gst.State.NULL)
-                    return false;
-                end_export(false);
-                return true;
-            case PlayState.CANCEL_EXPORT:
-                if (gst_state != Gst.State.NULL)
-                    return false;
-                end_export(true);
-                return true;
-            case PlayState.CLOSING:
-                if (gst_state == Gst.State.NULL) {
-                    closed();
-                }
-                return true;
-        }
-        return false;
-    }
-
     public void on_load_started(string filename) {
         project_file = filename;
     }
@@ -1012,9 +677,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
         undo_manager.reset();
         
         set_name(project_file);
-        
-        play_state = PlayState.STOPPED;
-        pipeline.set_state(Gst.State.PAUSED);
         
         load_complete(); 
     }
@@ -1033,9 +695,9 @@ public abstract class Project : MultiFileProgressInterface, Object {
         loader.load_started += on_load_started;
         loader.load_error += on_load_error;
         loader.load_complete += on_load_complete;
-        
-        pipeline.set_state(Gst.State.NULL);
-        play_state = PlayState.LOADING;
+        loader.load_complete += media_engine.on_load_complete;
+        media_engine.pipeline.set_state(Gst.State.NULL);
+        media_engine.play_state = PlayState.LOADING;
     }
     
     public void on_error_occurred(string major_error, string? minor_error) {
@@ -1082,24 +744,7 @@ public abstract class Project : MultiFileProgressInterface, Object {
     }
 
     public void close() {
-        play_state = PlayState.CLOSING;
-        if (gst_state != Gst.State.NULL) {
-            set_gst_state(Gst.State.NULL);
-        } else {
-            closed();
-        }
-    }
-    
-    protected void set_gst_state(Gst.State state) {
-        if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE)
-            error("can't set state");
-    }
-
-    void seek(Gst.SeekFlags flags, int64 pos) {
-        // We do *not* check the return value of seek_simple here: it will often
-        // be false when seeking into a GnlSource which we have not yet played,
-        // even though the seek appears to work fine in that case.
-        pipeline.seek_simple(Gst.Format.TIME, flags, pos);
+        media_engine.close();
     }
     
     public void on_importer_clip_complete(ClipFetcher fetcher) {
@@ -1126,43 +771,6 @@ public abstract class Project : MultiFileProgressInterface, Object {
                 add_clipfile(fetcher.clipfile);
             fetcher_completion.complete(fetcher);
         }
-    }
-    
-    public int get_sample_rate() {
-        return 48000;
-    }
-    
-    public int get_sample_width() {
-        return 16;
-    }
-    
-    public int get_sample_depth() {
-        return 16;
-    }
-    
-    protected Gst.Caps build_audio_caps(int num_channels) {
-        string caps = "audio/x-raw-int,rate=%d,channels=%d,width=%d,depth=%d";
-        caps = caps.printf(get_sample_rate(), num_channels, get_sample_width(), get_sample_depth());
-        return Gst.Caps.from_string(caps);
-    }
-    
-    public Gst.Caps get_project_audio_caps() {
-        return build_audio_caps(2);
-    }
-
-    public Gst.Caps get_project_audio_export_caps() {
-        return Gst.Caps.from_string(
-            "audio/x-raw-float,rate=48000,channels=2,width=32");
-    }
-    
-    public Gst.Element get_audio_silence() {
-        Gst.Element silence = make_element("audiotestsrc");
-        silence.set("wave", 4);     // 4 is silence
-        Gst.Caps audio_cap = get_project_audio_caps();
-        foreach (Gst.Pad pad in silence.pads) {
-            pad.set_caps(audio_cap);
-        }
-        return silence;
     }
     
     public bool is_project_extension(string filename) {

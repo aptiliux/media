@@ -107,7 +107,7 @@ public class ClipCommand : Command {
             case Action.DELETE:
                 if (!ripple) {
                     if (index != -1) {
-                        track.shift_clips(index, -clip.length);
+                        track.shift_clips(index, -clip.duration);
                     }
                 }
                 track.insert(index, clip, time);

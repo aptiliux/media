@@ -14,6 +14,7 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					command.vala \
 					DialogUtils.vala \
 					import.vala \
+					MediaEngine.vala \
 					MultiFileProgress.vala \
 					project.vala \
 					Ruler.vala \
@@ -31,7 +32,13 @@ MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
 MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
 MARINA_FLAGS = --vapidir ./vapi
 
-GLOBAL_LIBS = --pkg gee-1.0 --pkg gstreamer-0.10 --pkg gtk+-2.0 --pkg gstreamer-base-0.10
+GLOBAL_LIBS = 	--pkg gee-1.0 \
+				--pkg gdk-x11-2.0 \
+				--pkg gstreamer-0.10 \
+				--pkg gstreamer-base-0.10 \
+				--pkg gstreamer-interfaces-0.10 \
+				--pkg gstreamer-pbutils-0.10 \
+				--pkg gtk+-2.0
 
 marina/marina.vapi marina/marina.h $(MARINA_C_FILES): $(MARINA_FILES) Makefile
 	valac $(VFLAGS) -C --library marina/marina -H marina/marina.h $(GLOBAL_LIBS) $(MARINA_FILES) \
@@ -62,10 +69,7 @@ LOMBARD_SOURCES = \
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
 
-LOMBARD_LIBS =  --pkg gdk-x11-2.0 \
-				--pkg gstreamer-pbutils-0.10 \
-				--pkg gstreamer-interfaces-0.10 \
-				--pkg glib-2.0
+LOMBARD_LIBS =  --pkg glib-2.0
 
 $(LOMBARD): $(LOMBARD_FILES) marina/marina.vapi Makefile
 	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \

@@ -8,24 +8,16 @@ namespace Model {
 
 class VideoProject : Project {
     Gst.Element video_export_sink;
-    Gst.Element sink;
-    Gst.Element converter;
-    Gtk.Widget output_widget;
     
     public TimecodeTimeSystem time_provider;
     
     Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
 
     public VideoProject(string? filename) {
-        base(filename);
+        base(filename, true);
         time_provider = new TimecodeTimeSystem();
-        converter = make_element("ffmpegcolorspace");
-        sink = make_element("xvimagesink");
-        sink.set("force-aspect-ratio", true);
-        
-        pipeline.add_many(converter, sink);
-        if (!converter.link(sink))
-            error("can't link converter with video sink!");
+        media_engine.link_for_playback += on_link_for_playback;
+        media_engine.link_for_export += on_link_for_export;
     }
     
     public override double get_version() {
@@ -82,7 +74,7 @@ class VideoProject : Project {
     protected override void do_append(ClipFile clipfile, string name, int64 insert_time) {
         undo_manager.start_transaction();
         if (clipfile.video_caps != null) {
-            Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length);
+            Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length, false);
             Track? track = find_video_track();
             if (track != null) {
                 track.append_at_time(clip, insert_time);
@@ -92,23 +84,16 @@ class VideoProject : Project {
         undo_manager.end_transaction();
     }
     
-    protected override void do_null_state_export() {
-        base.do_null_state_export();
+    protected void on_link_for_export(Gst.Element mux) {
+        media_engine.converter.unlink(media_engine.sink);
 
-        pipeline.set_state(Gst.State.PAUSED);
-    }
-
-    protected override void link_for_export(Gst.Element mux) {
-        base.link_for_export(mux);
-        converter.unlink(sink);
-
-        if (!pipeline.remove(sink))
+        if (!media_engine.pipeline.remove(media_engine.sink))
             error("couldn't remove for video");
 
         video_export_sink = make_element("theoraenc");
-        pipeline.add(video_export_sink);
+        media_engine.pipeline.add(video_export_sink);
 
-        if (!converter.link(video_export_sink)) {
+        if (!media_engine.converter.link(video_export_sink)) {
             error("could not link converter to video_export_sink");
         }
         if (!video_export_sink.link(mux)) {
@@ -116,63 +101,34 @@ class VideoProject : Project {
         }
     }    
     
-    public override void link_for_playback(Gst.Element mux) {
-        base.link_for_playback(mux);
+    public void on_link_for_playback(Gst.Element mux) {
         video_export_sink.unlink(mux);
 
-        converter.unlink(video_export_sink);
-        pipeline.remove(video_export_sink);
+        media_engine.converter.unlink(video_export_sink);
+        media_engine.pipeline.remove(video_export_sink);
               
-        pipeline.add(sink);
-        if (!converter.link(sink)) {
+        media_engine.pipeline.add(media_engine.sink);
+        if (!media_engine.converter.link(media_engine.sink)) {
             error("could not link converter to sink");
         }
     }
     
     public void set_output_widget(Gtk.Widget widget) {
-        Gst.Bus bus = pipeline.get_bus();
-        output_widget = widget;
-        
-        // We need to wait for the prepare-xwindow-id element message, which tells us when it's
-        // time to set the X window ID.  We must respond to this message synchronously.
-        // If we used an asynchronous signal (enabled via gst_bus_add_signal_watch) then the
-        // xvimagesink would create its own output window which would flash briefly
-        // onto the display.
-        
-        bus.enable_sync_message_emission();
-        bus.sync_message["element"] += on_element_message;
-
-        // We can now progress to the PAUSED state.
-        // We can only do this if we aren't currently loading a project
-        
-        if (loader == null)
-            pipeline.set_state(Gst.State.PAUSED);
-    }
-
-    void on_element_message(Gst.Bus bus, Gst.Message message) {
-        if (!message.structure.has_name("prepare-xwindow-id"))
-            return;
-        
-        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
-        Gst.XOverlay overlay = (Gst.XOverlay) sink;
-        overlay.set_xwindow_id(xid);
-        
-        // Once we've connected our video sink to a widget, it's best to turn off GTK
-        // double buffering for the widget; otherwise the video image flickers as it's resized.
-        output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
+        media_engine.output_widget = widget;
+        media_engine.sync_element_message();
     }
 
     public void go_previous_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {
-            go(video_track.previous_frame(position));
+            media_engine.go(video_track.previous_frame(transport_get_position()));
         }
     }
     
     public void go_next_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {
-            go(video_track.next_frame(position));
+            media_engine.go(video_track.next_frame(transport_get_position()));
         }
     }
 
@@ -183,14 +139,6 @@ class VideoProject : Project {
                 return true;
         }
         return false;
-    }
-
-    public override Gst.Element? get_track_element(Track track) {
-        if (track is VideoTrack) {
-            return converter;
-        }
-        
-        return base.get_track_element(track);
     }
 }
 }

@@ -216,14 +216,14 @@ namespace DialogUtils {
         string actual_length = "";
         
         if (frames_per_second != null) {
-            TimeCode time = frame_to_time (time_to_frame_with_rate(selected_clip.clip.length, 
+            TimeCode time = frame_to_time (time_to_frame_with_rate(selected_clip.clip.duration, 
                 frames_per_second), frames_per_second);
             length_string = time.to_string();
             time = frame_to_time(time_to_frame_with_rate(
                 selected_clip.clip.clipfile.length, frames_per_second), frames_per_second);
             actual_length = time.to_string();
         } else {
-            length_string = time_to_string(selected_clip.clip.length);
+            length_string = time_to_string(selected_clip.clip.duration);
             actual_length = time_to_string(selected_clip.clip.clipfile.length);
         }
         

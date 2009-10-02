@@ -89,7 +89,8 @@ class App : Gtk.Window {
         { "End", Gtk.STOCK_GOTO_LAST, "_End", "End", null, on_go_end },
         
         { "Help", null, "_Help", null, null, null },
-        { "About", Gtk.STOCK_ABOUT, null, null, null, on_about }
+        { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
+        { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph }
     };
 
     const Gtk.ToggleActionEntry[] check_actions = { 
@@ -137,6 +138,7 @@ class App : Gtk.Window {
     </menu>
     <menu name="HelpMenu" action="Help">
       <menuitem name="HelpAbout" action="About"/>
+      <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
   </menubar>
   
@@ -220,7 +222,7 @@ class App : Gtk.Window {
         timeline = new TimeLine(project, project.time_provider);
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
-        project.position_changed += on_position_changed;
+        project.media_engine.position_changed += on_position_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         library = new ClipLibraryView(project);
@@ -234,6 +236,15 @@ class App : Gtk.Window {
 
         toggle_library(true);
         
+        Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
+            get_widget(manager, "/MenuBar/HelpMenu/SaveGraph");
+
+        // TODO: only destroy it if --debug is not specified on the command line
+        // or conversely, only add it if --debug is specified on the command line
+        if (save_graph != null) {
+            save_graph.destroy();
+        }
+
         add_accel_group(manager.get_accel_group());
         
         Gtk.drag_dest_set(timeline, Gtk.DestDefaults.ALL, drag_target_entries, 
@@ -418,7 +429,7 @@ class App : Gtk.Window {
     
     // Scroll if necessary so that horizontal position xpos is visible in the window.
     void scroll_to(int xpos) {
-        float margin = project.is_playing() ? 0.0f : SCROLL_MARGIN;
+        float margin = project.transport_is_playing() ? 0.0f : SCROLL_MARGIN;
         int page_size = (int) h_adjustment.page_size;
         
         if (xpos < h_adjustment.value + page_size * margin)  // too far left
@@ -468,9 +479,9 @@ class App : Gtk.Window {
     }
     
     public void on_position_changed() {
-        int xpos = timeline.provider.time_to_xpos(project.get_position());
+        int xpos = timeline.provider.time_to_xpos(project.transport_get_position());
         scroll_to(xpos);
-        if (project.is_playing())
+        if (project.transport_is_playing())
             scroll_toward_center(xpos);  
         update_menu();
     }
@@ -617,22 +628,22 @@ class App : Gtk.Window {
     // File commands
     
     void on_play_pause() {
-        if (project.is_playing())
-            project.pause();
+        if (project.transport_is_playing())
+            project.media_engine.pause();
         else {
         // TODO: we should be calling play() here, which in turn would call 
         // do_play(Model.PlayState).  This is not currently how the code is organized.
         // This is part of a checkin that is already large, so putting this off for another
         // checkin for ease of testing.
-            project.do_play(Model.PlayState.PLAYING);
+            project.media_engine.do_play(PlayState.PLAYING);
         }
     }
     
     void on_export() {
         string filename;
         if (DialogUtils.save(this, "Export", export_filters, out filename)) {
-            new MultiFileProgress(this, 1, "Export", project);
-            project.start_export(filename);
+            new MultiFileProgress(this, 1, "Export", project.media_engine);
+            project.media_engine.start_export(filename);
         }
     }
     
@@ -694,6 +705,10 @@ class App : Gtk.Window {
           "comments", "a video editor",
           "copyright", "(c) 2009 yorba"
         );
+    }
+    
+    void on_save_graph() {
+        project.print_graph(project.media_engine.pipeline, "save_graph");
     }
 }
 

@@ -100,7 +100,7 @@ class TrackView : Gtk.Fixed {
     private void on_clip_file_ready(Model.ClipFile clip_file, int64 time) {
         track.append_at_time(new Model.Clip(clip_file, Model.MediaType.AUDIO, 
             isolate_filename(clip_file.filename), 
-            time, 0, clip_file.length), time);
+            time, 0, clip_file.length, false), time);
     }
 
     public override bool button_press_event(Gdk.EventButton event) {
@@ -123,7 +123,7 @@ class TrackView : Gtk.Fixed {
     public override bool motion_notify_event(Gdk.EventMotion event) {
         if (drag != null) {
             int new_x = drag_region_x + (int) event.x - drag_mouse_x;
-            drag.set_start(timeline.provider.xpos_to_time(new_x));
+            drag.start = timeline.provider.xpos_to_time(new_x);
             return true;
         }
         return false;
@@ -173,7 +173,7 @@ class TimeLine : Gtk.EventBox {
         this.recorder = recorder;
         this.provider = provider;
         
-        project.position_changed += update;
+        project.media_engine.position_changed += update;
         project.track_added += add_track;
         project.track_removed += on_track_removed;
         
@@ -233,14 +233,14 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void update() {
-        if (project.is_playing())
-            recorder.scroll_toward_center(provider.time_to_xpos(project.position));
+        if (project.transport_is_playing())
+            recorder.scroll_toward_center(provider.time_to_xpos(project.media_engine.position));
         queue_draw();
     }
     
     public override bool expose_event (Gdk.EventExpose event) {
         base.expose_event(event);
-        int xpos = provider.time_to_xpos(project.position);
+        int xpos = provider.time_to_xpos(project.transport_get_position());
         int line_length = allocation.height;
         Gdk.draw_line(window, style.fg_gc[Gtk.StateType.NORMAL], xpos, 0, xpos, line_length);
         return true;
@@ -320,13 +320,13 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void on_ruler_position_changed(int x) {
-        project.go(provider.xpos_to_time(x));
+        project.media_engine.go(provider.xpos_to_time(x));
     }
     
     public void zoom (float inc) {
         provider.calculate_pixel_step(inc, pixel_min, pixel_div);
         resized();
-        project.position_changed(project.position);
+        project.media_engine.position_changed(project.transport_get_position());
         queue_draw();
     }
 }

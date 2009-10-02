@@ -54,7 +54,7 @@ class TrackView : Gtk.Fixed {
     public void on_clip_deleted(Model.Clip clip, bool ripple) {
         track.delete_clip(clip, ripple);
         if (ripple) {
-            track.project.ripple_delete(track, clip.length, clip.start, clip.length);
+            track.project.ripple_delete(track, clip.duration, clip.start, clip.duration);
         }
         clear_drag();
     }
@@ -123,7 +123,7 @@ class TrackView : Gtk.Fixed {
 
             if (timeline.selected_clip != timeline.drag_source_clip) {
                 remove(timeline.selected_clip);
-                timeline.drag_source_clip.clip.set_start(timeline.selected_clip.clip.start);
+                timeline.drag_source_clip.clip.start = timeline.selected_clip.clip.start;
             }
             timeline.selected_clip = timeline.drag_source_clip;       
             /*
@@ -262,11 +262,11 @@ class TrackView : Gtk.Fixed {
 
     void calc_drag_intersect() {
         drag_intersect = track.find_overlapping_clip(timeline.selected_clip.clip.start, 
-                                                     timeline.selected_clip.clip.length) >= 0;
+                                                     timeline.selected_clip.clip.duration) >= 0;
         if (!drag_intersect) {
             if (curr_drag_x < timeline.BORDER) {
                 drag_intersect = 
-                           track.find_overlapping_clip(0, timeline.selected_clip.clip.length) >= 0;
+                           track.find_overlapping_clip(0, timeline.selected_clip.clip.duration) >= 0;
             }       
         }
         timeline.selected_clip.ghost = drag_intersect;
@@ -284,7 +284,7 @@ class TrackView : Gtk.Fixed {
         } else {
             if (drag_intersect) {
                 drag_clip_destination = track.find_nearest_clip_edge(
-                        timeline.selected_clip.clip.start + timeline.selected_clip.clip.length / 2, 
+                        timeline.selected_clip.clip.start + timeline.selected_clip.clip.duration / 2, 
                         out drag_after_destination);
                 drag_x_coord = get_x_from_pos(drag_clip_destination, drag_after_destination);
             }
@@ -293,7 +293,7 @@ class TrackView : Gtk.Fixed {
     
     public void do_clip_move(Model.Clip clip, int x) {
         curr_drag_x = x - drag_offset + timeline.BORDER;
-        timeline.selected_clip.clip.set_start(timeline.provider.xpos_to_time(curr_drag_x));
+        timeline.selected_clip.clip.start = timeline.provider.xpos_to_time(curr_drag_x);
         
         update_intersect_state();
     }

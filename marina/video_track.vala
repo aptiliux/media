@@ -18,12 +18,6 @@ public class VideoTrack : Track {
         return MediaType.VIDEO;
     }
 
-    protected override Gst.Element empty_element() {
-        Gst.Element blackness = make_element("videotestsrc");
-        blackness.set("pattern", 2);     // 2 == GST_VIDEO_TEST_SRC_BLACK
-        return blackness;
-    }
-
     protected override bool check(Clip clip) {
         Fraction rate1;
         Fraction rate2;
@@ -106,15 +100,7 @@ public class VideoTrack : Track {
         return false;
     }
 
-    public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
-        if (pad.link(track_element.get_static_pad("sink")) != Gst.PadLinkReturn.OK) {
-            error("couldn't link pad to converter");
-        }
-    }
     
-    public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
-        pad.unlink(track_element.get_static_pad("sink"));
-    }
 }
     
 }
