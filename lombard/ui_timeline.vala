@@ -271,7 +271,9 @@ class TimeLine : Gtk.EventBox {
         if (selected_clip != null && event.button == 3) {
             context_menu.select_first(true);
             context_menu.popup(null, null, null, 0, 0);
-        } else context_menu.popdown();
+        } else {
+            context_menu.popdown();
+        }
 
         return false;
     }

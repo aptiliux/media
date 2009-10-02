@@ -273,6 +273,9 @@ public abstract class Project {
     
     public void on_playstate_changed(PlayState playstate) {
         switch (playstate) {
+            case PlayState.STOPPED:
+                ClearTrackMeters();
+                break;
             case PlayState.LOADING:
                 loader.load();
                 break;
@@ -785,7 +788,16 @@ public abstract class Project {
     public void undo() {
         undo_manager.undo();
     }
-    
+
+    void ClearTrackMeters() {
+        foreach (Track track in tracks) {
+            AudioTrack audio_track = track as AudioTrack;
+            if (audio_track != null) {
+                audio_track.level_changed(-100);
+            }
+        }
+    }
+
     public abstract double get_version();
     public abstract string get_app_name();
 

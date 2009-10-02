@@ -287,11 +287,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public override bool button_release_event (Gdk.EventButton event) {
-        Gtk.Widget? view = find_child(event.y);
-        if (view != null) {
-            return view.button_release_event(event);
-        }
-        
+        // TODO: It would be better if the button_release propogated down to the clipview
         if (selected != null && event.button == 3) {
             context_menu.select_first(true);
             context_menu.popup(null, null, null, 0, 0);
@@ -299,6 +295,11 @@ class TimeLine : Gtk.EventBox {
             context_menu.popdown();
         }
 
+        Gtk.Widget? view = find_child(event.y);
+        if (view != null) {
+            return view.button_release_event(event);
+        }
+        
         return false;
     }
 
