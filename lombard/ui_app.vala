@@ -10,6 +10,10 @@ class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
     Model.VideoProject project;
+    View.VideoOutput video_output;
+    View.AudioOutput audio_output;
+    View.OggVorbisExport export_connector;
+
     TimeLine timeline;
     ClipLibraryView library;
     View.StatusBar status_bar;
@@ -211,6 +215,10 @@ class App : Gtk.Window {
         project.load_complete += on_load_complete;
         project.error_occurred += do_error_dialog;
         project.undo_manager.undo_changed += on_undo_changed;
+        project.media_engine.post_export += on_post_export;
+
+        audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
+        project.media_engine.connect_output(audio_output);
 
         // TODO: this is a hack to deal with project loading.  Lombard assumes one video
         // track and one audio track.  It was non-trivial to delete and recreate tracks.
@@ -329,7 +337,8 @@ class App : Gtk.Window {
     
     void on_drawing_realize() {
         project.load(project_filename);
-        project.set_output_widget(drawing_area);
+        video_output = new View.VideoOutput(drawing_area);
+        project.media_engine.connect_output(video_output);
     }
     
     void on_adjustment_changed(Gtk.Adjustment a) {
@@ -643,10 +652,26 @@ class App : Gtk.Window {
         string filename;
         if (DialogUtils.save(this, "Export", export_filters, out filename)) {
             new MultiFileProgress(this, 1, "Export", project.media_engine);
+            project.media_engine.disconnect_output(audio_output);
+            project.media_engine.disconnect_output(video_output);
+            export_connector = new View.OggVorbisExport(
+                View.MediaConnector.MediaTypes.Audio | View.MediaConnector.MediaTypes.Video,
+                filename, project.media_engine.get_project_audio_export_caps());
+            project.media_engine.connect_output(export_connector);
             project.media_engine.start_export(filename);
         }
     }
     
+    void on_post_export(bool canceled) {
+        project.media_engine.disconnect_output(export_connector);
+        project.media_engine.connect_output(audio_output);
+        project.media_engine.connect_output(video_output);
+        if (canceled) {
+            GLib.FileUtils.remove(export_connector.get_filename());
+        }
+        export_connector = null;
+    }
+
     // Edit commands
 
     void on_undo() {

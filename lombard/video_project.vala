@@ -7,8 +7,6 @@
 namespace Model {
 
 class VideoProject : Project {
-    Gst.Element video_export_sink;
-    
     public TimecodeTimeSystem time_provider;
     
     Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
@@ -16,8 +14,6 @@ class VideoProject : Project {
     public VideoProject(string? filename) {
         base(filename, true);
         time_provider = new TimecodeTimeSystem();
-        media_engine.link_for_playback += on_link_for_playback;
-        media_engine.link_for_export += on_link_for_export;
     }
     
     public override double get_version() {
@@ -84,40 +80,6 @@ class VideoProject : Project {
         undo_manager.end_transaction();
     }
     
-    protected void on_link_for_export(Gst.Element mux) {
-        media_engine.converter.unlink(media_engine.sink);
-
-        if (!media_engine.pipeline.remove(media_engine.sink))
-            error("couldn't remove for video");
-
-        video_export_sink = make_element("theoraenc");
-        media_engine.pipeline.add(video_export_sink);
-
-        if (!media_engine.converter.link(video_export_sink)) {
-            error("could not link converter to video_export_sink");
-        }
-        if (!video_export_sink.link(mux)) {
-            error("could not link video_export_sink to mux");
-        }
-    }    
-    
-    public void on_link_for_playback(Gst.Element mux) {
-        video_export_sink.unlink(mux);
-
-        media_engine.converter.unlink(video_export_sink);
-        media_engine.pipeline.remove(video_export_sink);
-              
-        media_engine.pipeline.add(media_engine.sink);
-        if (!media_engine.converter.link(media_engine.sink)) {
-            error("could not link converter to sink");
-        }
-    }
-    
-    public void set_output_widget(Gtk.Widget widget) {
-        media_engine.output_widget = widget;
-        media_engine.sync_element_message();
-    }
-
     public void go_previous_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {

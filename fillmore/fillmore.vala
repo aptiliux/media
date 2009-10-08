@@ -19,6 +19,9 @@ class Recorder : Gtk.Window {
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
     Gtk.UIManager manager;
+    // TODO: Have a MediaExportConnector that extends MediaConnector rather than concrete type.
+    View.OggVorbisExport audio_export;
+    View.AudioOutput audio_output;
 
     public const string NAME = "fillmore";
     const Gtk.ActionEntry[] entries = {
@@ -132,15 +135,20 @@ class Recorder : Gtk.Window {
         provider = new Model.TimecodeTimeSystem();
         project = new Model.AudioProject();
         project.media_engine.callback_pulse += on_callback_pulse;
+        project.media_engine.post_export += on_post_export;
+        project.media_engine.position_changed += on_position_changed;
+
         project.load_error += on_load_error;
         project.name_changed += on_name_changed;
         project.undo_manager.dirty_changed += on_dirty_changed;
         project.undo_manager.undo_changed += on_undo_changed;
         project.error_occurred += on_error_occurred;
         project.playstate_changed += on_playstate_changed;
-        project.media_engine.position_changed += on_position_changed;
         project.track_added += on_track_added;
         project.load_complete += on_load_complete;
+
+        audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
+        project.media_engine.connect_output(audio_output);
         
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
@@ -354,13 +362,27 @@ class Recorder : Gtk.Window {
     }
     
     // File menu
-    
     void on_export() {
         string filename;
         if (DialogUtils.save(this, "Export", export_filters, out filename)) {
             new MultiFileProgress(this, 1, "Export", project.media_engine);
+            project.media_engine.disconnect_output(audio_output);
+            audio_export = new View.OggVorbisExport(View.MediaConnector.MediaTypes.Audio, 
+                filename, project.media_engine.get_project_audio_export_caps());
+            project.media_engine.connect_output(audio_export);
             project.media_engine.start_export(filename);
         }
+    }
+    
+    void on_post_export(bool canceled) {
+        project.media_engine.disconnect_output(audio_export);
+        project.media_engine.connect_output(audio_output);
+        
+        if (canceled) {
+            GLib.FileUtils.remove(audio_export.get_filename());
+        }
+
+        audio_export = null;
     }
     
     void on_project_new() {

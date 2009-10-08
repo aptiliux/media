@@ -8,7 +8,7 @@ public enum PlayState {
     STOPPED,
     PRE_PLAY, PLAYING,
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
-    PRE_EXPORT_NULL, PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
+    PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
     PRE_LOAD, LOADING, 
     CLOSING, CLOSED
 }
@@ -181,7 +181,7 @@ public abstract class MediaTrack {
         default_source.set("media-duration", length);
     }
     
-    void on_post_export() {
+    void on_post_export(bool deleted) {
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
     }
@@ -317,21 +317,177 @@ public class MediaAudioTrack : MediaTrack {
     }
 }
 
-public class MediaEngine : MultiFileProgressInterface, Object {
-    Gst.Element file_sink;
+public abstract class MediaConnector {
+    public enum MediaTypes { Audio = 1, Video = 2 }
+    MediaTypes media_types;
+    
+    // AudioIndex and VideoIndex are the order elements are passed in to connect and disconnect
+    protected int AudioIndex = 0;
+    protected int VideoIndex = 1;
+    
+    protected MediaConnector(MediaTypes media_types) {
+        this.media_types = media_types;
+    }
+    
+    protected bool has_audio() {
+        return (media_types & MediaTypes.Audio) == MediaTypes.Audio;
+    }
+    
+    protected bool has_video() {
+        return (media_types & MediaTypes.Video) == MediaTypes.Video;
+    }
+    
+    public abstract void connect(MediaEngine media_engine, Gst.Pipeline pipeline,
+        Gst.Element[] elements);
+    public abstract void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline,
+        Gst.Element[] elements);
+}
+
+public class VideoOutput : MediaConnector {
+    Gst.Element sink;
+    Gtk.Widget output_widget;
+
+    public VideoOutput(Gtk.Widget output_widget) {
+        base(MediaTypes.Video);
+        sink = make_element("xvimagesink");
+        sink.set("force-aspect-ratio", true);
+        this.output_widget = output_widget;
+    }
+
+    public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        media_engine.prepare_window += on_prepare_window;
+        pipeline.add(sink);
+        if (!elements[VideoIndex].link(sink)) {
+            error("can't link converter with video sink!");
+        }
+        media_engine.sync_element_message();
+    }
+    
+    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        elements[VideoIndex].unlink(sink);
+        pipeline.remove(sink);
+        media_engine.prepare_window -= on_prepare_window;
+    }
+    
+    public void on_prepare_window() {
+        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
+        Gst.XOverlay overlay = (Gst.XOverlay) sink;
+        overlay.set_xwindow_id(xid);
+
+        // Once we've connected our video sink to a widget, it's best to turn off GTK
+        // double buffering for the widget; otherwise the video image flickers as it's resized.
+        output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
+    }
+}
+
+public class AudioOutput : MediaConnector {
+    Gst.Element audio_sink;
+    Gst.Element capsfilter;
+    
+    public AudioOutput(Gst.Caps caps) {
+        base(MediaTypes.Audio);
+        audio_sink = make_element("gconfaudiosink");
+        capsfilter = make_element("capsfilter");
+        capsfilter.set("caps", caps);
+    }
+    
+    public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        pipeline.add_many(capsfilter, audio_sink);
+            
+        if (!elements[AudioIndex].link_many(capsfilter, audio_sink)) {
+            warning("could not link audio_sink");
+        }
+    }
+    
+    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        elements[AudioIndex].unlink_many(capsfilter, audio_sink);
+        pipeline.remove_many(capsfilter, audio_sink);
+    }
+}
+
+public class OggVorbisExport : MediaConnector {
+    Gst.Element capsfilter;
+    Gst.Element export_sink;    
     Gst.Element mux;
-    Gst.Element export_sink;
+    Gst.Element file_sink;
+    Gst.Element video_export_sink;
+    
+    public OggVorbisExport(MediaConnector.MediaTypes media_types, string filename, Gst.Caps caps) {
+        base(media_types);
+
+        file_sink = make_element("filesink");
+        file_sink.set("location", filename);
+        mux = make_element("oggmux");
+        
+        if (has_audio()) {
+            capsfilter = make_element("capsfilter");
+            capsfilter.set("caps", caps);
+            export_sink = make_element("vorbisenc");
+        }
+        
+        if (has_video()) {
+            video_export_sink = make_element("theoraenc");
+        }
+    }
+    
+    public string get_filename() {
+        string filename;
+        file_sink.get("location", out filename);
+        return filename;
+    }
+    
+    public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        pipeline.add_many(mux, file_sink);
+        mux.link(file_sink);
+        
+        if (has_audio()) {
+            pipeline.add_many(capsfilter, export_sink);
+            elements[AudioIndex].link_many(capsfilter, export_sink, mux);
+        }
+
+        if (has_video()) {
+            pipeline.add(video_export_sink);
+
+            if (!elements[VideoIndex].link(video_export_sink)) {
+                error("could not link converter to video_export_sink");
+            }
+            
+            if (!video_export_sink.link(mux)) {
+                error("could not link video_export with mux");
+            }
+        }
+    }
+  
+    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        if (has_audio()) {
+            elements[AudioIndex].unlink_many(capsfilter, export_sink, mux);
+            pipeline.remove_many(capsfilter, export_sink);
+        }
+        
+        if (has_video()) {
+            elements[VideoIndex].unlink_many(video_export_sink, mux);
+            pipeline.remove(video_export_sink);
+        }
+        
+        mux.unlink(file_sink);
+        pipeline.remove_many(mux, file_sink);
+    }
+}
+
+public class MediaEngine : MultiFileProgressInterface, Object {
     public Gst.Pipeline pipeline;
     
     // Video playback
     public Gst.Element converter;
-    public Gst.Element sink;
-    public Gtk.Widget output_widget;
 
     // Audio playback
-    public Gst.Element audio_sink;
     public Gst.Element adder;
-    public Gst.Element capsfilter;
     
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
@@ -351,12 +507,13 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public signal void playstate_changed();
     public signal void position_changed(int64 position);
     public signal void pre_export(int64 length);
-    public signal void post_export();
+    public signal void post_export(bool canceled);
     public signal void callback_pulse();
     public signal void level_changed(Gst.Object source, double level_left, double level_right);
     public signal void record_completed();
     public signal void link_for_playback(Gst.Element mux);
     public signal void link_for_export(Gst.Element mux);
+    public signal void prepare_window();
 
     Gee.ArrayList<MediaTrack> tracks;
     
@@ -369,26 +526,17 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         if (include_video) {
             converter = make_element("ffmpegcolorspace");
-            sink = make_element("xvimagesink");
-            sink.set("force-aspect-ratio", true);
-            
-            pipeline.add_many(converter, sink);
-            if (!converter.link(sink))
-                error("can't link converter with video sink!");
+            pipeline.add(converter);
         }
 
         Gst.Element silence = get_audio_silence();
 
         adder = make_element("adder");
 
-        capsfilter = make_element("capsfilter");
-        capsfilter.set("caps", get_project_audio_caps());
-
-        audio_sink = make_element("gconfaudiosink");
         Gst.Element audio_convert = make_element_with_name("audioconvert", "projectconvert");
-        pipeline.add_many(silence, audio_convert, adder, capsfilter, audio_sink);
+        pipeline.add_many(silence, audio_convert, adder);
 
-        if (!silence.link_many(audio_convert, adder, capsfilter, audio_sink)) {
+        if (!silence.link_many(audio_convert, adder)) {
             error("silence: couldn't link");
         }
 
@@ -400,6 +548,16 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         bus.message["eos"] += on_eos;    
         bus.message["state-changed"] += on_state_change;
         bus.message["element"] += on_element;
+    }
+    
+    public void connect_output(MediaConnector connector) {
+        connector.connect(this, pipeline, { adder, converter });
+    }
+    
+    public void disconnect_output(MediaConnector connector) {
+        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
+        pipeline.set_state(Gst.State.NULL);
+        connector.disconnect(this, pipeline, {adder, converter});
     }
     
     public void sync_element_message() {
@@ -479,14 +637,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     void on_element_message(Gst.Bus bus, Gst.Message message) {
         if (!message.structure.has_name("prepare-xwindow-id"))
             return;
-        
-        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
-        Gst.XOverlay overlay = (Gst.XOverlay) sink;
-        overlay.set_xwindow_id(xid);
-        
-        // Once we've connected our video sink to a widget, it's best to turn off GTK
-        // double buffering for the widget; otherwise the video image flickers as it's resized.
-        output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
+
+        prepare_window();
         bus.sync_message["element"] -= on_element_message;
     }
     
@@ -535,14 +687,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                     go(position);
                 }
                 return true;
-            case PlayState.PRE_EXPORT_NULL:
-                if (gst_state != Gst.State.NULL)
-                    return false;
-                do_null_state_export(project.get_length());
-                return true;
             case PlayState.PRE_EXPORT:
-                if (gst_state != Gst.State.PAUSED)
+                if (gst_state != Gst.State.PAUSED) {
                     return false;
+                }
                 do_paused_state_export();
                 return true;
             case PlayState.EXPORTING:
@@ -585,9 +733,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     protected virtual void do_null_state_export(int64 length) {
         pre_export(length);
-        if (!mux.link(file_sink)) {
-            error("could not link mux and file_sink");
-        }
         play_state = PlayState.PRE_EXPORT;
         pipeline.set_state(Gst.State.PAUSED);
     }
@@ -601,67 +746,13 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         pipeline.set_state(Gst.State.PLAYING);        
     }
     
-    protected virtual void do_end_export(bool deleted) {
-        if (deleted) {
-            string str;
-            file_sink.get("location", out str);
-            GLib.FileUtils.remove(str);
-        }
-        do_link_for_playback(mux);
-    }
-
     void end_export(bool deleted) {
         play_state = PlayState.STOPPED;
-        do_end_export(deleted);
-
-        pipeline.remove_many(mux, file_sink);
         
         callback_id = 0;
-        pipeline.set_state(Gst.State.PAUSED);
-        post_export();
+        post_export(deleted);
     }
 
-    protected virtual void do_link_for_export(Gst.Element mux) {
-        capsfilter.unlink(audio_sink);
-        capsfilter.set("caps", get_project_audio_export_caps());
-
-        if (!pipeline.remove(audio_sink))
-            error("couldn't remove for audio");
-
-        get_export_sink();
-        pipeline.add(export_sink);
-
-        if (!capsfilter.link(export_sink)) {
-            error("could not link capsfilter to export_sink");
-        }
-        
-        if (!export_sink.link(mux)) {
-            error("could not link export sink to mux");
-        }
-        
-        link_for_export(mux);
-    }
-    
-    protected virtual void do_link_for_playback(Gst.Element mux) {
-        export_sink.unlink(mux);
-        capsfilter.unlink(export_sink);
-        capsfilter.set("caps", get_project_audio_caps());
-
-        if (!pipeline.remove(export_sink)) {
-            error("could not remove export_sink");
-        }
-
-        if (!pipeline.add(audio_sink)) {
-            error("could not add audio_sink to pipeline");
-        }
-
-        if (!capsfilter.link(audio_sink)) {
-            error("could not link capsfilter to audio_sink");
-        }
-        
-        link_for_playback(mux);
-    }
-    
     public void go(int64 pos) {
         if (position == pos) {
             pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);        
@@ -726,10 +817,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             error("can't set state");
     }
 
-    protected void get_export_sink() {
-        export_sink = make_element("vorbisenc");
-    }    
-
     void seek(Gst.SeekFlags flags, int64 pos) {
         // We do *not* check the return value of seek_simple here: it will often
         // be false when seeking into a GnlSource which we have not yet played,
@@ -754,24 +841,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void start_export(string filename) {
-        play_state = PlayState.PRE_EXPORT_NULL;    
-        file_sink = make_element("filesink");
-        file_sink.set("location", filename);
-        
-        if (!pipeline.add(file_sink)) {
-            error("could not add file_sink");
-        }
-        
-        mux = make_element("oggmux");
-        if (!pipeline.add(mux)) {
-            error("could not add oggmux to pipeline");
-        }
-
-        pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
-        pipeline.set_state(Gst.State.NULL);
-        do_link_for_export(mux);            
-
         file_updated(filename, 0);
+        do_null_state_export(project.get_length());
     }
 
     void cancel() {
