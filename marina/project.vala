@@ -184,7 +184,6 @@ public class MediaLoaderHandler : LoaderHandler {
             load_error("%s: %s".printf(f.clipfile.filename, f.error_string));
 
         the_project.add_clipfile(f.clipfile);
-        f.clipfile.updated();
         
         num_clipfiles_complete++;
         if (num_clipfiles_complete == clipfetchers.size)
@@ -539,16 +538,62 @@ public abstract class Project {
         clipfiles.add(clipfile);
     }
     
-    public bool remove_clipfile(string filename) {
+    public bool clipfile_on_track(string filename) {
+        ClipFile cf = find_clipfile(filename);
+        
+        foreach (Track t in tracks) {
+            foreach (Clip c in t.clips) {
+                if (c.clipfile == cf)
+                    return true;
+            }
+        }
+        
+        foreach (Track t in inactive_tracks) {
+            foreach (Clip c in t.clips) {
+                if (c.clipfile == cf)
+                    return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    void delete_clipfile_from_tracks(ClipFile cf) {
+        foreach (Track t in tracks) {
+            for (int i = 0; i < t.clips.size; i++) {
+                if (t.clips[i].clipfile == cf) {
+                    t.delete_clip(t.clips[i], false);
+                    i --;
+                }
+            }
+        }
+        
+        foreach (Track t in inactive_tracks) {
+            for (int i = 0; i < t.clips.size; i++) {
+                if (t.clips[i].clipfile == cf) {
+                    t.delete_clip(t.clips[i], false);
+                    i --;
+                }
+            }
+        }
+    }
+    
+    public void _remove_clipfile(ClipFile cf) {
+        clipfiles.remove(cf);
+    }
+    
+    public void remove_clipfile(string filename) {
         ClipFile cf = find_clipfile(filename);
         if (cf != null) {
-            foreach (Track t in tracks) {
-                if (t.contains_clipfile(cf))
-                    return false;
-            }
-            clipfiles.remove(cf);
+            undo_manager.start_transaction();
+            
+            delete_clipfile_from_tracks(cf);
+    
+            Command clipfile_delete = new ClipFileDeleteCommand(this, cf);
+            do_command(clipfile_delete);
+                
+            undo_manager.end_transaction();
         }
-        return true;
     }
     
     public ClipFile? find_clipfile(string filename) {

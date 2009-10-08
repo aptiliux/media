@@ -61,6 +61,7 @@ public class ClipView : Gtk.DrawingArea {
         is_selected = false;
         
         clip.moved += on_clip_moved;
+        clip.updated += on_clip_updated;
 
         Gdk.Color.parse("000", out color_black);
         Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", out color_selected);
@@ -69,6 +70,10 @@ public class ClipView : Gtk.DrawingArea {
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
               
         adjust_size(height);
+    }
+
+    void on_clip_updated() {
+        queue_draw();
     }
 
     // Note that a view's size may vary slightly (by a single pixel) depending on its
@@ -128,9 +133,7 @@ public class ClipView : Gtk.DrawingArea {
                 draw_square_rectangle(window, color_black, false, allocation.x, allocation.y,
                                       allocation.width - 1, allocation.height - 1);
             }
-
-            Pango.Layout layout = create_pango_layout(clip.name);
-            
+               
             Gdk.GC gc = new Gdk.GC(window);
             Gdk.Rectangle r = { 0, 0, 0, 0 };
 
@@ -141,6 +144,13 @@ public class ClipView : Gtk.DrawingArea {
             r.height = allocation.height;
             
             gc.set_clip_rectangle(r);
+
+            Pango.Layout layout;
+            
+            if (!clip.clipfile.is_online())
+                layout = create_pango_layout("%s (Offline)".printf(clip.name));
+            else
+                layout = create_pango_layout("%s".printf(clip.name));
             Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
         }   
     }

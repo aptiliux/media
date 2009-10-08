@@ -217,7 +217,7 @@ public abstract class Track {
         if (overwrite)
             do_clip_overwrite(c);    
         
-        clips.insert(get_insert_index(c.start), c);
+        insert_clip_into_array(c, get_insert_index(c.start));
         project.reseek();
     }
 
@@ -226,7 +226,6 @@ public abstract class Track {
             return;
 
         _add_clip_at(c, pos, overwrite);
-        c.updated += on_clip_updated;
         clip_added(c);
     }
     
@@ -324,7 +323,7 @@ public abstract class Track {
     
     void insert_at(int i, Clip clip, int64 pos) {
         clip.start = pos;
-        clips.insert(i, clip);
+        insert_clip_into_array(clip, i);
         
         shift_clips(i + 1, clip.duration);
     }
@@ -336,17 +335,15 @@ public abstract class Track {
             // like the position in the composition being incorrect when we start playing.
             // This also fixes the lockup problem we were having.
             insert_at(index, clip, pos);
-            clip.updated += on_clip_updated;
             clip_added(clip);
         }
     }
     
     void put(int index, Clip c) {
         if (check(c)) {
-            clips.insert(index, c);
+            insert_clip_into_array(c, index);
             
             project.reseek();
-            c.updated += on_clip_updated;
             clip_added(c);
         }
     }
@@ -400,6 +397,11 @@ public abstract class Track {
     
     public void remove_clip_from_array(int pos) {
         clips.remove_at(pos);
+    }
+    
+    public void insert_clip_into_array(Clip c, int pos) {
+        c.updated += on_clip_updated;
+        clips.insert(pos, c);
     }
     
     /*

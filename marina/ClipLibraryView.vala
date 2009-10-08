@@ -109,7 +109,7 @@ public class ClipLibraryView : Gtk.EventBox {
         tree_view.get_path_at_pos((int) b.x, (int) b.y, out path, null, out cell_x, out cell_y);
         
         if (path == null) {
-            unselect_all();
+            selection.unselect_all();
             return true;
         }
         
@@ -119,7 +119,7 @@ public class ClipLibraryView : Gtk.EventBox {
         if (!control_pressed &&
             !shift_pressed) {
             if (!selection.path_is_selected(path))
-                unselect_all();
+                selection.unselect_all();
         } else {
             if (shift_pressed) {
                 Gtk.TreePath first = find_first_selected();
@@ -140,7 +140,8 @@ public class ClipLibraryView : Gtk.EventBox {
         int cell_x;
         int cell_y;
         
-        tree_view.get_path_at_pos((int) b.x, (int) b.y, out path, out column, out cell_x, out cell_y);
+        tree_view.get_path_at_pos((int) b.x, (int) b.y, out path, 
+                                  out column, out cell_x, out cell_y);
         
        // The check for cell_x == 0 and cell_y == 0 is here since for whatever reason, this 
        // function is called when we drop some clips onto the timeline.  We only need to mess with 
@@ -151,8 +152,10 @@ public class ClipLibraryView : Gtk.EventBox {
        // strange check is okay.
        
         if (path == null ||
-            (cell_x == 0 && cell_y == 0))
+            (cell_x == 0 && cell_y == 0)) {
+            selection_changed(false);
             return true;
+        }
 
         bool shift_pressed = (b.state & Gdk.ModifierType.SHIFT_MASK) != 0;
         bool control_pressed = (b.state & Gdk.ModifierType.CONTROL_MASK) != 0;
@@ -160,9 +163,10 @@ public class ClipLibraryView : Gtk.EventBox {
         if (!control_pressed &&
             !shift_pressed) {
             if (selection.path_is_selected(path))
-                unselect_all();
+                selection.unselect_all();
         }
         selection.select_path(path);
+        selection_changed(true);
         
         return true;
     }
@@ -358,12 +362,14 @@ public class ClipLibraryView : Gtk.EventBox {
         string filename;
         model.get(it, ColumnType.FILENAME, out filename, -1);
         
-        if (project.remove_clipfile(filename)) { 
-            remove_row(out it);
-        } else {
-            DialogUtils.error("Error", 
-                            "Cannot remove clip file that exists on a track!");
+        if (project.clipfile_on_track(filename)) {
+            if (DialogUtils.delete_cancel("Clip is in use.  Delete anyway?") !=
+                Gtk.ResponseType.YES)
+                return;
         }
+
+        project.remove_clipfile(filename);
+        remove_row(out it);
     }
     
     public bool has_selection() {
@@ -377,8 +383,8 @@ public class ClipLibraryView : Gtk.EventBox {
         GLib.List<Gtk.TreePath> paths;
         
         if (get_selected_rows(out model, out paths) > 0) { 
-            foreach (Gtk.TreePath p in paths)
-                delete_row(model, paths.nth_data(0));
+            for (int i = (int) paths.length() - 1; i >= 0; i--)
+                delete_row(model, paths.nth_data(i));
         }
     }
 }

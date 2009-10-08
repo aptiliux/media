@@ -141,14 +141,13 @@ namespace DialogUtils {
         return response;
     }
     
-    public Gtk.ResponseType delete_cancel(string title, string message) {
+    public Gtk.ResponseType delete_cancel(string message) {
         Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
-                                        Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message, 
-                                        null);
-        d.set_title(title);                                                 
+                                        Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message,
+                                        null);                                                
         
-        d.add_buttons(Gtk.STOCK_DELETE, Gtk.ResponseType.YES, Gtk.STOCK_CANCEL, 
-                    Gtk.ResponseType.NO);
+        d.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.NO,
+                      Gtk.STOCK_DELETE, Gtk.ResponseType.YES);
         
         Gtk.ResponseType r = (Gtk.ResponseType) d.run();
         d.destroy();

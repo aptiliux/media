@@ -53,6 +53,7 @@ public class ClipFile {
     
     public void set_online(bool o) {
         online = o;
+        updated();
     }
 
     public void set_thumbnail(Gdk.Pixbuf b) {
@@ -445,7 +446,7 @@ public class Clip {
         
         clipfile.updated += on_clipfile_updated;
     }
-    
+
     public void gnonlin_connect() { connected = true; }
     public void gnonlin_disconnect() { connected = false; }
     

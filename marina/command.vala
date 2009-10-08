@@ -209,6 +209,32 @@ public class ClipSplitCommand : Command {
     }
 }
 
+public class ClipFileDeleteCommand : Command {
+    ClipFile clipfile;
+    Project project;
+    
+    public ClipFileDeleteCommand(Project p, ClipFile cf) {
+        clipfile = cf;
+        project = p;
+    }
+    
+    public override void apply() {
+        project._remove_clipfile(clipfile);
+    }
+    
+    public override void undo() {
+        project.add_clipfile(clipfile);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Delete from Library";
+    }
+}
+
 public class ClipTrimCommand : Command {
     Track track;
     Clip clip;

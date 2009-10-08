@@ -131,7 +131,7 @@ class TimeLine : Gtk.EventBox {
         } else {
             if (gap_view != null) {
                 if (!project.can_delete_gap(gap_view.gap)) {
-                    if (DialogUtils.delete_cancel("Confirm", "Really delete single-track gap?") ==
+                    if (DialogUtils.delete_cancel("Really delete single-track gap?") ==
                            Gtk.ResponseType.YES) {
                         gap_view.remove();
                     }
