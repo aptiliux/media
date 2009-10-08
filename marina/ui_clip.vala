@@ -64,14 +64,25 @@ public class ClipView : Gtk.DrawingArea {
         clip.updated += on_clip_updated;
 
         Gdk.Color.parse("000", out color_black);
-        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", out color_selected);
-        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", out color_normal);
+        get_clip_colors();
         
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
               
         adjust_size(height);
     }
 
+    void get_clip_colors() {
+        if (clip.clipfile.is_online()) {
+            Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", 
+                out color_selected);
+            Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", 
+                out color_normal);
+        } else {
+            Gdk.Color.parse("red", out color_selected);
+            Gdk.Color.parse("#AA0000", out color_normal);
+        }
+    }
+    
     void on_clip_updated() {
         queue_draw();
     }

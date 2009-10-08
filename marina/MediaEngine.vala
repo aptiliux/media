@@ -175,11 +175,6 @@ public abstract class MediaTrack {
         unlink_pad(bin, pad, get_element());
     }
 
-    void on_track_hidden(Model.Track track) {
-        media_engine.pipeline.remove(composition);
-        composition = null;
-    }
-    
     void on_track_removed(Model.Track track) {
         track_removed(this);
     }
