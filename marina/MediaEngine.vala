@@ -151,15 +151,17 @@ public abstract class MediaTrack {
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
     
     void on_clip_added(Model.Clip clip) {
-        MediaClip media_clip;
-        if (clip.type == Model.MediaType.AUDIO) {
-            media_clip = new MediaAudioClip(composition, clip, clip.clipfile.filename);
-        } else {
-            media_clip = new MediaVideoClip(composition, clip, clip.clipfile.filename);
+        if (clip.clipfile.is_online()) {
+            MediaClip media_clip;
+            if (clip.type == Model.MediaType.AUDIO) {
+                media_clip = new MediaAudioClip(composition, clip, clip.clipfile.filename);
+            } else {
+                media_clip = new MediaVideoClip(composition, clip, clip.clipfile.filename);
+            }
+            media_clip.clip_removed += on_media_clip_removed;
+            
+            clips.add(media_clip);
         }
-        media_clip.clip_removed += on_media_clip_removed;
-        
-        clips.add(media_clip);
     }
     
     void on_media_clip_removed(MediaClip clip) {
