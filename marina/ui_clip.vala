@@ -72,15 +72,10 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     void get_clip_colors() {
-        if (clip.clipfile.is_online()) {
-            Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", 
-                out color_selected);
-            Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", 
-                out color_normal);
-        } else {
-            Gdk.Color.parse("red", out color_selected);
-            Gdk.Color.parse("#AA0000", out color_normal);
-        }
+        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", 
+            out color_selected);
+        Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", 
+            out color_normal);
     }
     
     void on_clip_updated() {
@@ -157,11 +152,14 @@ public class ClipView : Gtk.DrawingArea {
             gc.set_clip_rectangle(r);
 
             Pango.Layout layout;
-            
-            if (!clip.clipfile.is_online())
+            if (!clip.clipfile.is_online()) {
+                stderr.printf("offline\n");
                 layout = create_pango_layout("%s (Offline)".printf(clip.name));
-            else
+            }
+            else {
+                stderr.printf("online\n");
                 layout = create_pango_layout("%s".printf(clip.name));
+            }
             Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
         }   
     }
