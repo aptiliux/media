@@ -60,6 +60,7 @@ class TrackView : Gtk.Fixed {
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
             if (view.clip == clip) {
+                view.clip_moved -= update;
                 remove(view);
                 return;
             }

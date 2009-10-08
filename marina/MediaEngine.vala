@@ -17,11 +17,13 @@ namespace View {
 
 class MediaClip {
     public Gst.Element file_source;
+    weak Model.Clip clip;
     Gst.Bin composition;
     
     public signal void clip_removed(MediaClip clip);
     
     public MediaClip(Gst.Bin composition, Model.Clip clip) {
+        this.clip = clip;
         this.composition = composition;
         file_source = make_element("gnlsource");
         if (!clip.is_recording) {
@@ -39,6 +41,12 @@ class MediaClip {
     }
     
     ~MediaClip() {
+        clip.removed -= on_clip_removed;
+        if (!clip.is_recording) {
+            clip.duration_changed -= on_duration_changed;
+            clip.media_start_changed -= on_media_start_changed;
+            clip.start_changed -= on_start_changed;
+        }
         file_source.set_state(Gst.State.NULL);
     }
 

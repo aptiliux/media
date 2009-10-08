@@ -273,6 +273,7 @@ class Recorder : Gtk.Window {
     }
     
     void on_clip_removed(Model.Clip clip) {
+        clip.moved -= on_clip_moved;
         update_menu();
     }
     

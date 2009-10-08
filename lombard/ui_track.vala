@@ -98,7 +98,7 @@ class TrackView : Gtk.Fixed {
                 if (timeline.selected_clip == view) {
                     timeline.select_clip(null);
                 }
-                
+                view.clip_moved -= on_clip_moved;
                 remove(view);
                 timeline.track_changed();
                 return;
