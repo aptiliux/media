@@ -50,7 +50,7 @@ class MediaClip {
         file_source.set_state(Gst.State.NULL);
     }
 
-    void on_clip_removed() {
+    public void on_clip_removed() {
         composition.remove((Gst.Bin)file_source);
         clip_removed(this);
     }
@@ -76,6 +76,10 @@ class MediaClip {
         assert(add_result);
         bool sync_result = file_source.sync_state_with_parent();
         assert(sync_result);
+    }
+    
+    public bool is_equal(Model.Clip clip) {
+        return clip == this.clip;
     }
 }
 
@@ -149,8 +153,13 @@ public abstract class MediaTrack {
     
     public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
-    
+
     void on_clip_added(Model.Clip clip) {
+        clip.updated += on_clip_updated;
+        on_clip_updated(clip);
+    }
+    
+    void on_clip_updated(Model.Clip clip) {
         if (clip.clipfile.is_online()) {
             MediaClip media_clip;
             if (clip.type == Model.MediaType.AUDIO) {
@@ -160,7 +169,13 @@ public abstract class MediaTrack {
             }
             media_clip.clip_removed += on_media_clip_removed;
             
-            clips.add(media_clip);
+            clips.add(media_clip);            
+        } else {
+            foreach (MediaClip media_clip in clips) {
+                if (media_clip.is_equal(clip)) {
+                    media_clip.on_clip_removed();
+                }
+            }
         }
     }
     
