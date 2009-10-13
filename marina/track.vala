@@ -575,12 +575,17 @@ public class AudioTrack : Track {
     double pan;
     double volume;
 
+    int default_num_channels;
+    public static const int INVALID_CHANNEL_COUNT = -1;
+
     public signal void parameter_changed(Parameter parameter, double new_value);
     public signal void level_changed(double level_left, double level_right);
     public signal void channel_count_changed(int channel_count);
     
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
+        
+        set_default_num_channels(INVALID_CHANNEL_COUNT);
     }
 
     protected override string name() { return "audio"; }
@@ -592,6 +597,11 @@ public class AudioTrack : Track {
     public override void write_attributes(FileStream f) {
         base.write_attributes(f);
         f.printf("volume=\"%f\" panorama=\"%f\" ", get_volume(), get_pan());
+        
+        int channels;
+        if (get_num_channels(out channels) &&
+            channels != INVALID_CHANNEL_COUNT)
+            f.printf("channels=\"%d\" ", channels);
     }
 
     public void set_pan(double new_value) {
@@ -637,13 +647,29 @@ public class AudioTrack : Track {
     public double get_volume() {
         return volume;
     }
+    
+    public void set_default_num_channels(int num) {
+        default_num_channels = num;
+    }
 
     public bool get_num_channels(out int num) {
-        for (int i = 0; i < clips.size; i++) {
-            if (clips[i].clipfile.is_online())
-                return clips[i].clipfile.get_num_channels(out num);
+        if (clips.size == 0)
+            return false;
+         
+        foreach (Clip c in clips) {
+            if (c.clipfile.is_online()) {
+                bool can = c.clipfile.get_num_channels(out num);
+                assert(can);
+                
+                return can;
+            }
         }
-        return false;
+        
+        if (default_num_channels == INVALID_CHANNEL_COUNT)
+            return false;
+            
+        num = default_num_channels;
+        return true;
     }
     
     public override bool check(Clip clip) {

@@ -24,6 +24,9 @@ public class VideoTrack : Track {
 
         if (!clip.clipfile.is_online())
             return true;
+            
+        if (clips.size == 0)
+            return true;
 
         if (!get_framerate(out rate2)) {
             error_occurred("Cannot get initial frame rate!", null);
@@ -87,20 +90,24 @@ public class VideoTrack : Track {
     }
 
     public bool get_framerate(out Fraction rate) {
-        if (clips.size == 0) {
-            rate.numerator = 2997;
-            rate.denominator = 100;
-            return true;
+        if (clips.size == 0)
+            return false;
+    
+        foreach (Clip c in clips) {
+            if (c.clipfile.is_online()) {
+                bool can = c.clipfile.get_frame_rate(out rate);
+                assert(can);
+                
+                return can;
+            }
         }
         
-        for (int i = 0; i < clips.size; i++) {
-            if (clips[i].clipfile.is_online())
-                return clips[i].clipfile.get_frame_rate(out rate);
-        }
-        return false;
+        if (project.default_framerate.equal(Project.INVALID_FRAME_RATE))
+            return false;
+        
+        rate = project.default_framerate;
+        return true;
     }
-
-    
 }
     
 }

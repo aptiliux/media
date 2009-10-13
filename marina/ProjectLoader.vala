@@ -13,6 +13,10 @@ public class LoaderHandler {
     public LoaderHandler() {
     }
     
+    public virtual bool commit_library(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+    
     public virtual bool commit_marina(string[] attr_names, string[] attr_values) {
         return true;
     }
@@ -125,12 +129,13 @@ class ProjectBuilder {
     }
 
     void handle_library(XmlElement library) {
-        foreach (XmlElement child in library.children) {
-            if (!handler.commit_clipfile(child.attribute_names, child.attribute_values))
-                error_occurred("Improper library node");
+        if (handler.commit_library(library.attribute_names, library.attribute_values)) {
+            foreach (XmlElement child in library.children) {
+                if (!handler.commit_clipfile(child.attribute_names, child.attribute_values))
+                    error_occurred("Improper library node");
+            } 
+            handler.leave_library();
         }
-        
-        handler.leave_library();
     }
     
     void handle_tracks(XmlElement tracks) {
@@ -160,7 +165,7 @@ class ProjectBuilder {
         return true;
     }
 
-    public void build_project(XmlElement? root) {  
+    public void build_project(XmlElement? root) {
         handle_library(root.children[0]);
         handle_tracks(root.children[1]);
         

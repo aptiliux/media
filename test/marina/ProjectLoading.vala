@@ -81,7 +81,11 @@ void check_document(void *fixture) {
 
     document_valid = true;
     project_builder.error_occurred += on_error_occurred;
-    project_builder.build_project(root);
+    
+    // We call check project to check the integrity of the file skeleton.
+    // If it's good, then we can load all the pieces of the file (library, tracks).
+    if (project_builder.check_project(root))
+        project_builder.build_project(root);
     assert(document_valid == state_change_fixture->valid);
     Test.message("finished executing check document");
 }
@@ -121,8 +125,8 @@ class ProjectLoaderSuite : TestSuite {
         int length = Test.thorough() ? project_documents.length : 1;
         
         for (int i = 0; i < length; ++i) {
-            add(new TestCase("Document%d".printf(i), sizeof(StateChangeFixture),
-                state_change_fixture_buildup, check_document, state_change_fixture_teardown));
+            add(new TestCase("Document%d".printf(i), state_change_fixture_buildup, check_document, 
+                                state_change_fixture_teardown, sizeof(StateChangeFixture)));
         }
     }
 }

@@ -35,6 +35,26 @@ public class MediaLoaderHandler : LoaderHandler {
         return true;
     }
     
+    public override bool commit_library(string[] attr_names, string[] attr_values) {
+        // We return true since framerate is an optional parameter
+        if (attr_names.length != 1)
+            return true;
+        
+        if (attr_names[0] != "framerate") {
+            load_error("Missing framerate tag");
+            return false;
+        }
+        
+        string[] arr = attr_values[0].split("/");
+        if (arr.length != 2) {
+            load_error("Invalid framerate attribute");
+            return false;
+        }
+            
+        the_project.set_default_framerate(Fraction(arr[0].to_int(), arr[1].to_int()));
+        return true;
+    }
+    
     public override bool commit_track(string[] attr_names, string[] attr_values) {
         assert(current_track == null);
         
@@ -82,6 +102,9 @@ public class MediaLoaderHandler : LoaderHandler {
                         break;
                     case "volume":
                         audio_track._set_volume(attr_values[i].to_double());
+                        break;
+                    case "channels":
+                        audio_track.set_default_num_channels(attr_values[i].to_int());
                         break;
                     default:
                         break;
@@ -245,6 +268,15 @@ public abstract class Project {
     
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
+    
+    public Fraction default_framerate;
+    
+    /* TODO:
+        * This can't be const since the Vala compiler
+        * (0.7.7) crashes if we try to make it a const.
+        * I've filed a bug with the Vala bugzilla for this.
+    */    
+    public static Fraction INVALID_FRAME_RATE = Fraction(-1, 1);
 
     public signal void playstate_changed(PlayState playstate);
     
@@ -268,6 +300,8 @@ public abstract class Project {
         media_engine = new View.MediaEngine(this, include_video);
         track_added += media_engine.on_track_added;
         media_engine.playstate_changed += on_playstate_changed;
+        
+        set_default_framerate(INVALID_FRAME_RATE);
     }
     
     public void on_playstate_changed() {
@@ -669,6 +703,10 @@ public abstract class Project {
         name_changed(filename);
     }
     
+    public void set_default_framerate(Fraction rate) {
+        default_framerate = rate;
+    }
+    
     public string get_file_display_name() {
         if (project_file == null) {
             return "Unsaved Project - %s".printf(get_app_name());
@@ -760,11 +798,25 @@ public abstract class Project {
     }
     
     public int get_file_version() {
-        return 2;
+        return 3;
     }
     
     public void save_library(FileStream f) {
-        f.printf("  <library>\n");
+        f.printf("  <library");
+        
+        Fraction r = default_framerate;
+        
+        foreach (Track t in tracks) {
+            if (t.media_type () == MediaType.VIDEO) {
+                VideoTrack video_track = t as VideoTrack;
+                if (video_track.get_framerate(out r))
+                    break;
+            }
+        }
+        if (!r.equal(INVALID_FRAME_RATE))
+            f.printf(" framerate=\"%d/%d\"", r.numerator, 
+                                             r.denominator);
+        f.printf(">\n");
         
         for (int i = 0; i < clipfiles.size; i++) {
             f.printf("    <clipfile filename=\"%s\" id=\"%d\"/>\n", clipfiles[i].filename, i);
