@@ -475,7 +475,7 @@ class App : Gtk.Window {
     
     public void on_revert_to_original() {
         Model.Clip clip = timeline.get_selected_clip();
-        Model.Track? track = track_from_clip_file(clip.clipfile);
+        Model.Track? track = project.track_from_clip(clip);
         if (track != null) {
             track.revert_to_original(clip);
         }
@@ -501,16 +501,6 @@ class App : Gtk.Window {
     
     void on_importer_started(Model.ClipImporter i, int num) {
         new MultiFileProgress(this, num, "Import", i);
-    }
-
-    Model.Track? track_from_clip_file(Model.ClipFile cf) {
-        if (cf.video_caps != null) {
-            return project.find_video_track();
-        } else if (cf.audio_caps != null) {
-            return project.find_audio_track();
-        } else {
-            return null;
-        }
     }
         
     public void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
