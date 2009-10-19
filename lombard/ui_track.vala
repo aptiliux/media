@@ -21,12 +21,13 @@ class TrackView : Gtk.Fixed {
     bool drag_after_destination;
     
     public int curr_drag_x;
-    
+    public bool adding = false;
+    public bool overwriting = false;
     public bool dragging = false;
     public bool drag_intersect = false;
     Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
     Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.PLUS);
-    
+
     public TrackView(Model.Track track, TimeLine t) {
         this.track = track;
         timeline = t;
@@ -45,12 +46,6 @@ class TrackView : Gtk.Fixed {
         set_clip_pos(clip);
     }
     
-    public void on_drag_updated(ClipView clip) {
-        if (dragging) {
-            update_drag_clip();
-        }
-    }
-    
     public void on_clip_deleted(Model.Clip clip, bool ripple) {
         track.delete_clip(clip, ripple);
         if (ripple) {
@@ -62,23 +57,23 @@ class TrackView : Gtk.Fixed {
     public void on_clip_added(Model.Track t, Model.Clip clip) {
         ClipView view = new ClipView(clip, timeline.provider, TrackView.clip_height);
         view.clip_moved += on_clip_moved;
-        view.drag_updated += on_drag_updated;
         view.clip_deleted += on_clip_deleted;
-        
+
         put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);
         view.show();
-        
-        if (timeline.control_pressed) {
+
+        if (adding) {
             timeline.select_clip(view);
         }
+        
         timeline.track_changed();
     }
-    
+
     public void set_clip_pos(ClipView view) {
         move(view, timeline.provider.time_to_xpos(view.clip.start), TimeLine.BORDER);
         queue_draw();
     }
-    
+
     public void resize() {
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
@@ -106,10 +101,9 @@ class TrackView : Gtk.Fixed {
         }
     }
 
-    public void update_drag_clip() {  
-        if (timeline.control_pressed) {
+    public void update_drag_clip() {
+        if (adding) {
             window.set_cursor(plus_cursor);
-            
             track.add_new_clip(timeline.drag_source_clip.clip.copy(), 
                                 timeline.drag_source_clip.clip.start, false);
 
@@ -120,7 +114,6 @@ class TrackView : Gtk.Fixed {
             }
         } else {
             window.set_cursor(hand_cursor);
-
             if (timeline.selected_clip != timeline.drag_source_clip) {
                 remove(timeline.selected_clip);
                 timeline.drag_source_clip.clip.start = timeline.selected_clip.clip.start;
@@ -143,7 +136,7 @@ class TrackView : Gtk.Fixed {
         timeline.selected_clip.clip.gnonlin_disconnect();
         track.remove_clip_from_array(drag_clip_origin);     
         
-        update_intersect_state();   
+        update_intersect_state();
     }
 
     public void unselect_gap() {
@@ -159,13 +152,13 @@ class TrackView : Gtk.Fixed {
                 return w;
         return null;
     }
-    
+
     public override bool button_press_event(Gdk.EventButton e) {
         if (e.type != Gdk.EventType.BUTTON_PRESS &&
             e.type != Gdk.EventType.2BUTTON_PRESS &&
             e.type != Gdk.EventType.3BUTTON_PRESS)
             return false;
-        
+
         if (e.button == 1 ||
             e.button == 3) {
             int x = (int) e.x;
@@ -199,51 +192,53 @@ class TrackView : Gtk.Fixed {
         }
         return false;
     }
-    
+
     void on_gap_view_removed(GapView gap_view) {
         track.delete_gap(gap_view.gap);
     }
-    
+
     void on_gap_view_unselected(GapView gap_view) {
         unselect_gap();
     }
-    
+
     public void cancel_drag() {
         track.add_clip_at(timeline.selected_clip.clip, init_drag_time, false, init_drag_time);
         timeline.selected_clip.ghost = false;
         clear_drag();
     }
-    
+
     public void clear_drag() {
         init_drag_x = -1;
+        adding = false;
         dragging = false;
+        overwriting = false;
         window.set_cursor(null);
         queue_draw();
     }
-    
+
     public override bool button_release_event(Gdk.EventButton event) {
         if (event.type == Gdk.EventType.BUTTON_RELEASE) {  
             if (dragging) {
                 timeline.selected_clip.clip.gnonlin_connect();
-                if (timeline.control_pressed) {
+                if (adding) {
                     if (timeline.do_paste(timeline.selected_clip.clip, 
                             drag_clip_destination == -1 ? 
                                 (drag_x_coord < TimeLine.BORDER ?
                                     0 : timeline.selected_clip.clip.start) : 
                                 track.get_time_from_pos(drag_clip_destination,
                                     drag_after_destination),
-                            timeline.shift_pressed, false) == -1) {
+                            overwriting, false) == -1) {
                         remove(timeline.selected_clip);               
                     }
                 } else {
                     if (drag_intersect &&
-                        !timeline.shift_pressed) {
+                        !overwriting) {
                         track.rotate_clip(timeline.selected_clip.clip,
                                    drag_clip_origin, drag_clip_destination, drag_after_destination);
                     } else {
                         track.add_clip_at(timeline.selected_clip.clip, 
                              drag_x_coord < TimeLine.BORDER ? 0: timeline.selected_clip.clip.start,
-                             timeline.shift_pressed, init_drag_time);
+                             overwriting, init_drag_time);
                     }
                 }
                 timeline.selected_clip.ghost = false;
@@ -274,7 +269,7 @@ class TrackView : Gtk.Fixed {
     
     public void update_intersect_state() {
         calc_drag_intersect();
-        if (timeline.shift_pressed ||
+        if (overwriting ||
             !drag_intersect) {
             timeline.project.snap_clip(timeline.selected_clip.clip, 
                         timeline.provider.get_pixel_snap_time());
@@ -302,6 +297,8 @@ class TrackView : Gtk.Fixed {
         if (init_drag_x != -1) {
             int x = (int) event.x;
             if (!dragging && (x - init_drag_x).abs() > MIN_DRAG) {
+                adding = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
+                overwriting = (event.state & Gdk.ModifierType.SHIFT_MASK) != 0;
                 dragging = true;                
                 update_drag_clip();
             }

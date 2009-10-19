@@ -576,33 +576,11 @@ class App : Gtk.Window {
             case KeySyms.RIGHT:
                 project.go_next_frame();
                 return true;
-            case KeySyms.SHIFT_LEFT:
-            case KeySyms.SHIFT_RIGHT:
-                timeline.set_shift_pressed(true);
-                return true;
             case KeySyms.ESCAPE:
                 timeline.escape_pressed();
                 return true;
-            case KeySyms.CONTROL_LEFT:
-            case KeySyms.CONTROL_RIGHT:
-                timeline.set_control_pressed(true);
-                return true;
         }
         return base.key_press_event(event);
-    }
-    
-    public override bool key_release_event(Gdk.EventKey event) {
-        switch (event.keyval) {
-            case KeySyms.SHIFT_LEFT:
-            case KeySyms.SHIFT_RIGHT:
-                timeline.set_shift_pressed(false);
-                return true;
-            case KeySyms.CONTROL_LEFT:
-            case KeySyms.CONTROL_RIGHT:
-                timeline.set_control_pressed(false);
-                return true;
-        }
-        return base.key_release_event(event);
     }
     
     void on_view_library() {

@@ -51,7 +51,6 @@ public class ClipView : Gtk.DrawingArea {
     
     public signal void clip_deleted(Model.Clip clip, bool ripple);
     public signal void clip_moved(ClipView clip);
-    public signal void drag_updated(ClipView clip);
     
     public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
         this.clip = clip;
@@ -102,10 +101,6 @@ public class ClipView : Gtk.DrawingArea {
         clip_moved(this);
     }
 
-    public void update_drag() {
-        drag_updated(this);
-    }
-    
     public void delete_clip(bool ripple) {
         clip_deleted(clip, ripple);
     }

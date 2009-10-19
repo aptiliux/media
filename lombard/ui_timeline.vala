@@ -21,9 +21,6 @@ class TimeLine : Gtk.EventBox {
     
     Gtk.Widget drag;
     
-    public bool shift_pressed = false;
-    public bool control_pressed = false;
-
     public const int BAR_HEIGHT = 20;
     public const int BORDER = 4;
 
@@ -182,16 +179,13 @@ class TimeLine : Gtk.EventBox {
                       xpos, 0,
                       xpos, allocation.height);
         
-        if (!shift_pressed) {
-            foreach (TrackView track in tracks) {
-                if (track.dragging && track.drag_intersect) {
-                    Gdk.draw_line(window, style.white_gc, 
-                                track.drag_x_coord, 0, 
-                                track.drag_x_coord, allocation.height);
-                }
+        foreach (TrackView track in tracks) {
+            if (!track.overwriting && track.dragging && track.drag_intersect) {
+                Gdk.draw_line(window, style.white_gc, 
+                            track.drag_x_coord, 0, 
+                            track.drag_x_coord, allocation.height);
             }
         }
-        
         return true;
     }
 
@@ -202,29 +196,6 @@ class TimeLine : Gtk.EventBox {
         project.media_engine.go(time);
     }
 
-    public void set_control_pressed(bool c) {
-        if (c == control_pressed) {
-            return;
-        }
-        
-        control_pressed = c;
-        if (selected_clip != null) {
-            selected_clip.update_drag();
-        }
-        queue_draw();
-    }
-
-    public void set_shift_pressed(bool s) {
-        shift_pressed = s;
-        
-        TrackView t = drag as TrackView;
-        if (t != null) {
-            if (t.dragging)
-                t.update_intersect_state();
-            queue_draw();
-        }
-    }
-    
     public void escape_pressed() {
         TrackView t = drag as TrackView;
         if (t != null) {
