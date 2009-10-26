@@ -464,7 +464,7 @@ class Recorder : Gtk.Window {
     
     void on_delete() {
         Model.Clip clip = timeline.selected.clip;
-        selected_track().delete_clip(clip, false);
+        selected_track().delete_clip(clip);
     }
     
     public void on_split_at_playhead() {

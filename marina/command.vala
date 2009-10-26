@@ -73,15 +73,13 @@ public class ClipCommand : Command {
     Clip clip;
     int64 time;
     Action action;
-    bool ripple;
     int index;
     
-    public ClipCommand(Action action, Track track, Clip clip, int64 time, bool ripple) {
+    public ClipCommand(Action action, Track track, Clip clip, int64 time) {
         this.track = track;
         this.clip = clip;
         this.time = time;
         this.action = action;
-        this.ripple = ripple;
         this.index = track.get_clip_index(clip);
     }
     
@@ -91,7 +89,7 @@ public class ClipCommand : Command {
                 track._append_at_time(clip, time);
                 break;
             case Action.DELETE:
-                track._delete_clip(clip, ripple);
+                track._delete_clip(clip);
                 break;
             default:
                 assert(false);
@@ -102,15 +100,10 @@ public class ClipCommand : Command {
     public override void undo() {
         switch(action) {
             case Action.APPEND:
-                track._delete_clip(clip, ripple);
+                track._delete_clip(clip);
                 break;
             case Action.DELETE:
-                if (!ripple) {
-                    if (index != -1) {
-                        track.shift_clips(index, -clip.duration);
-                    }
-                }
-                track.insert(index, clip, time);
+                track.add(clip, time);
                 break;
             default:
                 assert(false);
@@ -139,23 +132,21 @@ public class ClipAddCommand : Command {
     Track track;
     Clip clip;
     int64 delta;
-    bool overwrite;
     
     public ClipAddCommand(Track track, Clip clip, int64 original_time, 
-        int64 new_start, bool overwrite) {
+        int64 new_start) {
         this.track = track;
         this.clip = clip;
         this.delta = new_start - original_time;
-        this.overwrite = overwrite;
     }
     
     public override void apply() {
-        track._add_clip_at(clip, clip.start, overwrite);
+        track._move(clip, clip.start);
     }
     
     public override void undo() {
-        track.remove_clip_from_array(track.get_clip_index(clip));     
-        track._add_clip_at(clip, clip.start - delta, overwrite);
+        track.remove_clip_from_array(clip);     
+        track._move(clip, clip.start - delta);
     }
     
     public override bool merge(Command command) {

@@ -40,7 +40,6 @@ public class GapView : Gtk.DrawingArea {
 public class ClipView : Gtk.DrawingArea {
     public Model.Clip clip;
     weak Model.TimeSystem time_provider;
-    public bool ghost;
     public bool is_selected;
     public int height; // TODO: We request size of height, but we aren't allocated this height.
                        // We should be using the allocated height, not the requested height. 
@@ -49,14 +48,13 @@ public class ClipView : Gtk.DrawingArea {
     Gdk.Color color_normal;
     Gdk.Color color_selected;
     
-    public signal void clip_deleted(Model.Clip clip, bool ripple);
+    public signal void clip_deleted(Model.Clip clip);
     public signal void clip_moved(ClipView clip);
     
     public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
-        ghost = false;
         is_selected = false;
         
         clip.moved += on_clip_moved;
@@ -101,66 +99,61 @@ public class ClipView : Gtk.DrawingArea {
         clip_moved(this);
     }
 
-    public void delete_clip(bool ripple) {
-        clip_deleted(clip, ripple);
+    public void delete_clip() {
+        clip_deleted(clip);
     }
     
     public void draw() {
-        if (ghost) {
-            window.draw_rectangle(style.white_gc, false, allocation.x, 
-                                    allocation.y, allocation.width - 1, allocation.height - 1);
-        } else {
-            weak Gdk.Color fill = is_selected ? color_selected : color_normal;
-                                                                             
-            bool left_trimmed = clip.media_start != 0;
-            bool right_trimmed = clip.clipfile.is_online() ? 
-                                  (clip.media_start + clip.duration != clip.clipfile.length) : false;
-                
-            if (!left_trimmed && !right_trimmed) {
-                draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
-                                       allocation.width - 2, allocation.height - 2);
-                draw_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
-                                       allocation.width - 1, allocation.height - 1);
-                                       
-            } else if (!left_trimmed && right_trimmed) {
-                draw_left_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
-                                            allocation.width - 2, allocation.height - 2);
-                draw_left_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
-                                       allocation.width - 1, allocation.height - 1);
-                                       
-            } else if (left_trimmed && !right_trimmed) {
-                draw_right_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
-                                             allocation.width - 2, allocation.height - 2);
-                draw_right_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
-                                             allocation.width - 1, allocation.height - 1);
-
-            } else {
-                draw_square_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
-                                      allocation.width - 2, allocation.height - 2);
-                draw_square_rectangle(window, color_black, false, allocation.x, allocation.y,
-                                      allocation.width - 1, allocation.height - 1);
-            }
-               
-            Gdk.GC gc = new Gdk.GC(window);
-            Gdk.Rectangle r = { 0, 0, 0, 0 };
-
-            // Due to a Vala compiler bug, we have to do this initialization here...
-            r.x = allocation.x;
-            r.y = allocation.y;
-            r.width = allocation.width;
-            r.height = allocation.height;
+        weak Gdk.Color fill = is_selected ? color_selected : color_normal;
+                                                                         
+        bool left_trimmed = clip.media_start != 0;
+        bool right_trimmed = clip.clipfile.is_online() ? 
+                              (clip.media_start + clip.duration != clip.clipfile.length) : false;
             
-            gc.set_clip_rectangle(r);
+        if (!left_trimmed && !right_trimmed) {
+            draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+                                   allocation.width - 2, allocation.height - 2);
+            draw_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+                                   allocation.width - 1, allocation.height - 1);
+                                   
+        } else if (!left_trimmed && right_trimmed) {
+            draw_left_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+                                        allocation.width - 2, allocation.height - 2);
+            draw_left_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+                                   allocation.width - 1, allocation.height - 1);
+                                   
+        } else if (left_trimmed && !right_trimmed) {
+            draw_right_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+                                         allocation.width - 2, allocation.height - 2);
+            draw_right_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+                                         allocation.width - 1, allocation.height - 1);
 
-            Pango.Layout layout;
-            if (!clip.clipfile.is_online()) {
-                layout = create_pango_layout("%s (Offline)".printf(clip.name));
-            }
-            else {
-                layout = create_pango_layout("%s".printf(clip.name));
-            }
-            Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
-        }   
+        } else {
+            draw_square_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+                                  allocation.width - 2, allocation.height - 2);
+            draw_square_rectangle(window, color_black, false, allocation.x, allocation.y,
+                                  allocation.width - 1, allocation.height - 1);
+        }
+           
+        Gdk.GC gc = new Gdk.GC(window);
+        Gdk.Rectangle r = { 0, 0, 0, 0 };
+
+        // Due to a Vala compiler bug, we have to do this initialization here...
+        r.x = allocation.x;
+        r.y = allocation.y;
+        r.width = allocation.width;
+        r.height = allocation.height;
+        
+        gc.set_clip_rectangle(r);
+
+        Pango.Layout layout;
+        if (!clip.clipfile.is_online()) {
+            layout = create_pango_layout("%s (Offline)".printf(clip.name));
+        }
+        else {
+            layout = create_pango_layout("%s".printf(clip.name));
+        }
+        Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
     }
     
     public override bool expose_event(Gdk.EventExpose event) {

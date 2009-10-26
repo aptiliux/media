@@ -22,7 +22,7 @@ class RecordFetcherCompletion : FetcherCompletion {
         base.complete(fetch);
         Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
             isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length, false);
-        track.add_new_clip(the_clip, position, true);
+        track.add(the_clip, position);
     }
 }
 

@@ -389,7 +389,9 @@ public class Clip {
         
         set {
             _start = value;
-            start_changed(_start);
+            if (connected) {
+                start_changed(_start);
+            }
             moved(this);
         }
     }
@@ -402,7 +404,9 @@ public class Clip {
         
         set {
             _media_start = value;
-            media_start_changed(_media_start);
+            if (connected) {
+                media_start_changed(_media_start);
+            }
             moved(this);
         }
     }
@@ -414,7 +418,9 @@ public class Clip {
         }
         set {
             _duration = value;
-            duration_changed(_duration);
+            if (connected) {
+                duration_changed(_duration);
+            }
             moved(this);
         }
     }
@@ -473,21 +479,17 @@ public class Clip {
                 this.start < start + length;
     }
     
-    public bool snap(Clip other, int64 pad) {
+    public int64 snap(Clip other, int64 pad) {
         if (time_in_range(start, other.start, pad)) {
-            start = other.start;
-            return true;
+            return other.start;
         } else if (time_in_range(start, other.end, pad)) {
-            start = other.end;
-            return true;
+            return other.end;
         } else if (time_in_range(end, other.start, pad)) {
-            start = other.start - duration;
-            return true;
+            return other.start - duration;
         } else if (time_in_range(end, other.end, pad)) {
-            start = other.end - duration;
-            return true;
+            return other.end - duration;
         }
-        return false;
+        return start;
     }
     
     public bool snap_coord(out int64 s, int64 span) {

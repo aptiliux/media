@@ -13,13 +13,11 @@ class TimeLine : Gtk.EventBox {
     ArrayList<TrackView> tracks = new ArrayList<TrackView>();
     Gtk.VBox vbox;
     
-    public ClipView drag_source_clip;
-    public ClipView selected_clip;
+    public ArrayList<ClipView> selected_clips = new ArrayList<ClipView>();
+    public int selected_clip_index = 0;
     public Model.Clip clipboard_clip = null;
     
     public Gtk.Menu context_menu;
-    
-    Gtk.Widget drag;
     
     public const int BAR_HEIGHT = 20;
     public const int BORDER = 4;
@@ -87,43 +85,43 @@ class TimeLine : Gtk.EventBox {
     }
 
     public void select_clip(ClipView? clip_view) {
-        drag_source_clip = clip_view;
-        if (selected_clip != null) {
-            selected_clip.is_selected = false;
-        }
-        selected_clip = clip_view;
-        if (selected_clip != null) {
-            selected_clip.is_selected = true;
+        if (clip_view != null) {
+            if (!clip_view.is_selected) {
+                selected_clips.add(clip_view);
+                clip_view.is_selected = true;
+            }
+        } else {
+            foreach (ClipView clip in selected_clips) {
+                clip.is_selected = false;
+            }
+            selected_clips.clear();
         }
         queue_draw();
         selection_changed(true);
     }
     
-    public void unselect_clip() {
-        if (selected_clip != null) {
-            selected_clip.is_selected = false;
+    public void unselect_clip(ClipView clip_view) {
+        clip_view.is_selected = false;
+        if (selected_clips.contains(clip_view)) {
+            selected_clips.remove(clip_view);
+            queue_draw();
+            selection_changed(false);
         }
-        
-        selected_clip = null;
-        queue_draw();
-        selection_changed(false);
     }
     
     public bool is_clip_selected() {
-        return selected_clip != null;
-    }
-    
-    public Model.Clip get_selected_clip() {
-        return selected_clip.clip;
+        return selected_clips.size > 0;
     }
     
     public bool gap_selected() {
         return gap_view != null;
     }
     
-    public void delete_selection(bool ripple) {
-        if (selected_clip != null) {
-            selected_clip.delete_clip(ripple);
+    public void delete_selection() {
+        if (is_clip_selected()) {
+            while (selected_clips.size > 0) {
+                selected_clips[0].delete_clip();
+            }
             select_clip(null);
         } else {
             if (gap_view != null) {
@@ -141,34 +139,27 @@ class TimeLine : Gtk.EventBox {
         }
     }
     
-    public void do_cut(bool ripple) {
-        clipboard_clip = selected_clip.clip;
-        delete_selection(ripple);
+    public void do_cut() {
+        assert(selected_clips.size == 1);
+        clipboard_clip = selected_clips[0].clip;
+        delete_selection();
     }
     
     public void do_copy() {
-        clipboard_clip = selected_clip.clip;
+        assert(selected_clips.size == 1);
+        clipboard_clip = selected_clips[0].clip;
         selection_changed(true);
     }
     
-    public void paste(bool over) {
-        do_paste(clipboard_clip.copy(), project.transport_get_position(), over, true);
+    public void paste() {
+        do_paste(clipboard_clip.copy(), project.transport_get_position(), true);
     }
     
-    public int do_paste(Model.Clip c, int64 pos, bool over, bool new_clip) {
+    public void do_paste(Model.Clip c, int64 pos, bool new_clip) {
         TrackView view = c.type == Model.MediaType.VIDEO ? 
             find_video_track_view() : find_audio_track_view();
-        int do_ripple = view.track.do_clip_paste(c, pos, over, new_clip);
-        
-        if (do_ripple == -1) {
-            DialogUtils.error("Error", 
-                "Cannot paste clip onto another clip.");
-        } else if (do_ripple == 1) {
-            TrackView other = (view == tracks[0]) ? tracks[1] : tracks[0];
-            other.track.ripple_paste(c.duration, pos);
-        }
+        view.track.do_clip_paste(c, pos, new_clip);
         queue_draw();
-        return do_ripple;
     }
     
     public override bool expose_event(Gdk.EventExpose event) {
@@ -180,7 +171,7 @@ class TimeLine : Gtk.EventBox {
                       xpos, allocation.height);
         
         foreach (TrackView track in tracks) {
-            if (!track.overwriting && track.dragging && track.drag_intersect) {
+            if (track.dragging && track.drag_intersect) {
                 Gdk.draw_line(window, style.white_gc, 
                             track.drag_x_coord, 0, 
                             track.drag_x_coord, allocation.height);
@@ -196,15 +187,6 @@ class TimeLine : Gtk.EventBox {
         project.media_engine.go(time);
     }
 
-    public void escape_pressed() {
-        TrackView t = drag as TrackView;
-        if (t != null) {
-            if (t.dragging)
-                t.cancel_drag();
-            queue_draw();
-        }
-    }
-
     Gtk.Widget? find_child(double x, double y) {
         foreach (Gtk.Widget w in vbox.get_children())
             if (w.allocation.y <= y && y < w.allocation.y + w.allocation.height)
@@ -216,7 +198,7 @@ class TimeLine : Gtk.EventBox {
         if (gap_view != null)
             gap_view.unselect();
       
-        drag = find_child(event.x, event.y);
+        Gtk.Widget? drag = find_child(event.x, event.y);
         if (drag != null)
             drag.button_press_event(event);
         queue_draw();
@@ -225,6 +207,7 @@ class TimeLine : Gtk.EventBox {
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {
+        Gtk.Widget? drag = find_child(event.x, event.y);
         if (drag != null) {
             drag.motion_notify_event(event);
             queue_draw();
@@ -233,13 +216,14 @@ class TimeLine : Gtk.EventBox {
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
+        Gtk.Widget? drag = find_child(event.x, event.y);
         if (drag != null) {
             drag.button_release_event(event);
             drag = null;
             queue_draw();
         }
         
-        if (selected_clip != null && event.button == 3) {
+        if (is_clip_selected() && event.button == 3) {
             context_menu.select_first(true);
             context_menu.popup(null, null, null, 0, 0);
         } else {

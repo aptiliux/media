@@ -198,7 +198,7 @@ public class MediaLoaderHandler : LoaderHandler {
         
         Clip clip = new Clip(clipfetchers[id].clipfile, current_track.media_type(), clip_name, 
             start, media_start, duration, false);
-        current_track.add_new_clip(clip, start, false);
+        current_track.add(clip, start);
         return true;
     }
     
@@ -360,12 +360,14 @@ public abstract class Project {
         return max;
     }
     
-    public void snap_clip(Clip c, int64 span) {
+    public int64 snap_clip(Clip c, int64 span) {
         foreach (Track track in tracks) {
-            if (track.snap_clip(c, span)) {
-                break;
+            int64 new_start = track.snap_clip(c, span);
+            if (new_start != c.start) {
+                return new_start;
             }
         }
+        return c.start;
     }
     
     public void snap_coord(out int64 coord, int64 span) {
@@ -515,15 +517,6 @@ public abstract class Project {
         media_engine.go(position);
     }
 
-    public void ripple_delete(Track instigator, int64 length, int64 clip_start, 
-            int64 clip_length) {
-        foreach (Track track in tracks) {
-            if (track != instigator) {
-                track.ripple_delete(length, clip_start, clip_length);
-            }
-        }
-    }
-    
     public bool transport_is_playing() {
         return media_engine.playing;
     }
@@ -596,7 +589,7 @@ public abstract class Project {
         foreach (Track t in tracks) {
             for (int i = 0; i < t.clips.size; i++) {
                 if (t.clips[i].clipfile == cf) {
-                    t.delete_clip(t.clips[i], false);
+                    t.delete_clip(t.clips[i]);
                     i --;
                 }
             }
@@ -605,7 +598,7 @@ public abstract class Project {
         foreach (Track t in inactive_tracks) {
             for (int i = 0; i < t.clips.size; i++) {
                 if (t.clips[i].clipfile == cf) {
-                    t.delete_clip(t.clips[i], false);
+                    t.delete_clip(t.clips[i]);
                     i --;
                 }
             }

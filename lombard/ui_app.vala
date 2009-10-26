@@ -29,12 +29,9 @@ class App : Gtk.Window {
     
     Gtk.Action export_action;
     Gtk.Action delete_action;
-    Gtk.Action delete_lift_action;
     Gtk.Action cut_action;
-    Gtk.Action cut_lift_action;
     Gtk.Action copy_action;
     Gtk.Action paste_action;
-    Gtk.Action paste_overwrite_action;
     Gtk.Action split_at_playhead_action;
     Gtk.Action trim_to_playhead_action;
     Gtk.Action revert_to_original_action;
@@ -68,13 +65,9 @@ class App : Gtk.Window {
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
         { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
-        { "CutLift", null, "_Lift Cut", "<Shift><Control>X", null, on_cut_lift },
         { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
         { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
-        { "PasteOver", null, "Paste _Overwrite", 
-          "<Shift><Control>V", null, on_paste_over },
         { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
-        { "DeleteLift", null, "L_ift Delete", "<Shift>Delete", null, on_delete_lift },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "_Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
@@ -117,12 +110,9 @@ class App : Gtk.Window {
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
       <menuitem name="EditDelete" action="Delete"/>
-      <menuitem name="EditDeleteLift" action="DeleteLift"/>
       <menuitem name="EditCut" action="Cut"/>
-      <menuitem name="EditCutLift" action="CutLift"/>
       <menuitem name="EditCopy" action="Copy"/>
       <menuitem name="EditPaste" action="Paste"/>
-      <menuitem name="EditPasteOver" action="PasteOver"/>
       <separator/>
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
@@ -180,12 +170,9 @@ class App : Gtk.Window {
   
         export_action = group.get_action("Export");
         delete_action = group.get_action("Delete");
-        delete_lift_action = group.get_action("DeleteLift");
         cut_action = group.get_action("Cut");
-        cut_lift_action = group.get_action("CutLift");
         copy_action = group.get_action("Copy");
         paste_action = group.get_action("Paste");
-        paste_overwrite_action = group.get_action("PasteOver");
         split_at_playhead_action = group.get_action("SplitAtPlayhead");
         trim_to_playhead_action = group.get_action("TrimToPlayhead");
         join_at_playhead_action = group.get_action("JoinAtPlayhead");
@@ -474,17 +461,20 @@ class App : Gtk.Window {
     }
     
     public void on_revert_to_original() {
-        Model.Clip clip = timeline.get_selected_clip();
-        Model.Track? track = project.track_from_clip(clip);
-        if (track != null) {
-            track.revert_to_original(clip);
+        foreach (ClipView clip_view in timeline.selected_clips) {
+            Model.Track? track = project.track_from_clip(clip_view.clip);
+            if (track != null) {
+                track.revert_to_original(clip_view.clip);
+            }
         }
     }
   
     public void on_clip_properties() {
         Fraction? frames_per_second = null;
         project.get_framerate_fraction(out frames_per_second);
-        DialogUtils.show_clip_properties(this, timeline.selected_clip, frames_per_second);
+        foreach (ClipView clip_view in timeline.selected_clips) {
+            DialogUtils.show_clip_properties(this, clip_view, frames_per_second);
+        }
     }
     
     public void on_position_changed() {
@@ -523,21 +513,30 @@ class App : Gtk.Window {
     }
 
     void update_menu() {
-        bool b = timeline.is_clip_selected();
+        bool clip_selected = timeline.is_clip_selected();
+        bool multiple_clips_selected = timeline.selected_clips.size > 1;
         
-        delete_action.set_sensitive(b || timeline.gap_selected() || library.has_selection());
-        delete_lift_action.set_sensitive(b || timeline.gap_selected());
-        cut_action.set_sensitive(b);
-        cut_lift_action.set_sensitive(b);
-        copy_action.set_sensitive(b);
+        delete_action.set_sensitive(clip_selected || timeline.gap_selected() || 
+            library.has_selection());
+        cut_action.set_sensitive(clip_selected && !multiple_clips_selected);
+        copy_action.set_sensitive(clip_selected && !multiple_clips_selected);
         paste_action.set_sensitive(timeline.clipboard_clip != null);
-        paste_overwrite_action.set_sensitive(timeline.clipboard_clip != null);
+
+        bool clip_is_trimmed = false;
+        if (clip_selected) {
+            foreach (ClipView clip_view in timeline.selected_clips) {
+                clip_is_trimmed = clip_view.clip.is_trimmed();
+                if (clip_is_trimmed) {
+                    break;
+                }
+            }
+        }
+        revert_to_original_action.set_sensitive(clip_is_trimmed);
+        clip_properties_action.set_sensitive(clip_selected);
         
-        revert_to_original_action.set_sensitive(b && timeline.get_selected_clip().is_trimmed());
-        clip_properties_action.set_sensitive(b);
         
-        b = project.playhead_on_clip();
-        split_at_playhead_action.set_sensitive(b);
+        bool playhead_on_clip = project.playhead_on_clip();
+        split_at_playhead_action.set_sensitive(playhead_on_clip);
         join_at_playhead_action.set_sensitive(project.playhead_on_contiguous_clip());
         
         bool dir;
@@ -555,8 +554,9 @@ class App : Gtk.Window {
     }
     
     public void on_library_selection_changed(bool selected) {
-        if (selected)
-            timeline.unselect_clip();
+        if (selected) {
+            timeline.select_clip(null);
+        }
         update_menu();
     }
     
@@ -575,9 +575,6 @@ class App : Gtk.Window {
                 return true;
             case KeySyms.RIGHT:
                 project.go_next_frame();
-                return true;
-            case KeySyms.ESCAPE:
-                timeline.escape_pressed();
                 return true;
         }
         return base.key_press_event(event);
@@ -650,19 +647,11 @@ class App : Gtk.Window {
         if (library.has_selection())
             library.delete_selection();
         else
-            timeline.delete_selection(true);
-    }
-    
-    void on_delete_lift() {
-        timeline.delete_selection(false);
+            timeline.delete_selection();
     }
     
     void on_cut() {
-        timeline.do_cut(true);
-    }
-    
-    void on_cut_lift() {
-        timeline.do_cut(false);
+        timeline.do_cut();
     }
     
     void on_copy() {
@@ -670,13 +659,9 @@ class App : Gtk.Window {
     }
     
     void on_paste() {
-        timeline.paste(false);
+        timeline.paste();
     }
     
-    void on_paste_over() {
-        timeline.paste(true);
-    }
-
     void on_undo_changed(bool can_undo) {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);

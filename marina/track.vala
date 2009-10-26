@@ -43,14 +43,14 @@ public abstract class Track {
 
     protected abstract bool check(Clip clip);
   
-    public int64 get_time_from_pos(int pos, bool after) {
+    public int64 get_time_from_pos(Clip clip, bool after) {
         if (after)
-            return clips[pos].start + clips[pos].duration;
+            return clip.start + clip.duration;
         else
-            return clips[pos].start;
+            return clip.start;
     }
 
-    public int get_clip_from_time(int64 time) {
+    int get_clip_from_time(int64 time) {
         for (int i = 0; i < clips.size; i++) {
             if (time >= clips[i].start &&
                 time < clips[i].end)
@@ -59,12 +59,14 @@ public abstract class Track {
         return -1;
     }
     
-    public bool snap_clip(Clip c, int64 span) {
+    public int64 snap_clip(Clip c, int64 span) {
         foreach (Clip cl in clips) {
-            if (c.snap(cl, span))
-                return true;
+            int64 new_start = c.snap(cl, span);
+            if (new_start != c.start) {
+                return new_start;
+            }
         }
-        return false;
+        return c.start;
     }
     
     public bool snap_coord(out int64 coord, int64 span) {
@@ -109,7 +111,7 @@ public abstract class Track {
     }
 
     // This is always called with the assumption that we are not on a clip
-    public int get_gap_index(int64 time) {
+    int get_gap_index(int64 time) {
         int i = 0;
         while (i < clips.size) {
             if (time <= clips[i].start)
@@ -131,16 +133,16 @@ public abstract class Track {
         }
     }
     
-    public int find_overlapping_clip(int64 start, int64 length) {
+    public Clip? find_overlapping_clip(int64 start, int64 length) {
         for (int i = 0; i < clips.size; i++) {
             Clip c = clips[i];
             if (c.overlap_pos(start, length))
-                return i;
+                return c;
         }
-        return -1;
+        return null;
     }
 
-    public int find_nearest_clip_edge(int64 time, out bool after) {
+    public Clip? find_nearest_clip_edge(int64 time, out bool after) {
         int limit = clips.size * 2;
         int64 prev_time = clips[0].start;
         
@@ -156,17 +158,17 @@ public abstract class Track {
             if (t > time) {
                 if (t - time < time - prev_time) {
                     after = ((i % 2) != 0);
-                    return i / 2;
+                    return clips[i / 2];
                 } else {
                     after = ((i % 2) == 0);
-                    return (i - 1) / 2;
+                    return clips[(i - 1) / 2];
                 }
             }
             prev_time = t;
         }
     
         after = true;
-        return clips.size - 1;
+        return clips[clips.size - 1];
     }
     
     void do_clip_overwrite(Clip c) {
@@ -181,7 +183,7 @@ public abstract class Track {
                                     clips[end_index].name, c.end, 
                                     clips[end_index].media_start + diff,
                                     clips[end_index].duration - diff, false);
-                    put(end_index + 1, cl);
+                    add(cl, cl.start);
                 }
             } else {
                 clips[end_index].media_start = clips[end_index].media_start + diff;
@@ -196,36 +198,35 @@ public abstract class Track {
         int i = 0;
         while (i < clips.size) {
             if (clips[i].start >= c.start &&
-                clips[i].end <= c.end)
-                remove_clip(i);
+                clips[i].end <= c.end) {
+                _delete_clip(clips[i]);
+            }
             else
                 i++;
         }        
     }    
     
-    public void add_clip_at(Clip c, int64 pos, bool overwrite, int64 original_time) {
-        Command command = new ClipAddCommand(this, c, original_time, pos, overwrite);
+    public void move(Clip c, int64 pos, int64 original_time) {
+        Command command = new ClipAddCommand(this, c, original_time, pos);
         project.do_command(command);
     }
     
-    public void _add_clip_at(Clip c, int64 pos, bool overwrite) {
+    public void _move(Clip c, int64 pos) {
         if (pos < 0) {
             pos = 0;
         }
-        
         c.start = pos;
-        if (overwrite)
-            do_clip_overwrite(c);    
+        do_clip_overwrite(c);    
         
         insert_clip_into_array(c, get_insert_index(c.start));
         project.reseek();
     }
 
-    public void add_new_clip(Clip c, int64 pos, bool overwrite) {
+    public void add(Clip c, int64 pos) {
         if (!check(c))
             return;
 
-        _add_clip_at(c, pos, overwrite);
+        _move(c, pos);
         clip_added(c);
     }
     
@@ -233,54 +234,11 @@ public abstract class Track {
     
     }
     
-    public void ripple_delete(int64 length, int64 clip_start, int64 clip_length) {
-        if (find_overlapping_clip(clip_start, clip_length) != -1)
-            return;
-        shift_clips(get_insert_index(clip_start), -length);
-    }
-
-    public void ripple_paste(int64 length, int64 position) {
-        int index = get_clip_from_time(position);
-        
-        if (index < 0 ||
-            position == clips[index].start) {
-            index = get_gap_index(position);
-            shift_clips(index, length);
-        }
-        project.reseek();
-    }
-
-    /*
-     * This function can be called with a clip that already has a clipview
-     * object in the timeline.  If so, we don't want to add another one, so we
-     * check for this and change the function call accordingly
-    */
-    public int do_clip_paste(Clip clip, int64 position, bool over, bool new_clip) {
-        if (over ||
-            find_overlapping_clip(position, clip.duration) == -1) {
-            
-             if (new_clip)
-                add_new_clip(clip, position, true);
-             else
-                _add_clip_at(clip, position, true);
-                
-             return 0;
-        } else {
-            int pos = get_clip_from_time(position);
-            if (pos != -1 &&
-                position != clips[pos].start) {
-                return -1;
-            }
-            
-            pos = get_insert_index(position);
-            
-            if (new_clip)
-                insert(pos, clip, position);
-            else
-                insert_at(pos, clip, position);
-
-            return 1;
-        }
+    public void do_clip_paste(Clip clip, int64 position, bool new_clip) {
+        if (new_clip)
+            add(clip, position);
+        else
+            _move(clip, position);
     }
     
     public Clip? get_clip(int i) {
@@ -291,8 +249,9 @@ public abstract class Track {
 
     public int get_clip_index(Clip c) {
         for (int i = 0; i < clips.size; i++) {
-            if (clips[i] == c)
+            if (clips[i] == c) {
                 return i;
+            }
         }
         return -1;
     }
@@ -310,122 +269,47 @@ public abstract class Track {
         return clips.size == 0 ? 0 : clips[clips.size - 1].start + clips[clips.size - 1].duration;
     }
 
-    /* We need to set the start position of each clip
-     * as this works around a current Gnonlin bug where
-     * if you arrange clips a few times, the current
-     * position will become corrupted.
-     */
-    public void shift_clips(int index, int64 shift) {
-        for (int i = 0; i < clips.size; i++)
-            clips[i].start = i >= index ? clips[i].start + shift
-                                          : clips[i].start;
-    }
-    
-    void insert_at(int i, Clip clip, int64 pos) {
-        clip.start = pos;
-        insert_clip_into_array(clip, i);
-        
-        shift_clips(i + 1, clip.duration);
-    }
-    
-    public void insert(int index, Clip clip, int64 pos) {
-        if (check(clip)) {
-            // I reversed the following two lines as shift_clips sets information on
-            // clips that aren't yet in the composition otherwise, which causes behavior
-            // like the position in the composition being incorrect when we start playing.
-            // This also fixes the lockup problem we were having.
-            insert_at(index, clip, pos);
-            clip_added(clip);
-        }
-    }
-    
-    void put(int index, Clip c) {
-        if (check(c)) {
-            insert_clip_into_array(c, index);
-            
-            project.reseek();
-            clip_added(c);
-        }
-    }
-    
     public void _append_at_time(Clip c, int64 time) {
-        insert(clips.size, c, time);
+        add(c, time);
     }
     
     public void append_at_time(Clip c, int64 time) {
-        Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time, true);
+        Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time);
         project.do_command(command);
     }
     
-    void remove_clip_at(int index) {
-        int64 length = clips[index].duration;
-        clips.remove_at(index);
-        shift_clips(index, -length);
-    }
-    
-    public void delete_clip(Clip clip, bool ripple) {
+    public void delete_clip(Clip clip) {
         Command clip_command = new ClipCommand(ClipCommand.Action.DELETE, 
-            this, clip, clip.start, ripple);
+            this, clip, clip.start);
         project.do_command(clip_command);
     }
     
-    public void _delete_clip(Clip clip, bool ripple) {
+    public void _delete_clip(Clip clip) {
         int index = get_clip_index(clip);
-        
-        remove_clip_at(index);
-        if (!ripple) {
-            shift_clips(index, clip.duration);
-        }
-        
-        remove_clip_signals(clip);
-    }
+        assert(index != -1);
+        clips.remove_at(index);
 
-    void remove_clip_signals(Clip clip) {
         clip.removed(clip);
         clip_removed(clip);
     }
-    
-    public void remove_clip(int index) {
-        remove_clip_signals(clips[index]);
-        clips.remove_at(index);
-    }
-    
+
     public void delete_gap(Gap g) {
-        shift_clips(get_gap_index(g.start), -(g.end - g.start));
         project.reseek();
     }
     
-    public void remove_clip_from_array(int pos) {
-        clips.remove_at(pos);
+    public void remove_clip_from_array(Clip pos) {
+        clips.remove(pos);
     }
     
-    public void insert_clip_into_array(Clip c, int pos) {
+    void insert_clip_into_array(Clip c, int pos) {
         c.updated += on_clip_updated;
         clips.insert(pos, c);
-    }
-    
-    /*
-     * Shift the clips after index, insert the clip that was at index
-     * at dest, and set its position correctly.
-     * The do_shift bool is there since copy-drag rotations don't need shifts
-     * as the clip to be inserted originates on top of another clip
-    */
-    public void rotate_clip(Clip c, int index, int dest, bool after) {
-        shift_clips(index, -c.duration);
-        
-        if (after)
-            insert_at(dest + 1, c, clips[dest].start + clips[dest].duration);
-        else {
-            int64 prev_time = clips[dest].start;
-            insert_at(dest, c, prev_time);
-        }
-        project.reseek();
     }
     
     public void delete_all_clips() {
         uint size = clips.size;
         for (int i = 0; i < size; i++) { 
-            delete_clip(clips[0], false);
+            delete_clip(clips[0]);
         }
         project.media_engine.go(0);
     }
@@ -440,8 +324,6 @@ public abstract class Track {
         if (index == -1)
             error("revert_to_original: Clip not in track array!");
             
-        shift_clips(index + 1, c.clipfile.length - c.duration);       
-    
         c.duration = c.clipfile.length;
         c.media_start = 0;
 
@@ -474,9 +356,7 @@ public abstract class Track {
         
         c.duration = position - c.start;
         
-        int index = get_clip_index(c) + 1;
-        shift_clips(index, -cn.duration);
-        insert(index, cn, position);  
+        add(cn, position);  
     }  
     
     public void join(int64 position) {
@@ -497,7 +377,7 @@ public abstract class Track {
             Clip left_clip = get_clip(left_clip_index);
             assert(left_clip != null);
             left_clip.duration = right_clip.end - left_clip.start;
-            remove_clip(right_clip_index);
+            _delete_clip(right_clip);
         }
     }
     
@@ -507,16 +387,14 @@ public abstract class Track {
     }
     
     public void _trim(Clip c, int64 delta, bool left) {
-        int index = get_clip_index(c);
         if (left) {
             c.media_start = c.media_start + delta;
+            c.start += delta;
         }
         
         c.duration = c.duration - delta;
-        
-        shift_clips(index + 1, -delta);
     }
-    
+ 
     public int64 previous_edit(int64 pos) {
         for (int i = clips.size - 1; i >= 0 ; --i) {
             Clip c = clips[i];

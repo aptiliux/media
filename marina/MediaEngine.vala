@@ -898,8 +898,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public void post_record() {
         assert(gst_state == Gst.State.NULL);
 
-        int clip_index = record_track.get_clip_index(record_region);
-        record_track.remove_clip(clip_index);
+        record_track._delete_clip(record_region);
         
         audio_in.unlink_many(record_capsfilter, wav_encoder, record_sink);
         pipeline.remove_many(audio_in, record_capsfilter, wav_encoder, record_sink);
@@ -931,7 +930,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         if (gst_state != Gst.State.NULL)
             error("can't record now: %s", gst_state.to_string());
 
-        record_track._add_clip_at(record_region, position, false);
+        record_track._move(record_region, position);
         record_track.clip_added(record_region);
         audio_in = make_element("gconfaudiosrc");
         record_capsfilter = make_element("capsfilter");
