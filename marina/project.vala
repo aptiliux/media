@@ -551,6 +551,7 @@ public abstract class Project : Object {
     
     public virtual void add_track(Track track) {
         track.clip_removed += on_clip_removed;
+        track.error_occurred += on_error_occurred;
         tracks.add(track);
         track_added(track);
     }
