@@ -369,7 +369,8 @@ public class LibraryImporter : Object {
     
     void on_error_occurred(string error) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
-        project.error_occurred("Error importing", error);
+        emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, error);
+        project.error_occurred("Error importing", "An error occurred importing this file.");
     }
     
     protected virtual void append_existing_clipfile(ClipFile f) {

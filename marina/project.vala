@@ -871,10 +871,12 @@ public abstract class Project : Object {
         pending.add(fetcher);
     }
 
+    // TODO: We should be using Library importer rather than this mechanism for fillmore
     void on_fetcher_ready(ClipFetcher fetcher) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
+            emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, fetcher.error_string);
             error_occurred("Error retrieving clip", fetcher.error_string);         
         } else {
             if (get_clipfile_index(fetcher.clipfile) == -1)
