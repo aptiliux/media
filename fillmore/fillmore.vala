@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
     
@@ -255,29 +257,35 @@ class Recorder : Gtk.Window {
     }
     
     void on_selection_changed(TimeLine timeline, ClipView? new_selection) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_selection_changed");
         update_menu();
     }
     
     void on_position_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         update_menu();
     }
     
     void on_track_added(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         track.clip_added += on_clip_added;
         track.clip_removed += on_clip_removed;
     }
     
     void on_clip_added(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         clip.moved += on_clip_moved;
         update_menu();
     }
     
     void on_clip_removed(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
         clip.moved -= on_clip_moved;
         update_menu();
     }
     
     void on_clip_moved(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         update_menu();
     }
     
@@ -376,6 +384,7 @@ class Recorder : Gtk.Window {
     }
     
     void on_post_export(bool canceled) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         project.media_engine.disconnect_output(audio_export);
         project.media_engine.connect_output(audio_output);
         
@@ -429,11 +438,13 @@ class Recorder : Gtk.Window {
     }
     
     bool on_delete_event() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_delete_event");
         on_quit();
         return true;
     }
 
     void on_project_close() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_close");
         project.closed -= on_project_close;
         if (project.undo_manager.is_dirty) {
             switch(DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
@@ -578,6 +589,7 @@ class Recorder : Gtk.Window {
     }
         
     void on_callback_pulse() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
         if (timeline != null) {
             timeline.update();
         }
@@ -606,24 +618,29 @@ class Recorder : Gtk.Window {
     }
     
     public void on_load_error(string message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         do_error_dialog(message);
     }
 
     public void on_load_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
     }
     
     void on_name_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_name_changed");
         set_title(project.get_file_display_name());
     }
     
     void on_dirty_changed(bool isDirty) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_dirty_changed");
         Gtk.MenuItem? file_save = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/FileMenu/FileSave");
         assert(file_save != null);
         file_save.set_sensitive(isDirty);
     }
     
     void on_undo_changed(bool can_undo) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_undo_changed");
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());
@@ -631,12 +648,14 @@ class Recorder : Gtk.Window {
     }
 
     void on_playstate_changed(PlayState playstate) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
         if (playstate == PlayState.STOPPED) {
             play_button.set_active(false);
         }
     }
     
     void on_error_occurred(string major_message, string? minor_message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         DialogUtils.error(major_message, minor_message);
     }
 }

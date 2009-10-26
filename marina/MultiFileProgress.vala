@@ -4,7 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
-// TODO: Is this the best way to do this?
+using Logging;
+
 public interface MultiFileProgressInterface : Object {
     public signal void fraction_updated(double d);
     public signal void file_updated(string filename, int index);
@@ -13,8 +14,6 @@ public interface MultiFileProgressInterface : Object {
     public abstract void cancel();
     public abstract void complete();
 }
-
-// TODO: Rework the complete signal
 
 public class MultiFileProgress : Gtk.Window {
     Gtk.ProgressBar progress_bar;
@@ -71,14 +70,17 @@ public class MultiFileProgress : Gtk.Window {
     }
 
     void on_done() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_done");
         destroy();
     }
     
     void on_cancel_clicked() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_cancel_clicked");
         destroy();
     }
     
     void on_destroy() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_destroy");
         if (progress_bar.get_fraction() < 1.0)
             provider_interface.cancel();
         else
@@ -86,6 +88,7 @@ public class MultiFileProgress : Gtk.Window {
     }
     
     void on_fraction_updated(double d) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fraction_updated");
         progress_bar.set_fraction(d);
         
         if (progress_bar.get_fraction() == 1.0)
@@ -97,6 +100,7 @@ public class MultiFileProgress : Gtk.Window {
     }
 
     void on_file_updated(string filename, int index) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_file_updated");
         number_label.set_text("%sing %d of %d".printf(dialog_title, index + 1, num_files));
         file_label.set_text("%s".printf(filename));
     }

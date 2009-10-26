@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 class FillmoreFetcherCompletion : Model.FetcherCompletion {
     int64 time;
     
@@ -46,6 +48,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void on_region_added(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_region_added");
         ClipView view = new ClipView(clip, timeline.provider, TrackView.height);
         view.clip_moved += update;
         
@@ -54,6 +57,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void on_region_removed(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_region_removed");
     // TODO revisit the dragging mechanism.  It would be good to have the clip
     // responsible for moving itself and removing itself rather than delegating
     // to the timeline and to the TrackView
@@ -68,6 +72,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void update(ClipView rv) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "update");
         move(rv, timeline.provider.time_to_xpos(rv.clip.start), TimeLine.BORDER);
     }
     
@@ -99,6 +104,7 @@ class TrackView : Gtk.Fixed {
     }
 
     private void on_clip_file_ready(Model.ClipFile clip_file, int64 time) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_ready");
         track.append_at_time(new Model.Clip(clip_file, Model.MediaType.AUDIO, 
             isolate_filename(clip_file.filename), 
             time, 0, clip_file.length, false), time);
@@ -136,6 +142,7 @@ class TrackView : Gtk.Fixed {
     }
     
     public void on_resized() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_resized");
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
             if (view != null) {
@@ -204,6 +211,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void add_track(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "add_track");
         TrackView track_view = new TrackView(track);
         track_view.timeline = this;
         resized += track_view.on_resized;
@@ -213,6 +221,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void on_track_removed(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         TrackView? my_track_view = null;
         Gtk.HSeparator? my_separator = null;
         foreach(Gtk.Widget widget in vbox.get_children()) {
@@ -234,6 +243,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void update() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "update");
         if (project.transport_is_playing())
             recorder.scroll_toward_center(provider.time_to_xpos(project.media_engine.position));
         queue_draw();
@@ -322,6 +332,7 @@ class TimeLine : Gtk.EventBox {
     }
     
     public void on_ruler_position_changed(int x) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_ruler_position_changed");
         project.media_engine.go(provider.xpos_to_time(x));
     }
     

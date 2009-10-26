@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 class TrackView : Gtk.Fixed {
     public Model.Track track;
     public TimeLine timeline;
@@ -40,15 +42,18 @@ class TrackView : Gtk.Fixed {
     }
     
     public void on_clip_moved(ClipView clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         set_clip_pos(clip);
     }
     
     public void on_clip_deleted(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_deleted");
         track.delete_clip(clip);
         clear_drag();
     }
 
     public void on_clip_added(Model.Track t, Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         ClipView view = new ClipView(clip, timeline.provider, TrackView.clip_height);
         view.clip_moved += on_clip_moved;
         view.clip_deleted += on_clip_deleted;
@@ -74,6 +79,7 @@ class TrackView : Gtk.Fixed {
     }
 
     public void on_clip_removed(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
     // TODO: revisit the dragging mechanism.  It would be good to have the clip
     // responsible for moving itself and removing itself rather than delegating
     // to the timeline and to the TrackView
@@ -193,10 +199,12 @@ class TrackView : Gtk.Fixed {
     }
 
     void on_gap_view_removed(GapView gap_view) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_gap_view_removed");
         track.delete_gap(gap_view.gap);
     }
 
     void on_gap_view_unselected(GapView gap_view) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_gap_view_unselected");
         unselect_gap();
     }
 

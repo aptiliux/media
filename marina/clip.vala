@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace Model {
 
 public enum MediaType {
@@ -29,7 +31,7 @@ public class Gap {
     }
 }
 
-public class ClipFile {
+public class ClipFile : Object {
     public string filename;
     public int64 length;
     
@@ -52,6 +54,7 @@ public class ClipFile {
     }
     
     public void set_online(bool o) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_online");
         online = o;
         updated();
     }
@@ -151,7 +154,7 @@ public class ClipFile {
     }
 }
 
-public abstract class Fetcher {
+public abstract class Fetcher : Object {
     protected Gst.Element filesrc;
     protected Gst.Element decodebin;
     protected Gst.Pipeline pipeline;
@@ -170,6 +173,7 @@ public abstract class Fetcher {
     }
 
     protected void on_warning(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_warning");
         Error error;
         string text;
         message.parse_warning(out error, out text);
@@ -177,6 +181,7 @@ public abstract class Fetcher {
     }
     
     protected void on_error(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error error;
         string text;
         message.parse_error(out error, out text);
@@ -220,6 +225,7 @@ public class ClipFetcher : Fetcher {
     public string get_filename() { return clipfile.filename; }
     
     protected override void on_pad_added(Gst.Pad pad) {  
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         Gst.Pad fake_pad;
         Gst.Element fake_sink;
         
@@ -254,6 +260,7 @@ public class ClipFetcher : Fetcher {
     }
     
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
         if (message.src != pipeline)
             return;
 
@@ -333,6 +340,7 @@ public class ThumbnailFetcher : Fetcher {
     }
     
     void on_have_thumbnail(Gdk.Pixbuf buf) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_have_thumbnail");
         if (done_seek) {
             have_thumbnail = true;
             clipfile.set_thumbnail(buf);
@@ -340,6 +348,7 @@ public class ThumbnailFetcher : Fetcher {
     }
     
     protected override void on_pad_added(Gst.Pad pad) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         Gst.Caps c = pad.get_caps();
         
         if (c.to_string().has_prefix("video")) {
@@ -348,6 +357,7 @@ public class ThumbnailFetcher : Fetcher {
     }
     
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
         if (message.src != pipeline)
             return;
             
@@ -374,7 +384,7 @@ public class ThumbnailFetcher : Fetcher {
     }
 }
 
-public class Clip {
+public class Clip : Object {
     public ClipFile clipfile;
     public MediaType type;
     // TODO: If a clip is being recorded, we don't want to set duration in the MediaClip file.
@@ -457,6 +467,7 @@ public class Clip {
     public void gnonlin_disconnect() { connected = false; }
     
     void on_clipfile_updated(ClipFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clipfile_updated");
         if (f.is_online()) {
             if (!connected) {
                 connected = true;

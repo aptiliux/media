@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace Model {
 public class MediaLoaderHandler : LoaderHandler {
     protected weak Project the_project;
@@ -203,6 +205,7 @@ public class MediaLoaderHandler : LoaderHandler {
     }
     
     void fetcher_ready(ClipFetcher f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
         if (f.error_string != null)
             load_error("%s: %s".printf(f.clipfile.filename, f.error_string));
 
@@ -245,7 +248,7 @@ public class MediaLoaderHandler : LoaderHandler {
 
 // TODO: Project derives from MultiFileProgress interface for exporting
 // Move exporting work to separate object similar to import.    
-public abstract class Project {
+public abstract class Project : Object {
 
     public const string FILLMORE_FILE_EXTENSION = "fill";
     public const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
@@ -305,6 +308,7 @@ public abstract class Project {
     }
     
     public void on_playstate_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
         switch (media_engine.play_state) {
             case PlayState.STOPPED:
                 ClearTrackMeters();
@@ -423,6 +427,7 @@ public abstract class Project {
     }
 
     public void on_clip_removed(Track t, Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
         reseek();
     }
 
@@ -751,14 +756,17 @@ public abstract class Project {
     }
     
     public void on_load_started(string filename) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_started");
         project_file = filename;
     }
     
     void on_load_error(string error) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         load_error(error);
     }
     
     void on_load_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         undo_manager.reset();
         
         set_name(project_file);
@@ -863,6 +871,7 @@ public abstract class Project {
     }
 
     void on_fetcher_ready(ClipFetcher fetcher) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
         pending.remove(fetcher);
         if (fetcher.error_string != null) {
             error_occurred("Error retrieving clip", fetcher.error_string);         

@@ -4,6 +4,7 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
 namespace Model {
 
 class RecordFetcherCompletion : FetcherCompletion {
@@ -63,6 +64,7 @@ class AudioProject : Project {
     }
 
     public void on_record_completed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_completed");
         create_clip_fetcher(new Model.RecordFetcherCompletion(this, media_engine.record_track,
             media_engine.record_region.start), media_engine.record_region.clipfile.filename);
     }

@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 public class ClipLibraryView : Gtk.EventBox {
     Model.Project project;
     Gtk.TreeView tree_view;
@@ -102,6 +104,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     bool on_button_pressed(Gdk.EventButton b) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_button_pressed");
         Gtk.TreePath path;
         int cell_x;
         int cell_y;
@@ -134,6 +137,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     bool on_button_released(Gdk.EventButton b) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_button_released");
         Gtk.TreePath path;
         Gtk.TreeViewColumn column;
         
@@ -172,6 +176,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     void on_cursor_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_cursor_changed");
         selection_changed(has_selection());
     }
     
@@ -182,6 +187,7 @@ public class ClipLibraryView : Gtk.EventBox {
     
     void on_drag_data_get(Gtk.Widget w, Gdk.DragContext context, Gtk.SelectionData data, 
                             uint info, uint time) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_get");
         string uri;
         string[] uri_array = new string[0];
         
@@ -205,6 +211,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     void on_drag_begin(Gdk.DragContext c) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_begin");
         Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
         if (get_selected_rows(out model, out paths) > 0) {      
@@ -285,6 +292,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     void on_clipfile_added(Model.ClipFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_added");
         Gtk.TreeIter it;
         
         if (find_clipfile(f, out it) >= 0) {
@@ -345,6 +353,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
     
     void remove_all_rows() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "remove_all_rows");
         Gtk.TreeModel model = tree_view.get_model();
         Gtk.TreeIter iter;
         

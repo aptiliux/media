@@ -3,6 +3,9 @@
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
+
+using Logging;
+
 namespace View {
 public class AudioMeter : Gtk.DrawingArea {
     Cairo.ImageSurface meter = null;
@@ -59,6 +62,7 @@ public class AudioMeter : Gtk.DrawingArea {
     }
 
     public bool on_expose_event(Gdk.EventExpose event) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_expose_event");
         Gdk.Window window = get_window();
         Cairo.Context context = Gdk.cairo_create(window);
         if (meter == null) {
@@ -91,6 +95,7 @@ public class AudioMeter : Gtk.DrawingArea {
     }
 
     public void on_level_changed(double level_left, double level_right) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_level_changed");
         current_level_left = level_left < minDB ? minDB : level_left;
         current_level_right = level_right < minDB ? minDB : level_right;
         Gdk.Window window = get_window();
@@ -98,6 +103,7 @@ public class AudioMeter : Gtk.DrawingArea {
     }
 
     public void on_channel_count_changed(int number_of_channels) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_channel_count_changed");
         stereo = number_of_channels > 1;
     }
 }

@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace View {
 public class StatusBar : Gtk.DrawingArea {
     Model.TimeSystem provider;
@@ -19,6 +21,7 @@ public class StatusBar : Gtk.DrawingArea {
     }
     
     public void on_position_changed(int64 new_position) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         current_position = new_position;
         queue_draw();
     }

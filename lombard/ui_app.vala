@@ -4,6 +4,7 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
 using Gee;
 
 class App : Gtk.Window {
@@ -258,6 +259,7 @@ class App : Gtk.Window {
     }
     
     bool on_delete_event() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_delete_event");
         on_quit();
         return true;
     }
@@ -323,12 +325,14 @@ class App : Gtk.Window {
     }
     
     void on_drawing_realize() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drawing_realize");
         project.load(project_filename);
         video_output = new View.VideoOutput(drawing_area);
         project.media_engine.connect_output(video_output);
     }
     
     void on_adjustment_changed(Gtk.Adjustment a) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_adjustment_changed");
         if (prev_adjustment_upper != a.get_upper() ||
             prev_adjustment_lower != a.get_lower()) {
 
@@ -342,18 +346,22 @@ class App : Gtk.Window {
     }
     
     public void set_project_name(string? filename) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_project_name");
         set_title(project.get_file_display_name());
     }
 
     public void do_error_dialog(string message, string? minor_message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "do_error_dialog");
         DialogUtils.error(message, minor_message);
     }
     
     public void on_load_error(string message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         DialogUtils.error("Load error", message);
     }
     
     public void on_load_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         on_zoom_to_project();
         queue_draw();
     }
@@ -478,6 +486,7 @@ class App : Gtk.Window {
     }
     
     public void on_position_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         int xpos = timeline.provider.time_to_xpos(project.transport_get_position());
         scroll_to(xpos);
         if (project.transport_is_playing())
@@ -486,16 +495,19 @@ class App : Gtk.Window {
     }
     
     public void on_track_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_changed");
         update_menu();
     }
     
     void on_importer_started(Model.ClipImporter i, int num) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_importer_started");
         new MultiFileProgress(this, num, "Import", i);
     }
         
     public void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
                                             Gtk.SelectionData selection_data, uint drag_info,
                                             uint time) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_received");
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
         
@@ -548,12 +560,14 @@ class App : Gtk.Window {
     }
     
     public void on_timeline_selection_changed(bool selected) { 
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_timeline_selection_changed");
         if (selected)
             library.unselect_all();
         update_menu();
     }
     
     public void on_library_selection_changed(bool selected) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
         if (selected) {
             timeline.select_clip(null);
         }
@@ -628,6 +642,7 @@ class App : Gtk.Window {
     }
     
     void on_post_export(bool canceled) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         project.media_engine.disconnect_output(export_connector);
         project.media_engine.connect_output(audio_output);
         project.media_engine.connect_output(video_output);
@@ -663,6 +678,7 @@ class App : Gtk.Window {
     }
     
     void on_undo_changed(bool can_undo) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_undo_changed");
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());

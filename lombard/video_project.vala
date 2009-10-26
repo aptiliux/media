@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace Model {
 
 class VideoProject : Project {
@@ -47,6 +49,7 @@ class VideoProject : Project {
     }
 
     void on_thumbnail_ready(ThumbnailFetcher f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_thumbnail_ready");
         clipfile_added(f.clipfile);
         pending.remove(f);
     }

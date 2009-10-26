@@ -4,9 +4,11 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace Model {
 
-public class LoaderHandler {
+public class LoaderHandler : Object {
     public signal void load_error(string error_message);
     public signal void complete();
     
@@ -200,7 +202,7 @@ public class XmlElement {
     }
 }
 
-public class ProjectLoader {
+public class ProjectLoader : Object {
     string? file_name;
     LoaderHandler loader_handler;
     string text;
@@ -218,10 +220,12 @@ public class ProjectLoader {
     }
     
     void on_load_error(string error) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         load_error(error);
     }
     
     void on_handler_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_handler_complete");
         load_complete();    
     }
     

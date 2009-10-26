@@ -5,6 +5,7 @@
  */
 
 using Gee;
+using Logging;
 
 class TimeLine : Gtk.EventBox {
     public Model.Project project;
@@ -77,10 +78,12 @@ class TimeLine : Gtk.EventBox {
     }
     
     void on_position_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");        
         queue_draw();
     }
     
     public void on_ruler_position_changed(int x) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_ruler_position_changed");
         update_pos(x);
     }
 

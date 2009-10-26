@@ -1,3 +1,11 @@
+/* Copyright 2009 Yorba Foundation
+ *
+ * This software is licensed under the GNU Lesser General Public License
+ * (version 2.1 or later).  See the COPYING file in this distribution. 
+ */
+
+using Logging;
+
 namespace Model {
 
 public class ClipImporter : MultiFileProgressInterface, Object {  
@@ -155,6 +163,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
 
     void on_fetcher_ready(ClipFetcher f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
         if (f.error_string != null) {
             error_occurred(f.error_string);
             do_import_complete();
@@ -259,7 +268,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
     
     void on_pad_added(Gst.Bin b, Gst.Pad p) {
-        print_debug("Import Pad added!");
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         string str = p.caps.to_string();
         Gst.Pad sink = null;
         
@@ -277,6 +286,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
     
     void on_error(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error e;
         string text;
         
@@ -285,6 +295,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
     
     void on_warning(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_warning");
         Error e;
         string text;
         message.parse_warning(out e, out text);
@@ -292,6 +303,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
     
     void on_state_changed(Gst.Bus b, Gst.Message m) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_changed");
         if (m.src != pipeline) 
             return;
        
@@ -329,12 +341,13 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
     
     void on_eos() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_eos");
         import_done = true;
         pipeline.set_state(Gst.State.NULL);
     }
 }
 
-public class LibraryImporter {
+public class LibraryImporter : Object {
     protected Project project;
     protected ClipImporter importer;
 
@@ -350,10 +363,12 @@ public class LibraryImporter {
     }
 
     void on_importer_started(ClipImporter i, int num) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_importer_started");
         started(i, num);
     }
     
     void on_error_occurred(string error) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         project.error_occurred("Error importing", error);
     }
     
@@ -362,6 +377,7 @@ public class LibraryImporter {
     }
     
     protected virtual void on_clip_complete(ClipFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_complete");
         ClipFile cf = project.find_clipfile(f.filename);
         if (cf == null)    
             project.add_clipfile(f);

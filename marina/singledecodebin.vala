@@ -19,6 +19,7 @@
  */
 
 using Gee;
+using Logging;
 
 extern void qsort(void *p, size_t num, size_t size, GLib.CompareFunc func);
 
@@ -348,11 +349,13 @@ class SingleDecodeBin : Gst.Bin {
     // Dynamic element Callbacks
 
     void dynamicPadAddedCb(Gst.Element element, Gst.Pad pad) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "dynamicPadAddedCb");
         if (srcpad == null)
             closePadLink(element, pad, pad.get_caps());
     }
 
     void dynamicNoMorePadsCb(Gst.Element element) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "dynamicNoMorePadsCb");
     }
 }
 

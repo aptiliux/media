@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 public enum PlayState {
     STOPPED,
     PRE_PLAY, PLAYING,
@@ -15,7 +17,7 @@ public enum PlayState {
 
 namespace View {
 
-class MediaClip {
+class MediaClip : Object {
     public Gst.Element file_source;
     weak Model.Clip clip;
     Gst.Bin composition;
@@ -51,21 +53,25 @@ class MediaClip {
     }
 
     public void on_clip_removed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
         composition.remove((Gst.Bin)file_source);
         clip_removed(this);
     }
     
     void on_media_start_changed(int64 media_start) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_start_changed");
         file_source.set("media-start", media_start);
     }
     
     void on_duration_changed(int64 duration) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_duration_changed");
         file_source.set("duration", duration);
         // TODO: is media-duration necessary?
         file_source.set("media-duration", duration);
     }
     
     void on_start_changed(int64 start) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_start_changed");
         file_source.set("start", start);
     }
     
@@ -99,7 +105,7 @@ class MediaVideoClip : MediaClip {
     }
 }
 
-public abstract class MediaTrack {
+public abstract class MediaTrack : Object {
     Gee.ArrayList<MediaClip> clips;
     protected weak MediaEngine media_engine;
     protected Gst.Bin composition;
@@ -155,11 +161,13 @@ public abstract class MediaTrack {
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
 
     void on_clip_added(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         clip.updated += on_clip_updated;
         on_clip_updated(clip);
     }
     
     void on_clip_updated(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");
         if (clip.clipfile.is_online()) {
             MediaClip media_clip;
             if (clip.type == Model.MediaType.AUDIO) {
@@ -180,28 +188,34 @@ public abstract class MediaTrack {
     }
     
     void on_media_clip_removed(MediaClip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_clip_removed");
         clip.clip_removed -= on_media_clip_removed;
         clips.remove(clip);
     }
     
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         link_new_pad(bin, pad, get_element());
     }
     
     void on_pad_removed(Gst.Bin bin, Gst.Pad pad) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_removed");
         unlink_pad(bin, pad, get_element());
     }
 
     void on_track_removed(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         track_removed(this);
     }
 
     void on_pre_export(int64 length) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pre_export");
         default_source.set("duration", length);
         default_source.set("media-duration", length);
     }
     
     void on_post_export(bool deleted) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
     }
@@ -302,6 +316,7 @@ public class MediaAudioTrack : MediaTrack {
     public signal void level_changed(double level_left, double level_right);
 
     void on_parameter_changed(Model.Parameter parameter, double new_value) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_parameter_changed");
         switch(parameter) {
             case Model.Parameter.PAN:
                 pan.set_property("panorama", new_value);
@@ -313,6 +328,7 @@ public class MediaAudioTrack : MediaTrack {
     }
 
     void on_level_changed(Gst.Object source, double level_left, double level_right) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_level_changed");
         if (source == level) {
             level_changed(level_left, level_right);
         }
@@ -337,7 +353,7 @@ public class MediaAudioTrack : MediaTrack {
     }
 }
 
-public abstract class MediaConnector {
+public abstract class MediaConnector : Object {
     public enum MediaTypes { Audio = 1, Video = 2 }
     MediaTypes media_types;
     
@@ -357,7 +373,7 @@ public abstract class MediaConnector {
         return (media_types & MediaTypes.Video) == MediaTypes.Video;
     }
     
-    public abstract void connect(MediaEngine media_engine, Gst.Pipeline pipeline,
+    public new abstract void connect(MediaEngine media_engine, Gst.Pipeline pipeline,
         Gst.Element[] elements);
     public abstract void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline,
         Gst.Element[] elements);
@@ -392,6 +408,7 @@ public class VideoOutput : MediaConnector {
     }
     
     public void on_prepare_window() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_prepare_window");
         uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
         Gst.XOverlay overlay = (Gst.XOverlay) sink;
         overlay.set_xwindow_id(xid);
@@ -636,6 +653,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }    
 
     void on_warning(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_warning");
         Error error;
         string text;
         message.parse_warning(out error, out text);
@@ -643,6 +661,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
     
     void on_error(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error error;
         string text;
         message.parse_error(out error, out text);
@@ -650,11 +669,13 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     void on_eos(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_eos");
         if (play_state == PlayState.EXPORTING)
             pipeline.set_state(Gst.State.NULL);
     }
 
     void on_element_message(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element_message");
         if (!message.structure.has_name("prepare-xwindow-id"))
             return;
 
@@ -663,6 +684,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
     
     void on_element(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element");
         unowned Gst.Structure structure = message.get_structure();
         
         if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
@@ -681,6 +703,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     void on_state_change(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
         if (message.src != pipeline)
             return;
 
@@ -875,11 +898,13 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void on_load_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         play_state = PlayState.STOPPED;
         pipeline.set_state(Gst.State.PAUSED);
     }
     
     public void on_callback_pulse() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
         if (record_region != null) {
             record_region.duration = position - record_region.start;
         }
@@ -972,6 +997,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void on_track_added(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         MediaTrack? media_track = null;
         switch (track.media_type()) {
             case Model.MediaType.AUDIO:
@@ -999,6 +1025,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
     
     void on_track_removed(MediaTrack track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         tracks.remove(track);
     }
 }

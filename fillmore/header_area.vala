@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 class TrackHeader : Gtk.EventBox {
     protected weak Model.Track track;
     protected weak HeaderArea header_area;
@@ -27,10 +29,12 @@ class TrackHeader : Gtk.EventBox {
     }
     
     void on_track_renamed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_renamed");
         track_label.set_text(track.display_name);
     }
     
     void on_track_selection_changed(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_selection_changed");
         set_state(track.get_is_selected() ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL);
     }
     
@@ -75,6 +79,7 @@ class AudioTrackHeader : TrackHeader {
     }
 
     void on_pan_value_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pan_value_changed");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         if (audio_track != null) {
             Gtk.Adjustment adjustment = pan.get_adjustment();
@@ -83,6 +88,7 @@ class AudioTrackHeader : TrackHeader {
     }
     
     void on_volume_value_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_volume_value_changed");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         if (audio_track != null) {
             Gtk.Adjustment adjustment = volume.get_adjustment();
@@ -91,6 +97,7 @@ class AudioTrackHeader : TrackHeader {
     }
 
     void on_parameter_changed(Model.Parameter parameter, double new_value) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_parameter_changed");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         assert(audio_track != null);
         switch(parameter) {
@@ -140,6 +147,7 @@ class HeaderArea : Gtk.EventBox {
     }
     
     public void add_track(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "add_track");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         assert(audio_track != null);
         //we are currently only supporting audio tracks.  We'll probably have
@@ -153,6 +161,7 @@ class HeaderArea : Gtk.EventBox {
     }
     
     public void on_track_removed(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         TrackHeader? my_track_header = null;
         Gtk.HSeparator? my_separator = null;
         foreach(Gtk.Widget widget in vbox.get_children()) {

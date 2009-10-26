@@ -4,6 +4,8 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 public class GapView : Gtk.DrawingArea {
     public Model.Gap gap;
     Gdk.Color fill_color;
@@ -81,6 +83,7 @@ public class ClipView : Gtk.DrawingArea {
     }
     
     void on_clip_updated() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");
         get_clip_colors();
         queue_draw();
     }
@@ -95,6 +98,7 @@ public class ClipView : Gtk.DrawingArea {
     }
     
     public void on_clip_moved(Model.Clip clip) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         adjust_size(height);
         clip_moved(this);
     }

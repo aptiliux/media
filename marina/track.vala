@@ -4,9 +4,11 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+using Logging;
+
 namespace Model {
 
-public abstract class Track {
+public abstract class Track : Object {
     protected weak Project project;
     protected Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
     public string display_name;
@@ -231,7 +233,7 @@ public abstract class Track {
     }
     
     public virtual void on_clip_updated(Clip clip) {
-    
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");    
     }
     
     public void do_clip_paste(Clip clip, int64 position, bool new_clip) {
@@ -582,6 +584,7 @@ public class AudioTrack : Track {
     }
     
     public void on_level_changed(double level_left, double level_right) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_level_changed");
         level_changed(level_left, level_right);
     }
 

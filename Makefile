@@ -2,7 +2,8 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_TESTABLE_SOURCES =	ProjectLoader.vala \
+MARINA_TESTABLE_SOURCES =	Logging.vala \
+							ProjectLoader.vala \
 							util.vala
 
 MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src))
