@@ -207,14 +207,13 @@ class App : Gtk.Window {
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
-
         // TODO: this is a hack to deal with project loading.  Lombard assumes one video
         // track and one audio track.  It was non-trivial to delete and recreate tracks.
         project.clear_tracks = false;
 
         project.add_track(new Model.VideoTrack(project));
         project.add_track(new Model.AudioTrack(project, "Audio Track"));
-        
+
         timeline = new TimeLine(project, project.time_provider);
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
@@ -297,29 +296,36 @@ class App : Gtk.Window {
             if (showing) {
                 h_pane.add1(library_scrolled);
                 h_pane.add2(drawing_area);            
-            } else
+            } else {
                 h_pane.add2(drawing_area);
-            vbox.pack_start(h_pane, true, true, 0);
-            
-            vbox.pack_start(new Gtk.HSeparator(), false, false, 0);
-            vbox.pack_start(status_bar, false, false, 0);
+            }
+
+            Gtk.VPaned v_pane = new Gtk.VPaned();
+            v_pane.set_position(300);
 
             timeline_scrolled = new Gtk.ScrolledWindow(null, null);
-            timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
+            timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
             timeline_scrolled.add_with_viewport(timeline);
 
             h_adjustment = timeline_scrolled.get_hadjustment();
             h_adjustment.changed += on_adjustment_changed;
             prev_adjustment_lower = h_adjustment.get_lower();
             prev_adjustment_upper = h_adjustment.get_upper();
-            vbox.pack_start(timeline_scrolled, false, false, 0);
+            
+            v_pane.add1(h_pane);
+            Gtk.VBox timeline_vbox = new Gtk.VBox(false, 0);
+            timeline_vbox.pack_start(status_bar, false, false, 0);
+            timeline_vbox.pack_start(timeline_scrolled, true, true, 0);
+            v_pane.add2(timeline_vbox);
+            vbox.pack_start(v_pane, true, true, 0);
             
             add(vbox);
         } else {
-            if (showing)
+            if (showing) {
                 h_pane.add1(library_scrolled);
-            else
+            } else {
                 h_pane.remove(library_scrolled);
+            }
         }
         show_all();
     }
@@ -377,18 +383,20 @@ class App : Gtk.Window {
         }
     }
     
-    void create_clip_importer(bool timeline_add) {
-        if (timeline_add)
-            importer = new Model.TimelineImporter(project);
-        else
-            importer = new Model.LibraryImporter(project);            
+    void create_clip_importer(Model.Track? track, bool timeline_add) {
+        if (timeline_add) {
+            assert(track != null);
+            importer = new Model.TimelineImporter(track, project);
+        } else {
+            importer = new Model.LibraryImporter(project);
+        }
         importer.started += on_importer_started;       
     }
     
     void on_open() {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
-            create_clip_importer(false);
+            create_clip_importer(null, false);
             foreach (string s in filenames) {
                 string str;
                 try {
@@ -511,7 +519,15 @@ class App : Gtk.Window {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
         
-        create_clip_importer(w == timeline);
+        Model.Track? track = null;
+        bool on_timeline = w == timeline;
+        if (on_timeline) {
+            TrackView? track_view = timeline.find_child(x, y) as TrackView;
+            assert(track_view != null);
+            track = track_view.track;
+        }
+        
+        create_clip_importer(track, on_timeline);
 
         foreach (string s in a) {
             string filename;

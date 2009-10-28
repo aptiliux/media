@@ -7,7 +7,9 @@ namespace Logging {
 
 public enum Facility {
     SIGNAL_HANDLERS,
-    DEVELOPER_WARNINGS
+    DEVELOPER_WARNINGS,
+    GRAPH,
+    LOADING
 }
 
 public enum Level {
@@ -21,12 +23,16 @@ public enum Level {
 
 const Level active_facility[] = {
     Level.CRITICAL, // SIGNAL_HANDLERS
-    Level.CRITICAL // DEVELOPER_WARNINGS
+    Level.CRITICAL, // DEVELOPER_WARNINGS
+    Level.CRITICAL, // GRAPH
+    Level.CRITICAL //LOADING
 };
 
 const string facility_names[] = {
     "SIGNAL_HANDLERS",
-    "DEVELOPER_WARNINGS"
+    "DEVELOPER_WARNINGS",
+    "GRAPH",
+    "LOADING"
 };
 
 Level current_level = Level.HIGH;

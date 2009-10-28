@@ -45,7 +45,6 @@ class TimeLine : Gtk.EventBox {
         foreach (Model.Track track in project.tracks) {
             tracks.add(new TrackView(track, this));
         }
-        
         project.media_engine.position_changed += on_position_changed;
         vbox.pack_start(find_video_track_view(), false, false, 0);
         vbox.pack_start(find_audio_track_view(), false, false, 0);
@@ -57,7 +56,7 @@ class TimeLine : Gtk.EventBox {
         pixel_div = pixel_max / pixel_min;
         provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
     }
-    
+
     public void zoom_to_project(double width) {
         if (project.get_length() == 0)
             return;
@@ -190,7 +189,7 @@ class TimeLine : Gtk.EventBox {
         project.media_engine.go(time);
     }
 
-    Gtk.Widget? find_child(double x, double y) {
+    public Gtk.Widget? find_child(double x, double y) {
         foreach (Gtk.Widget w in vbox.get_children())
             if (w.allocation.y <= y && y < w.allocation.y + w.allocation.height)
                 return w;

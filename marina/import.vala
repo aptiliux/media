@@ -399,17 +399,19 @@ public class LibraryImporter : Object {
 }
 
 public class TimelineImporter : LibraryImporter {
-    public TimelineImporter(Project p) {
-        base(p);      
+    Track track;
+    public TimelineImporter(Track track, Project p) {
+        base(p);
+        this.track = track;      
     }
     
     protected override void append_existing_clipfile(ClipFile f) {
-        project.append(f);
+        project.append(track, f);
     }
     
     protected override void on_clip_complete(ClipFile f) {
         base.on_clip_complete(f);
-        project.append(f);
+        project.append(track, f);
     }    
 }
 }

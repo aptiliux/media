@@ -96,7 +96,7 @@ public class MediaLoaderHandler : LoaderHandler {
 
             audio_track = current_track as AudioTrack;
             assert(audio_track != null);
-
+            
             for (int i = 0; i < number_of_attributes; ++i) {
                 switch(attr_names[i]) {
                     case "panorama":
@@ -268,7 +268,7 @@ public abstract class Project : Object {
 
     FetcherCompletion fetcher_completion;
     public UndoManager undo_manager;
-    
+
     // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
     public bool clear_tracks = true;
     
@@ -314,6 +314,7 @@ public abstract class Project : Object {
                 ClearTrackMeters();
                 break;
             case PlayState.PRE_LOAD:
+                emit(this, Facility.LOADING, Level.INFO, "setting play state to loading");
                 media_engine.play_state = PlayState.LOADING;
                 loader.load();
                 break;
@@ -406,24 +407,35 @@ public abstract class Project : Object {
         }
     }
 
-    protected virtual void do_append(ClipFile clipfile, string name, int64 insert_time) {
+    protected virtual void do_append(Track track, ClipFile clipfile, string name, 
+        int64 insert_time) {
+        switch(track.media_type()) {
+            case MediaType.AUDIO:
+                if (clipfile.audio_caps == null) {
+                    return;
+                }
+                break;
+            case MediaType.VIDEO:
+                if (clipfile.video_caps == null) {
+                    return;
+                }
+            break;
+        }
+        
         if (clipfile.audio_caps != null) {
-            Clip clip = new Clip(clipfile, MediaType.AUDIO, name, 0, 0, clipfile.length, false);
-            Track? track = find_audio_track();
-            if (track != null) {
-                track.append_at_time(clip, insert_time);
-            }
+            Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
+            track.append_at_time(clip, insert_time);
         }
     }
     
-    public void append(ClipFile clipfile) {
+    public void append(Track track, ClipFile clipfile) {
         string name = isolate_filename(clipfile.filename);
         int64 insert_time = 0;
         
         foreach (Track temp_track in tracks) {
             insert_time = int64.max(insert_time, temp_track.get_length());
         }
-        do_append(clipfile, name, insert_time);        
+        do_append(track, clipfile, name, insert_time);        
     }
 
     public void on_clip_removed(Track t, Clip clip) {
@@ -635,7 +647,7 @@ public abstract class Project : Object {
                 return cf;
         return null;
     }
-    
+
     public VideoTrack? find_video_track() {
         assert(clear_tracks == false);//this should only be called from within context of lombard
         //once clear_tracks goes away, this method should go away. don't assume only one video_track
@@ -746,7 +758,7 @@ public abstract class Project : Object {
         set_name(null);
         cleared();
     }
-    
+        
     public bool can_export() {
         foreach (Track track in tracks) {
             if (track.get_length() > 0) {

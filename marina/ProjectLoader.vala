@@ -90,7 +90,7 @@ public class XmlTreeLoader {
 // ProjectBuilder is responsible for verifying the structure of the XML document.
 // Subclasses of this class will be responsible for checking the attributes of 
 // any particular element.
-class ProjectBuilder {
+class ProjectBuilder : Object {
     LoaderHandler handler;
 
     public signal void error_occurred(string error);
@@ -121,6 +121,7 @@ class ProjectBuilder {
 
     void handle_track(XmlElement track) {
         if (check_name("track", track)) {
+            emit(this, Facility.LOADING, Level.VERBOSE, "loading track");
             if (handler.commit_track(track.attribute_names, track.attribute_values)) {
                 foreach (XmlElement child in track.children) {
                     handle_clip(child);
@@ -233,22 +234,28 @@ public class ProjectLoader : Object {
         try {
             FileUtils.get_contents(file_name, out text, out text_len);
         } catch (FileError e) {
+            emit(this, Facility.LOADING, Level.MEDIUM, 
+                "error loading %s: %s".printf(file_name, e.message));
             load_error(e.message);
             load_complete();
             return;
         }
         
+        emit(this, Facility.LOADING, Level.VERBOSE, "Building tree for %s".printf(file_name));
         XmlTreeLoader tree_loader = new XmlTreeLoader(text);
         
         ProjectBuilder builder = new ProjectBuilder(loader_handler);
         builder.error_occurred += on_load_error;
         
         if (builder.check_project(tree_loader.root)) {
+            emit(this, Facility.LOADING, Level.VERBOSE, "project checked out.  starting load");
             load_started(file_name);
             builder.build_project(tree_loader.root);
         }
-        else
+        else {
+            emit(this, Facility.LOADING, Level.INFO, "project did not check out.  stopping.");
             load_complete(); 
+        }
     }
 }
 }

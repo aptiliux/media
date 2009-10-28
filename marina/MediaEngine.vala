@@ -392,8 +392,11 @@ public class VideoOutput : MediaConnector {
 
     public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
+        emit(this, Facility.GRAPH, Level.INFO, "connecting");
         media_engine.prepare_window += on_prepare_window;
-        pipeline.add(sink);
+        if (!pipeline.add(sink)) {
+            error("could not add sink");
+        }
         if (!elements[VideoIndex].link(sink)) {
             error("can't link converter with video sink!");
         }
@@ -402,6 +405,7 @@ public class VideoOutput : MediaConnector {
     
     public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
+        emit(this, Facility.GRAPH, Level.INFO, "disconnecting");
         elements[VideoIndex].unlink(sink);
         pipeline.remove(sink);
         media_engine.prepare_window -= on_prepare_window;
@@ -611,7 +615,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         bus.enable_sync_message_emission();
         bus.sync_message["element"] += on_element_message;
-        
         set_gst_state(Gst.State.PAUSED);                  
     }
 
@@ -675,6 +678,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     void on_element_message(Gst.Bus bus, Gst.Message message) {
+        emit(this, Facility.GRAPH, Level.VERBOSE, message.structure.name.to_string());
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element_message");
         if (!message.structure.has_name("prepare-xwindow-id"))
             return;
