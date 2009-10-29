@@ -13,6 +13,12 @@ class VideoProject : Project {
     
     Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
 
+    public override void load_complete() {
+        if (find_video_track() == null) {
+            add_track(new VideoTrack(this));
+        }
+    }
+    
     public VideoProject(string? filename) {
         base(filename, true);
         time_provider = new TimecodeTimeSystem();
@@ -24,17 +30,6 @@ class VideoProject : Project {
     
     public override string get_app_name() {
         return App.NAME;
-    }
-
-    public override void add_track(Track track) {
-        foreach (Track existing_track in tracks) {
-            if (track.media_type() == existing_track.media_type()) {
-                add_inactive_track(track);
-                return;
-            }
-        }
-        
-        base.add_track(track);
     }
 
     public override void add_clipfile(ClipFile f) {
@@ -70,6 +65,15 @@ class VideoProject : Project {
         return t;
     }
 
+    VideoTrack? find_video_track() {
+        foreach (Track track in tracks) {
+            if (track is VideoTrack) {
+                return track as VideoTrack;
+            }
+        }
+        return null;
+    }
+    
     protected override void do_append(Track track, ClipFile clipfile, string name, int64 insert_time) {
         undo_manager.start_transaction();
         if (clipfile.video_caps != null) {

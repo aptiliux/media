@@ -42,12 +42,9 @@ class TimeLine : Gtk.EventBox {
         ruler.position_changed += on_ruler_position_changed;
         vbox.pack_start(ruler, false, false, 0);
         
-        foreach (Model.Track track in project.tracks) {
-            tracks.add(new TrackView(track, this));
-        }
+        project.track_added += on_track_added;
+        project.track_removed += on_track_removed;
         project.media_engine.position_changed += on_position_changed;
-        vbox.pack_start(find_video_track_view(), false, false, 0);
-        vbox.pack_start(find_audio_track_view(), false, false, 0);
         add(vbox);
         
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
@@ -79,6 +76,28 @@ class TimeLine : Gtk.EventBox {
     void on_position_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");        
         queue_draw();
+    }
+    
+    void on_track_added(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
+        TrackView track_view = new TrackView(track, this);
+        tracks.add(track_view);
+        vbox.pack_start(track_view, false, false, 0);
+        if (track.media_type() == Model.MediaType.VIDEO) {
+            vbox.reorder_child(track_view, 1);
+        }
+        vbox.show_all();
+    }
+    
+    void on_track_removed(Model.Track track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
+        foreach (TrackView track_view in tracks) {
+            if (track_view.track == track) {
+                vbox.remove(track_view);
+                tracks.remove(track_view);
+                break;
+            }
+        }
     }
     
     public void on_ruler_position_changed(int x) {

@@ -11,7 +11,7 @@ public enum PlayState {
     PRE_PLAY, PLAYING,
     PRE_RECORD_NULL, PRE_RECORD, RECORDING, POST_RECORD,
     PRE_EXPORT, EXPORTING, CANCEL_EXPORT,
-    PRE_LOAD, LOADING, 
+    LOADING, 
     CLOSING, CLOSED
 }
 
@@ -615,7 +615,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         bus.enable_sync_message_emission();
         bus.sync_message["element"] += on_element_message;
-        set_gst_state(Gst.State.PAUSED);                  
     }
 
     public Gst.Element get_audio_silence() {
@@ -707,9 +706,11 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     void on_state_change(Gst.Bus bus, Gst.Message message) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
-        if (message.src != pipeline)
+        if (message.src != pipeline) {
+            emit(this, Facility.GRAPH, Level.VERBOSE, 
+                "on_state_change returning.  message from %s".printf(message.src.get_name()));
             return;
+        }
 
         Gst.State old_state;
         Gst.State new_state;
@@ -717,6 +718,9 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         message.parse_state_changed(out old_state, out new_state, out pending);
 
+        emit(this, Facility.GRAPH, Level.INFO, 
+            "on_state_change old(%s) new(%s) pending(%s)".printf(old_state.to_string(),
+                new_state.to_string(), pending.to_string()));
         if (new_state == gst_state)
             return;
 

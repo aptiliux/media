@@ -207,12 +207,6 @@ class App : Gtk.Window {
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
-        // TODO: this is a hack to deal with project loading.  Lombard assumes one video
-        // track and one audio track.  It was non-trivial to delete and recreate tracks.
-        project.clear_tracks = false;
-
-        project.add_track(new Model.VideoTrack(project));
-        project.add_track(new Model.AudioTrack(project, "Audio Track"));
 
         timeline = new TimeLine(project, project.time_provider);
         timeline.selection_changed += on_timeline_selection_changed;
@@ -253,8 +247,17 @@ class App : Gtk.Window {
         
         delete_event += on_delete_event;
         
+        if (project_filename == null) {
+            default_track_set();
+        }
+        
         update_menu();
         show_all();
+    }
+    
+    void default_track_set() {
+        project.add_track(new Model.VideoTrack(project));
+        project.add_track(new Model.AudioTrack(project, "Audio Track"));    
     }
     
     bool on_delete_event() {

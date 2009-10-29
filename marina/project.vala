@@ -87,15 +87,8 @@ public class MediaLoaderHandler : LoaderHandler {
         }
         
         if (type == "audio") {
-            AudioTrack audio_track = null;
-            if (the_project.clear_tracks) {
-                current_track = new AudioTrack(the_project, name);
-            } else {
-                current_track = the_project.find_audio_track();        
-            }
-
-            audio_track = current_track as AudioTrack;
-            assert(audio_track != null);
+            AudioTrack audio_track = new AudioTrack(the_project, name);
+            current_track = audio_track;
             
             for (int i = 0; i < number_of_attributes; ++i) {
                 switch(attr_names[i]) {
@@ -113,18 +106,12 @@ public class MediaLoaderHandler : LoaderHandler {
                 }
             }
             
-            if (the_project.clear_tracks) {
-                the_project.add_track(current_track);
-            }
+            the_project.add_track(current_track);
 
             return true;
         } else if (type == "video") {
-            if (the_project.clear_tracks) {
-                current_track = new VideoTrack(the_project);
-                the_project.add_track(current_track);
-            } else {
-                current_track = the_project.find_video_track();
-            }
+            current_track = new VideoTrack(the_project);
+            the_project.add_track(current_track);
         }
         
         return base.commit_track(attr_names, attr_values);;
@@ -269,9 +256,6 @@ public abstract class Project : Object {
     FetcherCompletion fetcher_completion;
     public UndoManager undo_manager;
 
-    // TODO: clear_tracks is a hack to allow lombard not to delete tracks on project reload
-    public bool clear_tracks = true;
-    
     public Fraction default_framerate;
     
     /* TODO:
@@ -285,7 +269,10 @@ public abstract class Project : Object {
     
     public signal void name_changed(string? project_file);
     public signal void load_error(string error);
-    public signal void load_complete();
+    public virtual signal void load_complete() {
+    
+    }
+
     public signal void closed();
     
     public signal void track_added(Track track);
@@ -312,11 +299,6 @@ public abstract class Project : Object {
         switch (media_engine.play_state) {
             case PlayState.STOPPED:
                 ClearTrackMeters();
-                break;
-            case PlayState.PRE_LOAD:
-                emit(this, Facility.LOADING, Level.INFO, "setting play state to loading");
-                media_engine.play_state = PlayState.LOADING;
-                loader.load();
                 break;
             case PlayState.CLOSED:
                 closed();
@@ -648,28 +630,6 @@ public abstract class Project : Object {
         return null;
     }
 
-    public VideoTrack? find_video_track() {
-        assert(clear_tracks == false);//this should only be called from within context of lombard
-        //once clear_tracks goes away, this method should go away. don't assume only one video_track
-        foreach (Track track in tracks) {
-            if (track.media_type() == MediaType.VIDEO) {
-                return track as VideoTrack;
-            }
-        }
-        return null;
-    }
-
-    public Track? find_audio_track() {
-        assert(clear_tracks == false);//this should only be called from within context of lombard
-        //once clear_tracks goes away, this method should go away. don't assume only one audio_track
-        foreach (Track track in tracks) {
-            if (track is AudioTrack) {
-                return track;
-            }
-        }
-        return null;
-    }
-    
     public void reseek() { transport_go(transport_get_position()); }
 
     public void go_start() { transport_go(0); }
@@ -737,22 +697,15 @@ public abstract class Project : Object {
     }
 
     public void clear() {
-        if (clear_tracks) {
-            media_engine.set_gst_state(Gst.State.NULL);
-        }
-        
+        media_engine.set_gst_state(Gst.State.NULL);
+
         foreach (Track track in tracks) {
             track.delete_all_clips();
-            if (clear_tracks) {
-                track.track_removed(track);
-                track_removed(track);
-            }
+            track.track_removed(track);
+            track_removed(track);
         }
 
-        // TODO: both applications should be clearing tracks and not assuming how many tracks
-        if (clear_tracks) {
-            tracks.clear();
-        }
+        tracks.clear();
         
         clipfiles.clear();
         set_name(null);
@@ -791,6 +744,7 @@ public abstract class Project : Object {
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
     public void load(string? fname) {
+        emit(this, Facility.LOADING, Level.INFO, "loading project");
         clear();
         set_name(null);
         if (fname == null) {
@@ -803,8 +757,9 @@ public abstract class Project : Object {
         loader.load_error += on_load_error;
         loader.load_complete += on_load_complete;
         loader.load_complete += media_engine.on_load_complete;
+        media_engine.play_state = PlayState.LOADING;
         media_engine.pipeline.set_state(Gst.State.NULL);
-        media_engine.play_state = PlayState.PRE_LOAD;
+        loader.load();
     }
     
     public void on_error_occurred(string major_error, string? minor_error) {
