@@ -845,6 +845,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                 }
                 else
                     fraction_updated(time / (double) project.get_length());
+            } else if (play_state == PlayState.RECORDING) {
+                position_changed(time);
             }
         }
         return true;
