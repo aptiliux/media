@@ -10,10 +10,14 @@ namespace DialogUtils {
         public string extension;
     }
 
-    Gtk.FileFilter add_filter(Gtk.FileChooserDialog d, string name, string extension) {
+    Gtk.FileFilter add_filter(Gtk.FileChooserDialog d, string name, string? extension) {
         Gtk.FileFilter filter = new Gtk.FileFilter();
         filter.set_name(name);
-        filter.add_pattern("*." + extension);
+        if (extension != null) {
+            filter.add_pattern("*." + extension);
+        } else {
+            filter.add_pattern("*");
+        }
         d.add_filter(filter);
         return filter;
     }
@@ -29,7 +33,7 @@ namespace DialogUtils {
         }
         
         if (allow_all) {
-            add_filter(d, "All files", "*");
+            add_filter(d, "All files", null);
             //don't add to filters.  filters should have same number of items as filter_descriptions
         }
         

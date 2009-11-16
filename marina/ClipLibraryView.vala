@@ -185,6 +185,26 @@ public class ClipLibraryView : Gtk.EventBox {
         selection_changed(false);
     }
     
+    public override void drag_data_received(Gdk.DragContext context, int x, int y,
+                                            Gtk.SelectionData selection_data, uint drag_info,
+                                            uint time) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_received");
+        string[] a = selection_data.get_uris();
+        Gtk.drag_finish(context, true, false, time);
+        
+        project.create_clip_importer(null, false);
+
+        foreach (string s in a) {
+            string filename;
+            try {
+                filename = GLib.Filename.from_uri(s);
+            } catch (GLib.ConvertError e) { continue; }
+            project.importer.add_file(filename);
+        }
+        project.importer.start();
+    }
+
+    
     void on_drag_data_get(Gtk.Widget w, Gdk.DragContext context, Gtk.SelectionData data, 
                             uint info, uint time) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_get");

@@ -19,8 +19,7 @@ class TrackHeader : Gtk.EventBox {
         
         track.track_renamed += on_track_renamed;
         track.track_selection_changed += on_track_selection_changed;
-        
-        set_size_request(width, TrackView.height + TimeLine.track_margin * 2);
+        set_size_request(width, TrackView.TrackHeight);
         modify_bg(Gtk.StateType.NORMAL, header_area.background_color);
         modify_bg(Gtk.StateType.SELECTED, parse_color("#68a"));
         

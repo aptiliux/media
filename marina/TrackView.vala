@@ -6,7 +6,7 @@
 
 using Logging;
 
-class TrackView : Gtk.Fixed {
+public class TrackView : Gtk.Fixed {
     public Model.Track track;
     public TimeLine timeline;
     
@@ -17,6 +17,7 @@ class TrackView : Gtk.Fixed {
     public int drag_x_coord = 0;
     
     public const int clip_height = 50;
+    public const int TrackHeight = clip_height + TimeLine.BORDER * 2;
     
     Model.Clip? drag_clip_destination = null;
     bool drag_after_destination;
@@ -37,7 +38,7 @@ class TrackView : Gtk.Fixed {
     
     public override void size_request(out Gtk.Requisition requisition) {
         base.size_request(out requisition);
-        requisition.height = clip_height + TimeLine.BORDER * 2;
+        requisition.height = TrackHeight;
         requisition.width += TimeLine.BORDER;    // right margin
     }
     

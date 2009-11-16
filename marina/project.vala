@@ -255,6 +255,7 @@ public abstract class Project : Object {
 
     FetcherCompletion fetcher_completion;
     public UndoManager undo_manager;
+    public LibraryImporter importer;
 
     public Fraction default_framerate;
     
@@ -871,6 +872,15 @@ public abstract class Project : Object {
             if (audio_track != null) {
                 audio_track.level_changed(-100, -100);
             }
+        }
+    }
+
+    public void create_clip_importer(Model.Track? track, bool timeline_add) {
+        if (timeline_add) {
+            assert(track != null);
+            importer = new Model.TimelineImporter(track, this);
+        } else {
+            importer = new Model.LibraryImporter(this);
         }
     }
 

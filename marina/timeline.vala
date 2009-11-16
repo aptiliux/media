@@ -7,10 +7,10 @@
 using Gee;
 using Logging;
 
-class TimeLine : Gtk.EventBox {
+public class TimeLine : Gtk.EventBox {
     public Model.Project project;
     public weak Model.TimeSystem provider;
-    View.Ruler ruler;
+    public View.Ruler ruler;
     ArrayList<TrackView> tracks = new ArrayList<TrackView>();
     Gtk.VBox vbox;
     
@@ -52,6 +52,7 @@ class TimeLine : Gtk.EventBox {
         
         pixel_div = pixel_max / pixel_min;
         provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
+        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
     }
 
     public void zoom_to_project(double width) {
@@ -201,6 +202,30 @@ class TimeLine : Gtk.EventBox {
         return true;
     }
 
+    public override void drag_data_received(Gdk.DragContext context, int x, int y,
+                                            Gtk.SelectionData selection_data, uint drag_info,
+                                            uint time) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_received");
+        string[] a = selection_data.get_uris();
+        Gtk.drag_finish(context, true, false, time);
+        
+        Model.Track? track = null;
+        TrackView? track_view = find_child(x, y) as TrackView;
+        assert(track_view != null);
+        track = track_view.track;
+        
+        project.create_clip_importer(track, true);
+
+        foreach (string s in a) {
+            string filename;
+            try {
+                filename = GLib.Filename.from_uri(s);
+            } catch (GLib.ConvertError e) { continue; }
+            project.importer.add_file(filename);
+        }
+        project.importer.start();
+    }
+
     public void update_pos(int event_x) {
         int64 time = provider.xpos_to_time(event_x);
         
@@ -209,9 +234,10 @@ class TimeLine : Gtk.EventBox {
     }
 
     public Gtk.Widget? find_child(double x, double y) {
-        foreach (Gtk.Widget w in vbox.get_children())
+        foreach (Gtk.Widget w in vbox.get_children()) {
             if (w.allocation.y <= y && y < w.allocation.y + w.allocation.height)
                 return w;
+        }
         return null;
     }
 
@@ -220,10 +246,11 @@ class TimeLine : Gtk.EventBox {
             gap_view.unselect();
       
         Gtk.Widget? drag = find_child(event.x, event.y);
-        if (drag != null)
+        if (drag != null) {
             drag.button_press_event(event);
+        }
         queue_draw();
-        
+
         return false;
     }
 
@@ -256,7 +283,7 @@ class TimeLine : Gtk.EventBox {
 
     TrackView? find_video_track_view() {
         foreach (TrackView track in tracks) {
-            if (track.track is Model.VideoTrack) {
+            if (track.track.media_type() == Model.MediaType.VIDEO) {
                 return track;
             }
         }
@@ -266,7 +293,7 @@ class TimeLine : Gtk.EventBox {
     
     TrackView? find_audio_track_view() {
         foreach (TrackView track in tracks) {
-            if (track.track is Model.AudioTrack) {
+            if (track.track.media_type() == Model.MediaType.AUDIO) {
                 return track;
             }
         }

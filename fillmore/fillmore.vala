@@ -174,8 +174,8 @@ class Recorder : Gtk.Window {
         play_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Play");
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
         on_undo_changed(false);
-        
-        timeline = new TimeLine(this, provider);
+
+        timeline = new TimeLine(project, provider);
         timeline.selection_changed += on_selection_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
@@ -184,7 +184,7 @@ class Recorder : Gtk.Window {
         Gtk.HBox hbox = new Gtk.HBox(false, 0);
         header_area = new HeaderArea(this, provider, TimeLine.RULER_HEIGHT);
         hbox.pack_start(header_area, false, false, 0);
-        
+
         Gtk.ScrolledWindow scrolled = new Gtk.ScrolledWindow(null, null);
         scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
         scrolled.add_with_viewport(timeline);
@@ -218,7 +218,7 @@ class Recorder : Gtk.Window {
 
     void default_track_set() {
         project.add_track(new Model.AudioTrack(project, get_default_track_name()));
-        select(project.tracks[0]);
+        project.tracks[0].set_selected(true);
     }
 
     public string get_default_track_name() {
@@ -256,7 +256,7 @@ class Recorder : Gtk.Window {
         the_menuitem.set_sensitive(sensitive);
     }
     
-    void on_selection_changed(TimeLine timeline, ClipView? new_selection) {
+    void on_selection_changed(bool selected) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_selection_changed");
         update_menu();
     }
@@ -270,6 +270,7 @@ class Recorder : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         track.clip_added += on_clip_added;
         track.clip_removed += on_clip_removed;
+        track.track_selection_changed += on_track_selection_changed;
     }
     
     void on_clip_added(Model.Clip clip) {
@@ -284,28 +285,43 @@ class Recorder : Gtk.Window {
         update_menu();
     }
     
+    void on_track_selection_changed(Model.Track track) {
+        if (track.get_is_selected()) {
+            foreach (Model.Track t in project.tracks) {
+                if (t != track) {
+                    t.set_selected(false);
+                }
+            }
+        }
+    }
+    
     void on_clip_moved(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         update_menu();
     }
     
     void update_menu() {
-        bool selected = timeline.selected != null;
+        bool selected = timeline.is_clip_selected();
         bool playhead_on_clip = project.playhead_on_clip();
-        bool selected_modified = selected ? timeline.selected.clip.is_trimmed() : false;
+
+        bool clip_is_trimmed = false;
+        if (selected) {
+            foreach (ClipView clip_view in timeline.selected_clips) {
+                clip_is_trimmed = clip_view.clip.is_trimmed();
+                if (clip_is_trimmed) {
+                    break;
+                }
+            }
+        }
+
         delete_action.set_sensitive(selected);
         set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && selected_modified);
+        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && clip_is_trimmed);
         set_sensitive_menu("/MenuBar/EditMenu/ClipViewProperties", selected);
         set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
             selected && project.playhead_on_contiguous_clip());
-        set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && selected_modified);
-    
-    }
-    
-    public void select(Model.Track track) {
-        header_area.select(track);
+        set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && clip_is_trimmed);
     }
     
     public Model.Track? selected_track() {
@@ -474,8 +490,7 @@ class Recorder : Gtk.Window {
     }
     
     void on_delete() {
-        Model.Clip clip = timeline.selected.clip;
-        selected_track().delete_clip(clip);
+        timeline.delete_selection();
     }
     
     public void on_split_at_playhead() {
@@ -491,15 +506,18 @@ class Recorder : Gtk.Window {
     }
     
     public void on_revert_to_original() {
-        Model.Clip clip = timeline.selected.clip;
-        Model.Track? track = project.track_from_clip(clip);
-        if (track != null) {
-            track.revert_to_original(clip);
+        foreach (ClipView clip_view in timeline.selected_clips) {
+            Model.Track? track = project.track_from_clip(clip_view.clip);
+            if (track != null) {
+                track.revert_to_original(clip_view.clip);
+            }
         }
     }
   
     public void on_clip_properties() {
-        DialogUtils.show_clip_properties(this, timeline.selected, null);
+        foreach (ClipView clip_view in timeline.selected_clips) {
+            DialogUtils.show_clip_properties(this, clip_view, null);
+        }
     }
 
     // Track menu
@@ -590,9 +608,10 @@ class Recorder : Gtk.Window {
         
     void on_callback_pulse() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
-        if (timeline != null) {
-            timeline.update();
+        if (project.transport_is_playing()) {
+            scroll_toward_center(provider.time_to_xpos(project.media_engine.position));
         }
+        timeline.queue_draw();
     }
     // main
     

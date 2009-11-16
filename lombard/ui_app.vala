@@ -42,8 +42,6 @@ class App : Gtk.Window {
     
     Gtk.ToggleAction library_view_action;
     
-    Model.LibraryImporter importer;
-    
     bool done_zoom = false;
     
     Gtk.VBox vbox = null;
@@ -211,11 +209,13 @@ class App : Gtk.Window {
         timeline = new TimeLine(project, project.time_provider);
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
+        timeline.drag_data_received += on_drag_data_received;
         project.media_engine.position_changed += on_position_changed;
         timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         library = new ClipLibraryView(project);
         library.selection_changed += on_library_selection_changed;
+        library.drag_data_received += on_drag_data_received;
         
         status_bar = new View.StatusBar(project, project.time_provider, TimeLine.BAR_HEIGHT);
         
@@ -236,13 +236,8 @@ class App : Gtk.Window {
 
         add_accel_group(manager.get_accel_group());
         
-        Gtk.drag_dest_set(timeline, Gtk.DestDefaults.ALL, drag_target_entries, 
-                                                                  Gdk.DragAction.COPY);
         Gtk.drag_dest_set(library, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
         
-        timeline.drag_data_received += on_drag_data_received;
-        library.drag_data_received += on_drag_data_received;
-
         on_undo_changed(false);
         
         delete_event += on_delete_event;
@@ -250,14 +245,14 @@ class App : Gtk.Window {
         if (project_filename == null) {
             default_track_set();
         }
-        
+
         update_menu();
         show_all();
     }
     
     void default_track_set() {
         project.add_track(new Model.VideoTrack(project));
-        project.add_track(new Model.AudioTrack(project, "Audio Track"));    
+        project.add_track(new Model.AudioTrack(project, "Audio Track"));
     }
     
     bool on_delete_event() {
@@ -353,6 +348,11 @@ class App : Gtk.Window {
         }
         done_zoom = false;
     }
+
+    void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
+                                Gtk.SelectionData selection_data, uint drag_info, uint time) {
+        present();
+    }
     
     public void set_project_name(string? filename) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_project_name");
@@ -386,29 +386,25 @@ class App : Gtk.Window {
         }
     }
     
-    void create_clip_importer(Model.Track? track, bool timeline_add) {
-        if (timeline_add) {
-            assert(track != null);
-            importer = new Model.TimelineImporter(track, project);
-        } else {
-            importer = new Model.LibraryImporter(project);
-        }
-        importer.started += on_importer_started;       
-    }
-    
     void on_open() {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
-            create_clip_importer(null, false);
+            project.create_clip_importer(null, false);
+            project.importer.started += on_importer_started;
             foreach (string s in filenames) {
                 string str;
                 try {
                     str = GLib.Filename.from_uri(s);
                 } catch (GLib.ConvertError e) { str = s; }
-                load_file(str, importer);
+                load_file(str, project.importer);
             }
-            importer.start();
+            project.importer.start();
         }
+    }
+
+    void on_importer_started(Model.ClipImporter i, int num) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_importer_started");
+        new MultiFileProgress(this, num, "Import", i);
     }
 
     bool do_save_dialog() {
@@ -510,39 +506,6 @@ class App : Gtk.Window {
         update_menu();
     }
     
-    void on_importer_started(Model.ClipImporter i, int num) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_importer_started");
-        new MultiFileProgress(this, num, "Import", i);
-    }
-        
-    public void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
-                                            Gtk.SelectionData selection_data, uint drag_info,
-                                            uint time) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_received");
-        string[] a = selection_data.get_uris();
-        Gtk.drag_finish(context, true, false, time);
-        
-        Model.Track? track = null;
-        bool on_timeline = w == timeline;
-        if (on_timeline) {
-            TrackView? track_view = timeline.find_child(x, y) as TrackView;
-            assert(track_view != null);
-            track = track_view.track;
-        }
-        
-        create_clip_importer(track, on_timeline);
-
-        foreach (string s in a) {
-            string filename;
-            try {
-                filename = GLib.Filename.from_uri(s);
-            } catch (GLib.ConvertError e) { continue; }
-            load_file(filename, importer);
-        }
-        importer.start();
-        present();
-    }
-
     void update_menu() {
         bool clip_selected = timeline.is_clip_selected();
         bool multiple_clips_selected = timeline.selected_clips.size > 1;

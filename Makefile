@@ -23,7 +23,9 @@ MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
 					StatusBar.vala \
 					TimeSystem.vala \
 					thumbnailsink.vala \
+					timeline.vala \
 					track.vala \
+					TrackView.vala \
 					ui_clip.vala \
 					UndoManager.vala \
 					video_track.vala
@@ -51,7 +53,6 @@ FILLMORE_SOURCES = \
 	audio_project.vala \
 	fillmore.vala \
 	header_area.vala \
-	timeline.vala \
 	trackinformation.vala
 
 FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
@@ -64,8 +65,6 @@ LOMBARD = lom
 
 LOMBARD_SOURCES = \
 	ui_app.vala \
-	ui_timeline.vala \
-	ui_track.vala \
 	video_project.vala
 
 LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
