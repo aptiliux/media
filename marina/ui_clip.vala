@@ -151,7 +151,9 @@ public class ClipView : Gtk.DrawingArea {
         gc.set_clip_rectangle(r);
 
         Pango.Layout layout;
-        if (!clip.clipfile.is_online()) {
+        if (clip.is_recording) {
+            layout = create_pango_layout("Recording");
+        } else if (!clip.clipfile.is_online()) {
             layout = create_pango_layout("%s (Offline)".printf(clip.name));
         }
         else {
