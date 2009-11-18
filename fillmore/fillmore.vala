@@ -642,6 +642,9 @@ class Recorder : Gtk.Window {
         Gtk.init(ref args);
         GLib.Environment.set_application_name("fillmore");
 
+        Gtk.rc_parse("fillmore.rc");
+        Gst.init(ref args);
+
         Gst.Registry registry = Gst.Registry.get_default();
         Gst.Plugin gnonlin = registry.find_plugin("gnonlin");
         if (gnonlin == null) {
@@ -656,9 +659,6 @@ class Recorder : Gtk.Window {
                 version, MIN_GNONLIN);
             return;
         }
-
-        Gtk.rc_parse("fillmore.rc");
-        Gst.init(ref args);
 
         string? project_file = null;        
         if (args.length > 1) {
