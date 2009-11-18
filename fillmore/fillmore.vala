@@ -138,6 +138,9 @@ class Recorder : Gtk.Window {
     const DialogUtils.filter_description_struct[] export_filters = {
         { "Ogg Files", "ogg" }
     };
+
+    // Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
+    const string MIN_GNONLIN = "0.10.10.3";
     
     public Recorder(string? project_file) {
         provider = new Model.TimecodeTimeSystem();
@@ -638,6 +641,22 @@ class Recorder : Gtk.Window {
     static void main(string[] args) {
         Gtk.init(ref args);
         GLib.Environment.set_application_name("fillmore");
+
+        Gst.Registry registry = Gst.Registry.get_default();
+        Gst.Plugin gnonlin = registry.find_plugin("gnonlin");
+        if (gnonlin == null) {
+            stderr.puts("This program requires Gnonlin, which is not installed.  Exiting.\n");
+            return;
+        }
+        
+        string version = gnonlin.get_version();
+        if (!version_at_least(version, MIN_GNONLIN)) {
+            stderr.printf(
+                "You have Gnonlin version %s, but this program requires version %s.  Exiting.\n",
+                version, MIN_GNONLIN);
+            return;
+        }
+
         Gtk.rc_parse("fillmore.rc");
         Gst.init(ref args);
 
