@@ -43,16 +43,62 @@ class TrackHeader : Gtk.EventBox {
     }
 }
 
+class SliderBase : Gtk.HScrollbar {
+    protected string label;
+    construct {
+    }
+    
+    public override bool expose_event (Gdk.EventExpose event) {
+        Gdk.GC gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
+
+        int radius = (slider_end - slider_start) / 2;
+        int center = allocation.x + slider_start + radius;
+        int height = allocation.y + allocation.height / 2;
+
+        event.window.draw_rectangle(gc, false,
+            allocation.x + radius, height, allocation.width - 2 * radius, 1);
+
+        gc = style.fg_gc[(int) Gtk.StateType.SELECTED];
+        event.window.draw_arc(gc, true, 
+            center - radius, allocation.y + 2,
+            radius * 2, radius * 2, 0, 360 * 64);
+        
+        gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
+        Pango.Layout layout = create_pango_layout(label);
+        Pango.FontDescription f = Pango.FontDescription.from_string("Sans 8");
+        layout.set_font_description(f);
+        int text_width, text_height;
+        layout.get_pixel_size(out text_width, out text_height);
+        Gdk.draw_layout(event.window, style.black_gc, 
+            center - text_width / 2, allocation.y + 2, layout);
+        return true;
+    }
+}
+
+class PanSlider : SliderBase {
+    construct {
+        label = "P";
+    }
+}
+
+class VolumeSlider : SliderBase {
+    construct {
+        label = "V";
+    }
+}
+
 class AudioTrackHeader : TrackHeader {
-    public Gtk.Scrollbar pan;
-    public Gtk.Scrollbar volume;
+    public PanSlider pan;
+    public VolumeSlider volume;
     
     public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
         base(track, header);
-        pan = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
+        pan = new PanSlider();
+        pan.set_adjustment(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
         pan.value_changed += on_pan_value_changed;
         
-        volume = new Gtk.HScrollbar(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
+        volume = new VolumeSlider();
+        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
         volume.value_changed += on_volume_value_changed;
 
         track.parameter_changed += on_parameter_changed;
@@ -62,18 +108,8 @@ class AudioTrackHeader : TrackHeader {
         View.AudioMeter meter = new View.AudioMeter(track);
         vbox.add(meter);
         
-        Gtk.HBox pan_hbox = new Gtk.HBox(false, 0);
-        Gtk.Label pan_label = new Gtk.Label("P");
-        pan_hbox.pack_start(pan_label, true, true, 0);
-        pan_hbox.add(pan);
-        vbox.add(pan_hbox);
-        
-        Gtk.HBox volume_hbox = new Gtk.HBox(false, 0);
-        Gtk.Label volume_label = new Gtk.Label("V");
-        volume_hbox.pack_start(volume_label, true, true, 0);
-        volume_hbox.add(volume);
-        
-        vbox.add(volume_hbox);
+        vbox.add(pan);
+        vbox.add(volume);
         add(vbox);
     }
 
