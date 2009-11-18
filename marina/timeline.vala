@@ -225,7 +225,11 @@ public class TimeLine : Gtk.EventBox {
         
         Model.Track? track = null;
         TrackView? track_view = find_child(x, y) as TrackView;
-        assert(track_view != null);
+        
+        if (track_view == null) {
+            return;
+        }
+        
         track = track_view.track;
         
         project.create_clip_importer(track, true);
