@@ -26,6 +26,8 @@ public class Ruler : Gtk.DrawingArea {
         Gdk.cairo_set_source_color(context, parse_color("#777"));        
         context.rectangle(allocation.x, allocation.y, allocation.width, allocation.height);
         context.fill();
+        
+        Cairo.Antialias old_antialias = context.get_antialias();
 
         context.set_antialias(Cairo.Antialias.NONE);
         context.set_source_rgb(1.0, 1.0, 1.0);
@@ -56,6 +58,7 @@ public class Ruler : Gtk.DrawingArea {
             frame = provider.get_next_position(frame);
         }
 
+        context.set_antialias(old_antialias);
         context.set_line_width(1.0);
         context.stroke();
 
