@@ -178,9 +178,23 @@ public class TimeLine : Gtk.EventBox {
     }
     
     public void do_paste(Model.Clip c, int64 pos, bool new_clip) {
-        TrackView view = c.type == Model.MediaType.VIDEO ? 
-            find_video_track_view() : find_audio_track_view();
-        view.track.do_clip_paste(c, pos, new_clip);
+        TrackView? view = c.type == Model.MediaType.VIDEO ? 
+            find_video_track_view() : null;
+        if (view == null) {
+            foreach (TrackView track_view in tracks) {
+                if (track_view.track.get_is_selected()) {
+                    view = track_view;
+                }
+            }
+            // TODO: Lombard doesn't use selected state.  The following check should be removed
+            // when it does
+            if (view == null) {
+                view = find_audio_track_view();
+            }
+        }
+        if (view != null) {
+            view.track.do_clip_paste(c, pos, new_clip);
+        }
         queue_draw();
     }
     

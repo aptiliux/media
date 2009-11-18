@@ -38,6 +38,9 @@ class Recorder : Gtk.Window {
         
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
+        { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
+        { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
+        { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
         { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "_Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
@@ -83,6 +86,9 @@ class Recorder : Gtk.Window {
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
+      <menuitem name="EditCut" action="Cut"/>
+      <menuitem name="EditCopy" action="Copy"/>
+      <menuitem name="EditPaste" action="Paste"/>
       <menuitem name="EditDelete" action="Delete"/>
       <separator/>
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
@@ -315,6 +321,9 @@ class Recorder : Gtk.Window {
         }
 
         delete_action.set_sensitive(selected);
+        set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
+        set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
+        set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard_clip != null);
         set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && clip_is_trimmed);
@@ -484,6 +493,17 @@ class Recorder : Gtk.Window {
     }
     
     // Edit menu
+    void on_cut() {
+        timeline.do_cut();
+    }
+    
+    void on_copy() {
+        timeline.do_copy();
+    }
+    
+    void on_paste() {
+        timeline.paste();
+    }
 
     void on_undo() {
         project.undo();
