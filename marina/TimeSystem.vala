@@ -9,6 +9,7 @@ namespace Model {
 public interface TimeSystem : Object {
     public abstract void calculate_pixel_step(float inc, float pixel_min, float pixel_div);
     public abstract int64 xpos_to_time(int x);
+    public abstract int64 xsize_to_time(int x);
     public abstract int time_to_xpos(int64 time);
     public abstract int64 get_pixel_snap_time();
     public abstract int time_to_xsize(int64 time);    

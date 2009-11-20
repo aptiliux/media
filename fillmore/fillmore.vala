@@ -185,8 +185,8 @@ class Recorder : Gtk.Window {
         on_undo_changed(false);
 
         timeline = new TimeLine(project, provider);
-        timeline.selection_changed += on_selection_changed;
-        timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+        timeline.track_changed += on_track_changed;
+        ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         update_menu();
         
@@ -265,8 +265,8 @@ class Recorder : Gtk.Window {
         the_menuitem.set_sensitive(sensitive);
     }
     
-    void on_selection_changed(bool selected) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_selection_changed");
+    void on_track_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_changed");
         update_menu();
     }
     

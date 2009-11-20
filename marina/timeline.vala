@@ -15,10 +15,7 @@ public class TimeLine : Gtk.EventBox {
     Gtk.VBox vbox;
     
     public ArrayList<ClipView> selected_clips = new ArrayList<ClipView>();
-    public int selected_clip_index = 0;
     public Model.Clip clipboard_clip = null;
-    
-    public Gtk.Menu context_menu;
     
     public const int BAR_HEIGHT = 20;
     public const int BORDER = 4;
@@ -32,6 +29,8 @@ public class TimeLine : Gtk.EventBox {
     
     public const int RULER_HEIGHT = 20;
     public GapView gap_view;
+    Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
+    Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.PLUS); // This will be used for ctrl-drag
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
         project = p;
@@ -82,6 +81,7 @@ public class TimeLine : Gtk.EventBox {
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         TrackView track_view = new TrackView(track, this);
+        track_view.clip_view_added += on_clip_view_added;
         tracks.add(track_view);
         vbox.pack_start(track_view, false, false, 0);
         if (track.media_type() == Model.MediaType.VIDEO) {
@@ -101,36 +101,105 @@ public class TimeLine : Gtk.EventBox {
         }
     }
     
+    public void on_clip_view_added(ClipView clip_view) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_clip_view_added");
+        clip_view.selection_request += on_clip_view_selection_request;
+        clip_view.move_request += on_clip_view_move_request;
+        clip_view.move_commit += on_clip_view_move_commit;
+        clip_view.move_begin += on_clip_view_move_begin;
+    }
+    
+    public void deselect_all_clips() {
+        foreach(ClipView selected_clip_view in selected_clips) {
+            selected_clip_view.is_selected = false;
+        }
+        selected_clips.clear();
+    }
+    
+    void on_clip_view_move_begin(ClipView unused) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_begin");
+        window.set_cursor(hand_cursor);
+        foreach (ClipView selected_clip in selected_clips) {
+            selected_clip.initial_time = selected_clip.clip.start;
+            selected_clip.clip.gnonlin_disconnect();
+            TrackView track_view = selected_clip.get_parent() as TrackView;
+            track_view.track.remove_clip_from_array(selected_clip.clip);
+        }    
+    }
+
+    void on_clip_view_selection_request(ClipView clip_view, bool extend) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_selection_request");
+        if (gap_view != null) {
+            gap_view.unselect();
+        }
+        
+        bool in_selected_clips = selected_clips.contains(clip_view);
+        if (!extend) {
+            if (!in_selected_clips) {
+                deselect_all_clips();
+                clip_view.is_selected = true;
+                selected_clips.add(clip_view);
+            }
+        } else {
+            if (selected_clips.size > 1) {
+                if (in_selected_clips && clip_view.is_selected) {
+                    clip_view.is_selected = false;
+                    selected_clips.remove(clip_view);
+                }
+            }
+            if (!in_selected_clips) {
+                clip_view.is_selected = true;
+                selected_clips.add(clip_view);
+            }
+        }
+        track_changed();
+        selection_changed(is_clip_selected());
+        queue_draw();
+    }
+
+    void on_clip_view_move_commit(ClipView clip_view, int delta) {
+        window.set_cursor(null);
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        foreach (ClipView selected_clip_view in selected_clips) {
+            TrackView track_view = selected_clip_view.get_parent() as TrackView;
+            selected_clip_view.clip.gnonlin_connect();
+            track_view.track.move(selected_clip_view.clip, 
+                 selected_clip_view.clip.start, selected_clip_view.initial_time);
+        }
+    }
+        
+    void on_clip_view_move_request(ClipView clip_view, int delta) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        if (move_allowed(ref delta)) {
+            move_the_clips(delta);
+        }    
+    }
+    
+    bool move_allowed(ref int move_distance) {
+        foreach(ClipView clip_view in selected_clips) {
+            int position = provider.time_to_xpos(clip_view.clip.start);
+            if ((position + move_distance) < BORDER) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void move_the_clips(int move_distance) {
+        foreach (ClipView clip_view in selected_clips) {
+            do_clip_move(clip_view, move_distance);
+        }
+    }
+    
+    public void do_clip_move(ClipView clip_view, int delta) {
+        clip_view.clip.start += provider.xsize_to_time(delta);
+    }
+
     public void on_ruler_position_changed(int x) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_ruler_position_changed");
         update_pos(x);
     }
 
-    public void select_clip(ClipView? clip_view) {
-        if (clip_view != null) {
-            if (!clip_view.is_selected) {
-                selected_clips.add(clip_view);
-                clip_view.is_selected = true;
-            }
-        } else {
-            foreach (ClipView clip in selected_clips) {
-                clip.is_selected = false;
-            }
-            selected_clips.clear();
-        }
-        queue_draw();
-        selection_changed(true);
-    }
-    
-    public void unselect_clip(ClipView clip_view) {
-        clip_view.is_selected = false;
-        if (selected_clips.contains(clip_view)) {
-            selected_clips.remove(clip_view);
-            queue_draw();
-            selection_changed(false);
-        }
-    }
-    
     public bool is_clip_selected() {
         return selected_clips.size > 0;
     }
@@ -143,8 +212,8 @@ public class TimeLine : Gtk.EventBox {
         if (is_clip_selected()) {
             while (selected_clips.size > 0) {
                 selected_clips[0].delete_clip();
+                selected_clips.remove_at(0);
             }
-            select_clip(null);
         } else {
             if (gap_view != null) {
                 if (!project.can_delete_gap(gap_view.gap)) {
@@ -269,34 +338,7 @@ public class TimeLine : Gtk.EventBox {
         }
         queue_draw();
 
-        return false;
-    }
-
-    public override bool motion_notify_event(Gdk.EventMotion event) {
-        Gtk.Widget? drag = find_child(event.x, event.y);
-        if (drag != null) {
-            drag.motion_notify_event(event);
-            queue_draw();
-        }
-        return false;
-    }
-
-    public override bool button_release_event(Gdk.EventButton event) {
-        Gtk.Widget? drag = find_child(event.x, event.y);
-        if (drag != null) {
-            drag.button_release_event(event);
-            drag = null;
-            queue_draw();
-        }
-        
-        if (is_clip_selected() && event.button == 3) {
-            context_menu.select_first(true);
-            context_menu.popup(null, null, null, 0, 0);
-        } else {
-            context_menu.popdown();
-        }
-
-        return false;
+        return true;
     }
 
     TrackView? find_video_track_view() {

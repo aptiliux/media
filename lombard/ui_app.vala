@@ -211,7 +211,7 @@ class App : Gtk.Window {
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
         project.media_engine.position_changed += on_position_changed;
-        timeline.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+        ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         library = new ClipLibraryView(project);
         library.selection_changed += on_library_selection_changed;
@@ -551,7 +551,8 @@ class App : Gtk.Window {
     public void on_library_selection_changed(bool selected) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
         if (selected) {
-            timeline.select_clip(null);
+            timeline.deselect_all_clips();
+            timeline.queue_draw();
         }
         update_menu();
     }
