@@ -501,9 +501,9 @@ public abstract class Project : Object {
                 if (left) {
                     delta = transport_get_position() - clip.start;
                 } else {
-                    delta = clip.end - transport_get_position();
+                    delta = transport_get_position() - clip.end;
                 }
-                track.trim(clip, delta, left);
+                track.trim(clip, delta, left ? Gdk.WindowEdge.WEST : Gdk.WindowEdge.EAST);
             }
         }
         undo_manager.end_transaction();

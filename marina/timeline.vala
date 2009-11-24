@@ -29,8 +29,6 @@ public class TimeLine : Gtk.EventBox {
     
     public const int RULER_HEIGHT = 20;
     public GapView gap_view;
-    Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
-    Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.PLUS); // This will be used for ctrl-drag
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
         project = p;
@@ -107,6 +105,8 @@ public class TimeLine : Gtk.EventBox {
         clip_view.move_request += on_clip_view_move_request;
         clip_view.move_commit += on_clip_view_move_commit;
         clip_view.move_begin += on_clip_view_move_begin;
+        clip_view.trim_begin += on_clip_view_trim_begin;
+        clip_view.trim_commit += on_clip_view_trim_commit;
     }
     
     public void deselect_all_clips() {
@@ -118,7 +118,6 @@ public class TimeLine : Gtk.EventBox {
     
     void on_clip_view_move_begin(ClipView unused) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_begin");
-        window.set_cursor(hand_cursor);
         foreach (ClipView selected_clip in selected_clips) {
             selected_clip.initial_time = selected_clip.clip.start;
             selected_clip.clip.gnonlin_disconnect();
@@ -127,6 +126,21 @@ public class TimeLine : Gtk.EventBox {
         }    
     }
 
+    void on_clip_view_trim_begin(ClipView clip, Gdk.WindowEdge edge) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_trim_begin");
+        switch (edge) {
+            case Gdk.WindowEdge.WEST:
+                clip.initial_time = clip.clip.start;
+                break;
+            case Gdk.WindowEdge.EAST:
+                clip.initial_time = clip.clip.duration;
+                break;
+            default:
+                assert(false); // We only support trimming east and west;
+                break;
+        }
+    }
+    
     void on_clip_view_selection_request(ClipView clip_view, bool extend) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_selection_request");
         if (gap_view != null) {
@@ -167,7 +181,28 @@ public class TimeLine : Gtk.EventBox {
                  selected_clip_view.clip.start, selected_clip_view.initial_time);
         }
     }
-        
+
+    void on_clip_view_trim_commit(ClipView clip_view, Gdk.WindowEdge edge) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_commit");
+        TrackView track_view = clip_view.get_parent() as TrackView;
+        int64 delta = 0;
+        switch (edge) {
+            case Gdk.WindowEdge.WEST:
+                delta = clip_view.clip.start - clip_view.initial_time;
+                break;
+            case Gdk.WindowEdge.EAST:
+                delta = clip_view.clip.duration - clip_view.initial_time;
+                break;
+            default:
+                assert(false);  // We only handle WEST and EAST
+                break;
+        }
+        //restore back to pre-trim state
+        clip_view.clip.trim(-delta, edge);
+        clip_view.clip.gnonlin_connect();
+        track_view.track.trim(clip_view.clip, delta, edge);
+    }
+
     void on_clip_view_move_request(ClipView clip_view, int delta) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
         if (move_allowed(ref delta)) {

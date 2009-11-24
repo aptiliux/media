@@ -230,21 +230,21 @@ public class ClipTrimCommand : Command {
     Track track;
     Clip clip;
     int64 delta;
-    bool left;
+    Gdk.WindowEdge edge;
     
-    public ClipTrimCommand(Track track, Clip clip, int64 delta, bool left) {
+    public ClipTrimCommand(Track track, Clip clip, int64 delta, Gdk.WindowEdge edge) {
         this.track = track;
         this.clip = clip;
         this.delta = delta;
-        this.left = left;
+        this.edge = edge;
     }
     
     public override void apply() {
-        track._trim(clip, delta, left);
+        track._trim(clip, delta, edge);
     }
     
     public override void undo() {
-        track._trim(clip, -delta, left);
+        track._trim(clip, -delta, edge);
     }
     
     public override bool merge(Command command) {
@@ -276,8 +276,8 @@ public class ClipRevertCommand : Command {
     }
     
     public override void undo() {
-        track._trim(clip, left_delta, true);
-        track._trim(clip, right_delta, false);
+        track._trim(clip, -left_delta, Gdk.WindowEdge.WEST);
+        track._trim(clip, -right_delta, Gdk.WindowEdge.EAST);
     }
     
     public override bool merge(Command command) {

@@ -317,7 +317,7 @@ public class MediaAudioTrack : MediaTrack {
 
     void on_parameter_changed(Model.Parameter parameter, double new_value) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_parameter_changed");
-        switch(parameter) {
+        switch (parameter) {
             case Model.Parameter.PAN:
                 pan.set_property("panorama", new_value);
                 break;

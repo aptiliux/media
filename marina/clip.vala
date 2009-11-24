@@ -411,14 +411,6 @@ public class Clip : Object {
         get {
             return _media_start;
         } 
-        
-        set {
-            _media_start = value;
-            if (connected) {
-                media_start_changed(_media_start);
-            }
-            moved(this);
-        }
     }
     
     int64 _duration;
@@ -426,7 +418,18 @@ public class Clip : Object {
         get {
             return _duration;
         }
+        
         set {
+            if (value < 0) {
+                // saturating the duration
+                value = 0;
+            }
+            
+            if (value + _media_start > clipfile.length) {
+                // saturating the duration
+                value = clipfile.length - media_start;
+            }
+            
             _duration = value;
             if (connected) {
                 duration_changed(_duration);
@@ -455,9 +458,7 @@ public class Clip : Object {
         this.type = t;
         this.name = name;
         this.connected = clipfile.is_online();
-        
-        this.media_start = media_start;
-        this.duration = duration;
+        this.set_media_start_duration(media_start, duration);
         this.start = start;
         
         clipfile.updated += on_clipfile_updated;
@@ -471,11 +472,9 @@ public class Clip : Object {
         if (f.is_online()) {
             if (!connected) {
                 connected = true;
-                // TODO: Assigning to oneself has the side-effect of firing signals.
-                // fire signals directly
-                media_start = media_start;
-                duration = duration;
-                start = start;
+                media_start_changed(media_start);
+                duration_changed(duration);
+                start_changed(start);
             }
         } else {
             if (connected) {
@@ -522,6 +521,42 @@ public class Clip : Object {
         if (!clipfile.is_online()) 
             return false;
         return duration != clipfile.length;
+    }
+
+    public void trim(int64 delta, Gdk.WindowEdge edge) {
+        switch (edge) {
+            case Gdk.WindowEdge.WEST:
+                start += delta;
+                set_media_start_duration(media_start + delta, duration - delta);    
+                break;
+            case Gdk.WindowEdge.EAST:
+                duration += delta;
+                break;
+        }
+    }
+
+    public void set_media_start_duration(int64 media_start, int64 duration) {
+        if (media_start < 0) {
+            media_start = 0;
+        }
+        
+        if (duration < 0) {
+            duration = 0;
+        }
+
+        if (media_start + duration > clipfile.length) {
+            // We are saturating the value
+            media_start = clipfile.length - duration;
+        }
+        
+        _media_start = media_start;
+        _duration = duration;
+        
+        if (connected) {
+            media_start_changed(_media_start);
+            duration_changed(_duration);
+        }
+        moved(this);
     }
 
     public void save(FileStream f, int id) {

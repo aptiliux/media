@@ -40,6 +40,13 @@ public class GapView : Gtk.DrawingArea {
 }
 
 public class ClipView : Gtk.EventBox {
+    enum MotionMode {
+        NONE,
+        DRAGGING,
+        LEFT_TRIM,
+        RIGHT_TRIM
+    }
+    
     public Model.Clip clip;
     public int64 initial_time;
     weak Model.TimeSystem time_provider;
@@ -51,9 +58,16 @@ public class ClipView : Gtk.EventBox {
     Gdk.Color color_normal;
     Gdk.Color color_selected;
     int drag_point;
-    bool dragging = false;
+    MotionMode motion_mode = MotionMode.NONE;
     bool button_down = false;
     const int MIN_DRAG = 5;
+    const int TRIM_WIDTH = 5;
+    const int TRIM_OFFSET = 5;
+    
+    static Gdk.Cursor left_trim_cursor = new Gdk.Cursor(Gdk.CursorType.LEFT_SIDE);
+    static Gdk.Cursor right_trim_cursor = new Gdk.Cursor(Gdk.CursorType.RIGHT_SIDE);
+    static Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
+    static Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.PLUS); // will be used for drag
     
     public signal void clip_deleted(Model.Clip clip);
     public signal void clip_moved(ClipView clip);
@@ -61,8 +75,11 @@ public class ClipView : Gtk.EventBox {
     public signal void move_request(ClipView clip_view, int delta);
     public signal void move_commit(ClipView clip_view, int delta);
     public signal void move_begin(ClipView clip_view);
+    public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
+    public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
     
     public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
+        add_events(Gdk.EventMask.POINTER_MOTION_MASK);
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
@@ -183,43 +200,101 @@ public class ClipView : Gtk.EventBox {
         // The clip is not responsible for changing the selection state.
         // It may depend upon knowledge of multiple clips.  Let anyone who is interested
         // update our state.
-        selection_request(this, extend_selection);
-        move_begin(this);
+        if (is_left_trim(event.x)) {
+            selection_request(this, false);
+            trim_begin(this, Gdk.WindowEdge.WEST);
+            motion_mode = MotionMode.LEFT_TRIM;
+        } else if (is_right_trim(event.x)){
+            selection_request(this, false);
+            trim_begin(this, Gdk.WindowEdge.EAST);
+            motion_mode = MotionMode.RIGHT_TRIM;
+        } else {
+            selection_request(this, extend_selection);
+        }
         return true;
     }
     
     public override bool button_release_event(Gdk.EventButton event) {
         button_down = false;
-        dragging = false;
         
         if (event.button == 3) {
             context_menu.select_first(true);
             context_menu.popup(null, null, null, 0, 0);
-            return true;
         } else {
             context_menu.popdown();
         }
         
         if (event.button == 1) {
-            int delta = (int) event.x - drag_point;
-            move_commit(this, delta);
-            return true;
+            switch (motion_mode) {
+                case MotionMode.DRAGGING: {
+                    int delta = (int) event.x - drag_point;
+                    if (motion_mode == MotionMode.DRAGGING) {
+                        move_commit(this, delta);
+                    }
+                }
+                break;
+                case MotionMode.LEFT_TRIM:
+                    trim_commit(this, Gdk.WindowEdge.WEST);
+                break;
+                case MotionMode.RIGHT_TRIM:
+                    trim_commit(this, Gdk.WindowEdge.EAST);
+                break;
+            }
         }
-        return false;
+        motion_mode = MotionMode.NONE;
+        return true;
     }
     
     public override bool motion_notify_event(Gdk.EventMotion event) {
         int delta = (int) event.x - drag_point;
-        if (is_selected && button_down && !dragging) {
-            if (delta.abs() > MIN_DRAG) {
-                dragging = true;
-            }
-        }
         
-        if (dragging) {
-            move_request(this, delta);
-            return true;
+        switch (motion_mode) {
+            case MotionMode.NONE:
+                if (is_left_trim(event.x)) {
+                    window.set_cursor(left_trim_cursor);
+                } else if (is_right_trim(event.x)) {
+                    window.set_cursor(right_trim_cursor);
+                } else if (is_selected && button_down) {
+                    if (delta.abs() > MIN_DRAG) {
+                        motion_mode = MotionMode.DRAGGING;
+                        move_begin(this);
+                        window.set_cursor(hand_cursor);
+                    }
+                } else {
+                    window.set_cursor(null);
+                }
+            break;
+            case MotionMode.RIGHT_TRIM:
+            case MotionMode.LEFT_TRIM:
+                if (button_down) {
+                    int64 time_delta = time_provider.xsize_to_time(delta);
+                    if (motion_mode == MotionMode.LEFT_TRIM) {
+                        if (clip.media_start + time_delta < 0) {
+                            return true;
+                        }
+                        if (clip.duration - time_delta < 0) {
+                            return true;
+                        }
+                        clip.trim(time_delta, Gdk.WindowEdge.WEST);
+                    } else {
+                        drag_point += (int)delta;
+                        clip.trim(time_delta, Gdk.WindowEdge.EAST);
+                    }
+                }
+                return true;
+            case MotionMode.DRAGGING:
+                move_request(this, delta);
+                return true;
         }
         return false;
+    }    
+
+    bool is_left_trim(double x) {
+        return x > TRIM_OFFSET && x < TRIM_OFFSET + TRIM_WIDTH;
+    }
+    
+    bool is_right_trim(double x) {
+        return x > allocation.width - (TRIM_OFFSET + TRIM_WIDTH) && 
+            x < allocation.width - TRIM_OFFSET;
     }    
 }

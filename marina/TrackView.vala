@@ -55,6 +55,7 @@ public class TrackView : Gtk.Fixed {
         view.clip_moved += on_clip_moved;
         view.clip_deleted += on_clip_deleted;
         view.move_begin += on_move_begin;
+        view.trim_begin += on_trim_begin;
 
         put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);
         view.show();
@@ -63,8 +64,7 @@ public class TrackView : Gtk.Fixed {
         clip_view_added(view);
     }
 
-    void on_move_begin(ClipView clip_view) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_move_begin");
+    void move_to_top(ClipView clip_view) {
         /*
         * We remove the ClipView from the Fixed object and add it again to make
         * sure that when we draw it, it is displayed above every other clip while
@@ -74,7 +74,17 @@ public class TrackView : Gtk.Fixed {
         put(clip_view, 
             timeline.provider.time_to_xpos(clip_view.clip.start),
             TimeLine.BORDER);
-        clip_view.show();            
+        clip_view.show();
+    }
+
+    void on_trim_begin(ClipView clip_view) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_trim_begin");
+        move_to_top(clip_view);
+    }
+
+    void on_move_begin(ClipView clip_view) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_move_begin");
+        move_to_top(clip_view);
     }
 
     public void set_clip_pos(ClipView view) {

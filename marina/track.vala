@@ -180,6 +180,10 @@ public abstract class Track : Object {
         if (end_index >= 0) {
             int64 diff = c.end - clips[end_index].start;
             if (end_index == start_index) {
+                if (c == clips[end_index]) {
+                    return;
+                }
+                
                 if (diff > 0) {
                     Clip cl = new Clip(clips[end_index].clipfile, clips[end_index].type, 
                                     clips[end_index].name, c.end, 
@@ -188,18 +192,20 @@ public abstract class Track : Object {
                     add(cl, cl.start);
                 }
             } else {
-                clips[end_index].media_start = clips[end_index].media_start + diff;
-                clips[end_index].duration = clips[end_index].duration - diff;
+                clips[end_index].set_media_start_duration(
+                    clips[end_index].media_start + diff,
+                    clips[end_index].duration - diff);
                 clips[end_index].start = c.end;
             }
         }
-        if (start_index >= 0) {
+        if (start_index >= 0 && clips[start_index] != c) {
             clips[start_index].duration = c.start - clips[start_index].start;
         }
 
         int i = 0;
         while (i < clips.size) {
-            if (clips[i].start >= c.start &&
+            if (clips[i] != c && 
+                clips[i].start >= c.start &&
                 clips[i].end <= c.end) {
                 _delete_clip(clips[i]);
             }
@@ -326,8 +332,7 @@ public abstract class Track : Object {
         if (index == -1)
             error("revert_to_original: Clip not in track array!");
             
-        c.duration = c.clipfile.length;
-        c.media_start = 0;
+        c.set_media_start_duration(0, c.clipfile.length);
 
         project.media_engine.go(c.start);
     }
@@ -383,18 +388,14 @@ public abstract class Track : Object {
         }
     }
     
-    public void trim(Clip clip, int64 delta, bool left) {
-        Command command = new ClipTrimCommand(this, clip, delta, left);
+    public void trim(Clip clip, int64 delta, Gdk.WindowEdge edge) {
+        Command command = new ClipTrimCommand(this, clip, delta, edge);
         project.do_command(command);
     }
     
-    public void _trim(Clip c, int64 delta, bool left) {
-        if (left) {
-            c.media_start = c.media_start + delta;
-            c.start += delta;
-        }
-        
-        c.duration = c.duration - delta;
+    public void _trim(Clip clip, int64 delta, Gdk.WindowEdge edge) {
+        clip.trim(delta, edge);
+        do_clip_overwrite(clip);
     }
  
     public int64 previous_edit(int64 pos) {
