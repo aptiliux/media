@@ -472,9 +472,11 @@ public class Clip : Object {
         if (f.is_online()) {
             if (!connected) {
                 connected = true;
-                media_start_changed(media_start);
-                duration_changed(duration);
-                start_changed(start);
+                // TODO: Assigning to oneself has the side-effect of firing signals. 
+                // fire signals directly.  Make certain that loading a file still works
+                // properly in this case.
+                set_media_start_duration(media_start, duration);
+                start = start;
             }
         } else {
             if (connected) {
