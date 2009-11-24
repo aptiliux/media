@@ -275,9 +275,9 @@ public class MediaAudioTrack : MediaTrack {
         level = make_element("level");
  
         pan = make_element("audiopanorama");
-        pan.set_property("panorama", 0);
+        on_parameter_changed(Model.Parameter.PAN, track.get_pan());
         volume = make_element("volume");
-        volume.set_property("volume", 10);
+        on_parameter_changed(Model.Parameter.VOLUME, track.get_volume());
 
         Value the_level = (uint64) (Gst.SECOND / 30);
         level.set_property("interval", the_level);

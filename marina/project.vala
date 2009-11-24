@@ -89,6 +89,7 @@ public class MediaLoaderHandler : LoaderHandler {
         if (type == "audio") {
             AudioTrack audio_track = new AudioTrack(the_project, name);
             current_track = audio_track;
+            the_project.add_track(current_track);
             
             for (int i = 0; i < number_of_attributes; ++i) {
                 switch(attr_names[i]) {
@@ -105,9 +106,6 @@ public class MediaLoaderHandler : LoaderHandler {
                         break;
                 }
             }
-            
-            the_project.add_track(current_track);
-
             return true;
         } else if (type == "video") {
             current_track = new VideoTrack(the_project);
