@@ -64,7 +64,9 @@ public class TrackView : Gtk.Fixed {
         clip_view_added(view);
     }
 
-    void move_to_top(ClipView clip_view) {
+    // TODO: This method should not be public.  When linking/grouping is done, this method
+    // should become private.  See Timeline.on_clip_view_move_begin for more information.
+    public void move_to_top(ClipView clip_view) {
         /*
         * We remove the ClipView from the Fixed object and add it again to make
         * sure that when we draw it, it is displayed above every other clip while
@@ -82,7 +84,7 @@ public class TrackView : Gtk.Fixed {
         move_to_top(clip_view);
     }
 
-    void on_move_begin(ClipView clip_view) {
+    void on_move_begin(ClipView clip_view, bool do_copy) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_move_begin");
         move_to_top(clip_view);
     }

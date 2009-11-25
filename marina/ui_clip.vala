@@ -74,7 +74,7 @@ public class ClipView : Gtk.EventBox {
     public signal void selection_request(ClipView clip_view, bool extend_selection);
     public signal void move_request(ClipView clip_view, int delta);
     public signal void move_commit(ClipView clip_view, int delta);
-    public signal void move_begin(ClipView clip_view);
+    public signal void move_begin(ClipView clip_view, bool copy);
     public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
     
@@ -256,9 +256,14 @@ public class ClipView : Gtk.EventBox {
                     window.set_cursor(right_trim_cursor);
                 } else if (is_selected && button_down) {
                     if (delta.abs() > MIN_DRAG) {
+                        bool do_copy = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
+                        if (do_copy) {
+                            window.set_cursor(plus_cursor);
+                        } else {
+                            window.set_cursor(hand_cursor);                        
+                        }
                         motion_mode = MotionMode.DRAGGING;
-                        move_begin(this);
-                        window.set_cursor(hand_cursor);
+                        move_begin(this, do_copy);
                     }
                 } else {
                     window.set_cursor(null);

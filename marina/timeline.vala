@@ -116,13 +116,23 @@ public class TimeLine : Gtk.EventBox {
         selected_clips.clear();
     }
     
-    void on_clip_view_move_begin(ClipView unused) {
+    void on_clip_view_move_begin(ClipView clip_view, bool copy) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_begin");
         foreach (ClipView selected_clip in selected_clips) {
             selected_clip.initial_time = selected_clip.clip.start;
             selected_clip.clip.gnonlin_disconnect();
             TrackView track_view = selected_clip.get_parent() as TrackView;
-            track_view.track.remove_clip_from_array(selected_clip.clip);
+            if (track_view != null) {
+                track_view.track.remove_clip_from_array(selected_clip.clip);
+            }
+            if (copy) {
+                // TODO: When adding in linking/groups, this should be moved into track_view
+                // We'll want to call move_begin for each clip that is linked, or in a group 
+                // or selected and not iterate over them in this fashion in the timeline.
+                Model.Clip clip = selected_clip.clip.copy();
+                track_view.track.add(clip, selected_clip.clip.start);
+                track_view.move_to_top(clip_view);
+            }
         }    
     }
 
