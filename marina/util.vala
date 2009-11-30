@@ -59,6 +59,17 @@ public struct Fraction {
         this.denominator = denominator;
     }
     
+    public Fraction.from_string(string s) {
+        string[] elements = s.split("/");
+        if (elements.length != 2) {
+            numerator = 0;
+            denominator = 0;
+        } else {
+            numerator = elements[0].to_int();
+            denominator = elements[1].to_int();
+        }
+    }
+    
     public bool equal(Fraction f) {
         if (float_abs(((numerator / (float)denominator) - (f.numerator / (float)f.denominator))) <=
             (1000.0f / 1001.0f))
@@ -69,6 +80,11 @@ public struct Fraction {
     public int nearest_int() {
         return (int) (((double) numerator / denominator) + 0.5);    
     }
+    
+    public string to_string() {
+        return "%d/%d".printf(numerator, denominator);
+    }
+    
 }
 
 public struct TimeCode {
@@ -86,6 +102,7 @@ public struct TimeCode {
         second = (int) ((length % 3600) % 60);
         frame = 0;
     }
+
     public string to_string() {
         string ret = "";
         if (hour != 0)

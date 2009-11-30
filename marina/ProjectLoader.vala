@@ -35,6 +35,14 @@ public class LoaderHandler : Object {
         return true;
     }
 
+    public virtual bool commit_time_signature_entry(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+
+    public virtual bool commit_tempo_entry(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+
     public virtual void leave_library() {
     }
 
@@ -131,6 +139,41 @@ class ProjectBuilder : Object {
         }
     }
 
+    void handle_time_signature(XmlElement time_signature) {
+        foreach (XmlElement child in time_signature.children) {
+            if (check_name("entry", child)) {
+                if (!handler.commit_time_signature_entry(child.attribute_names, 
+                    child.attribute_values)) {
+                        error_occurred("Improper time signature node");
+                }
+            }
+        }
+    }
+    
+    void handle_tempo(XmlElement tempo) {
+        foreach (XmlElement child in tempo.children) {
+            if (check_name("entry", child)) {
+                if (!handler.commit_tempo_entry(child.attribute_names, child.attribute_values)) {
+                    error_occurred("Improper tempo node");
+                }
+            }
+        }
+    }
+    
+    void handle_map(XmlElement map) {
+        switch (map.name) {
+            case "tempo":
+                handle_tempo(map);
+                break;
+            case "time_signature":
+                handle_time_signature(map);
+                break;
+            default:
+                error_occurred("improper map node");
+                break;
+        }
+    }
+    
     void handle_library(XmlElement library) {
         if (handler.commit_library(library.attribute_names, library.attribute_values)) {
             foreach (XmlElement child in library.children) {
@@ -147,6 +190,11 @@ class ProjectBuilder : Object {
         }
     }
 
+    void handle_maps(XmlElement maps) {
+        foreach (XmlElement child in maps.children) {
+            handle_map(child);
+        }
+    }
     public bool check_project(XmlElement? root) {
         if (root == null) {
             error_occurred("Invalid XML file!");
@@ -155,7 +203,7 @@ class ProjectBuilder : Object {
         
         if (check_name("marina", root) &&
             handler.commit_marina(root.attribute_names, root.attribute_values)) {
-            if (root.children.size != 2) {
+            if (root.children.size != 2 && root.children.size != 3) {
                 error_occurred("Improper number of children!");
                 return false;
             }
@@ -163,6 +211,10 @@ class ProjectBuilder : Object {
             if (!check_name("library", root.children[0]) ||
                 !check_name("tracks", root.children[1]))
                 return false;
+                
+            if (root.children.size == 3 && !check_name("maps", root.children[2])) {
+                return false;
+            }
         } else
             return false;
         return true;
@@ -171,6 +223,9 @@ class ProjectBuilder : Object {
     public void build_project(XmlElement? root) {
         handle_library(root.children[0]);
         handle_tracks(root.children[1]);
+        if (root.children.size == 3) {
+            handle_maps(root.children[2]);
+        }
         
         handler.leave_marina();
     }

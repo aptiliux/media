@@ -34,6 +34,7 @@ class Recorder : Gtk.Window {
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>S", 
             "Save project with new name", on_project_save_as },
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
+        { "Properties", Gtk.STOCK_PROPERTIES, null, "<Alt>Return", null, on_properties },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
         { "Edit", null, "_Edit", null, null, null },
@@ -47,7 +48,7 @@ class Recorder : Gtk.Window {
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
           "<Control>R", null, on_revert_to_original },
-        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
+        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Control><Alt>Return", 
             null, on_clip_properties },
         { "View", null, "_View", null, null, null },
         { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _in", "equal", null, on_zoom_in },
@@ -81,52 +82,55 @@ class Recorder : Gtk.Window {
       <menuitem name="FileSave" action="Save" />
       <menuitem name="FileSaveAs" action="SaveAs" />
       <separator />
-      <menuitem name="FileExport" action="Export"/>
+      <menuitem name="FileExport" action="Export" />
+      <separator />
+      <menuitem name="FileProperty" action="Properties" />
+      <separator />
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
-      <menuitem name="EditCut" action="Cut"/>
-      <menuitem name="EditCopy" action="Copy"/>
-      <menuitem name="EditPaste" action="Paste"/>
-      <menuitem name="EditDelete" action="Delete"/>
+      <menuitem name="EditCut" action="Cut" />
+      <menuitem name="EditCopy" action="Copy" />
+      <menuitem name="EditPaste" action="Paste" />
+      <menuitem name="EditDelete" action="Delete" />
       <separator/>
-      <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
-      <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
+      <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
+      <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
-      <menuitem name="ClipRevertToOriginal" action="RevertToOriginal"/>
-      <menuitem name="ClipViewProperties" action="ClipProperties"/>
+      <menuitem name="ClipRevertToOriginal" action="RevertToOriginal" />
+      <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
     <menu name="ViewMenu" action="View">
-        <menuitem name="ViewZoomIn" action="ZoomIn"/>
-        <menuitem name="ViewZoomOut" action="ZoomOut"/>
+        <menuitem name="ViewZoomIn" action="ZoomIn" />
+        <menuitem name="ViewZoomOut" action="ZoomOut" />
     </menu>
     <menu name="TrackMenu" action="Track">
-      <menuitem name="TrackNew" action="NewTrack"/>
+      <menuitem name="TrackNew" action="NewTrack" />
       <menuitem name="TrackRename" action="Rename" />
       <menuitem name="TrackDelete" action="DeleteTrack" />
     </menu>
     <menu name="HelpMenu" action="Help">
-      <menuitem name="HelpAbout" action="About"/>
+      <menuitem name="HelpAbout" action="About" />
       <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
   </menubar>
   <popup name="ClipContextMenu">
-    <menuitem name="ClipContextRevert" action="RevertToOriginal"/>
-    <menuitem name="ClipContextProperties" action="ClipProperties"/>
+    <menuitem name="ClipContextRevert" action="RevertToOriginal" />
+    <menuitem name="ClipContextProperties" action="ClipProperties" />
   </popup>
   <toolbar name="Toolbar">
-    <toolitem name="New" action="NewTrack"/>
+    <toolitem name="New" action="NewTrack" />
     <separator/>
-    <toolitem name="Rewind" action="Rewind"/>
+    <toolitem name="Rewind" action="Rewind" />
     <toolitem name="End" action="End" />
-    <toolitem name="Play" action="Play"/>
+    <toolitem name="Play" action="Play" />
     <toolitem name="Record" action="Record"/>
   </toolbar>
-  <accelerator name="Rewind" action="Rewind"/>
+  <accelerator name="Rewind" action="Rewind" />
   <accelerator name="End" action="End" />
-  <accelerator name="Play" action="Play"/>
-  <accelerator name="Record" action="Record"/>
+  <accelerator name="Play" action="Play" />
+  <accelerator name="Record" action="Record" />
 </ui>
 """;
 
@@ -460,6 +464,16 @@ class Recorder : Gtk.Window {
         return false;
     }
     
+    void on_properties() {
+        ProjectProperties properties = new ProjectProperties(project.tempo, project.time_signature);
+        int response = properties.run();
+        if (response == Gtk.ResponseType.APPLY) {
+            project.tempo = properties.get_tempo();
+            project.time_signature = properties.get_time_signature();
+        }
+        properties.destroy();
+    }
+
     void on_quit() {
         project.closed += on_project_close;
         project.close();

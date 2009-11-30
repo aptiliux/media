@@ -213,15 +213,40 @@ public class MediaLoaderHandler : LoaderHandler {
             }
         }
         
-        if (filename == null)
-            load_error("Invalid clipfile filename!");
-        if (id < 0)
-            load_error("Invalid clipfile id!");     
+        if (filename == null) {
+            load_error("Invalid clipfile filename");
+            return false;
+        }
+        
+        if (id < 0) {
+            load_error("Invalid clipfile id");     
+            return false;
+        }
         
         ClipFetcher fetcher = new ClipFetcher(filename);
         fetcher.ready += fetcher_ready;
         clipfetchers.insert(id, fetcher);        
         
+        return true;
+    }
+    
+    public override bool commit_tempo_entry(string[] attr_names, string[] attr_values) {
+        if (attr_names[0] != "tempo") {
+            load_error("Invalid attribute on tempo entry");
+            return false;
+        }
+        
+        the_project.tempo = attr_values[0].to_int();
+        return true;
+    }
+    
+    public override bool commit_time_signature_entry(string[] attr_names, string[] attr_values) {
+        if (attr_names[0] != "signature") {
+            load_error("Invalid attribute on time signature");
+            return false;
+        }
+
+        the_project.time_signature = Fraction.from_string(attr_values[0]);
         return true;
     }
     
@@ -256,6 +281,8 @@ public abstract class Project : Object {
     public LibraryImporter importer;
 
     public Fraction default_framerate;
+    public int tempo = 120;
+    public Fraction time_signature = Fraction(4, 4);
     
     /* TODO:
         * This can't be const since the Vala compiler
@@ -812,6 +839,14 @@ public abstract class Project : Object {
             track.save(f);
         }
         f.printf("  </tracks>\n");
+        f.printf("  <maps>\n");
+        f.printf("    <tempo>\n");
+        f.printf("      <entry tempo=\"%d\" />\n", tempo);
+        f.printf("    </tempo>\n");
+        f.printf("    <time_signature>\n");
+        f.printf("      <entry signature=\"%s\" />\n", time_signature.to_string());
+        f.printf("    </time_signature>\n");
+        f.printf("  </maps>\n");
         
         f.printf("</marina>\n");
         // TODO: clean up responsibility between dirty and undo

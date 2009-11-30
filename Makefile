@@ -53,6 +53,7 @@ FILLMORE_SOURCES = \
 	audio_project.vala \
 	fillmore.vala \
 	header_area.vala \
+	ProjectProperties.vala \
 	trackinformation.vala
 
 FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))

@@ -97,13 +97,21 @@ class ProjectLoaderSuite : TestSuite {
 
         current_document = 0;
         project_documents = {
-           ValidDocument(true, "<marina><library></library><tracks><track><clip /><clip /></track>"
-                               + "<track><clip /></track></tracks></marina>"),
+            ValidDocument(true, "<marina><library></library><tracks><track><clip /><clip /></track>"
+                                + "<track><clip /></track></tracks></marina>"),
+            ValidDocument(true, "<marina><library /><tracks /><maps><tempo /><time_signature />"
+                                + "</marina>"),
+            ValidDocument(true, "<marina><library /><tracks /><maps><tempo />"
+                                + "</marina>"),
+            ValidDocument(true, "<marina><library /><tracks /><maps><time_signature />"
+                                + "</marina>"),
             ValidDocument(true, "<marina><library></library><tracks><track /></tracks></marina>"),
-            
-            ValidDocument(true, 
+            ValidDocument(true,
                     "<marina><library></library><tracks><track><clip /></track></tracks></marina>"),
-                    
+            ValidDocument(true, "<marina><library/><tracks/><maps><tempo><entry></tempo></maps>"
+                    + "</marina>"),
+            ValidDocument(true, "<marina><library/><tracks/><maps><time_signature><entry>"
+                    + "</time_signature></maps></marina>"),                    
             ValidDocument(false, "<marina><tracks></tracks><library></library></marina>"),
             
             ValidDocument(false, "<marina><library></library><track></track></marina>"),
@@ -114,15 +122,22 @@ class ProjectLoaderSuite : TestSuite {
             ValidDocument(false, "<marina />"),            
             ValidDocument(false, "<track />"),
             ValidDocument(false, "<clip />"),
+            ValidDocument(false, "<entry />"),
+            ValidDocument(false, "<tempo />"),
+            ValidDocument(false, "<maps />"),
+            ValidDocument(false, "<time_signature />"),
             ValidDocument(false, "<marina><clip /></marina>"),
             ValidDocument(false, "<marina><track><clip><track /></clip></track></marina>"),
             ValidDocument(false, "<unknown />"),
             ValidDocument(false, "<marina><foo /></marina>"),
             ValidDocument(false, "<marina><track><foo /></track></track></marina>"),
-            ValidDocument(false, "<marina><track><clip><foo /></clip></track></marina>")
+            ValidDocument(false, "<marina><track><clip><foo /></clip></track></marina>"),
+            ValidDocument(false, "<marina><library/><tracks/><maps><foo/></maps></marina>"),
+            ValidDocument(false, "<marina><library/><tracks/><maps><time_signature>"
+                    + "<tempo/></time_signature></marina>")
         };
         
-        int length = Test.thorough() ? project_documents.length : 1;
+        int length = Test.thorough() ? project_documents.length : 4;
         
         for (int i = 0; i < length; ++i) {
             add(new TestCase("Document%d".printf(i), state_change_fixture_buildup, check_document, 
