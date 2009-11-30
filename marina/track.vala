@@ -467,8 +467,8 @@ public class AudioTrack : Track {
         base(project, display_name);
         
         set_default_num_channels(INVALID_CHANNEL_COUNT);
-        set_pan(0);
-        set_volume(8);
+        _set_pan(0);
+        _set_volume(8);
     }
 
     protected override string name() { return "audio"; }
