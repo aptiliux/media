@@ -31,6 +31,7 @@ public class TimeLine : Gtk.EventBox {
     public GapView gap_view;
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
+        can_focus = true;
         project = p;
         this.provider = provider;
         
