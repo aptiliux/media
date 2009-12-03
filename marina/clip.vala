@@ -412,24 +412,26 @@ public class Clip : Object {
             return _media_start;
         } 
     }
-    
+
     int64 _duration;
-    public int64 duration { 
+    public int64 duration {
         get {
             return _duration;
         }
-        
+
         set {
             if (value < 0) {
                 // saturating the duration
                 value = 0;
             }
-            
-            if (value + _media_start > clipfile.length) {
-                // saturating the duration
-                value = clipfile.length - media_start;
+
+            if (!is_recording) {
+                if (value + _media_start > clipfile.length) {
+                    // saturating the duration
+                    value = clipfile.length - media_start;
+                }
             }
-            
+
             _duration = value;
             if (connected) {
                 duration_changed(_duration);
@@ -437,7 +439,7 @@ public class Clip : Object {
             moved(this);
         }
     }
-    
+
     bool connected;
 
     public int64 end {
