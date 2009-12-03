@@ -43,9 +43,10 @@ class TrackHeader : Gtk.EventBox {
     }
 }
 
-class SliderBase : Gtk.HScrollbar {
+public class SliderBase : Gtk.HScrollbar {
     protected string label;
     construct {
+        can_focus = true;
     }
     
     public override bool expose_event (Gdk.EventExpose event) {
@@ -70,7 +71,7 @@ class SliderBase : Gtk.HScrollbar {
         int text_width, text_height;
         layout.get_pixel_size(out text_width, out text_height);
         Gdk.draw_layout(event.window, style.black_gc, 
-            center - text_width / 2, allocation.y + 2, layout);
+            center - text_width / 2, allocation.y + 3, layout);
         return true;
     }
 }
@@ -81,7 +82,7 @@ class PanSlider : SliderBase {
     }
 }
 
-class VolumeSlider : SliderBase {
+public class VolumeSlider : SliderBase {
     construct {
         label = "V";
     }
@@ -98,7 +99,7 @@ class AudioTrackHeader : TrackHeader {
         pan.value_changed += on_pan_value_changed;
         
         volume = new VolumeSlider();
-        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 10, 0.1, 1, 0));
+        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 1, 0));
         volume.value_changed += on_volume_value_changed;
 
         track.parameter_changed += on_parameter_changed;

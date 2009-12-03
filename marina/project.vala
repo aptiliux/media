@@ -250,6 +250,26 @@ public class MediaLoaderHandler : LoaderHandler {
         return true;
     }
     
+    public override bool commit_click(string[] attr_names, string[] attr_values) {
+        for (int i = 0; i < attr_names.length; ++i) {
+            switch (attr_names[i]) {
+                case "on_play":
+                    the_project.click_during_play = attr_values[i] == "true";
+                break;
+                case "on_record":
+                    the_project.click_during_record = attr_values[i] == "true";
+                break;
+                case "volume":
+                    the_project.click_volume = attr_values[i].to_double();
+                break;
+                default:
+                    load_error("unknown attribute for click '%s'".printf(attr_names[i]));
+                    return false;
+            }
+        }
+        return true;
+    }
+    
     public override void leave_library() {
         if (clipfetchers.size == 0)
             complete();
@@ -283,6 +303,9 @@ public abstract class Project : Object {
     public Fraction default_framerate;
     public int tempo = 120;
     public Fraction time_signature = Fraction(4, 4);
+    public bool click_during_play = false;
+    public bool click_during_record = true;
+    public double click_volume = 0.8;
     
     /* TODO:
         * This can't be const since the Vala compiler
@@ -793,7 +816,7 @@ public abstract class Project : Object {
     }
     
     public int get_file_version() {
-        return 3;
+        return 4;
     }
     
     public void save_library(FileStream f) {
@@ -839,6 +862,12 @@ public abstract class Project : Object {
             track.save(f);
         }
         f.printf("  </tracks>\n");
+        f.printf("  <preferences>\n");
+        f.printf("    <click on_play=\"%s\" on_record=\"%s\" volume=\"%lf\"/>\n", 
+            click_during_play ? "true" : "false",
+            click_during_record ? "true" : "false",
+            click_volume);
+        f.printf("  </preferences>\n");
         f.printf("  <maps>\n");
         f.printf("    <tempo>\n");
         f.printf("      <entry tempo=\"%d\" />\n", tempo);

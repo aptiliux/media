@@ -468,7 +468,7 @@ public class AudioTrack : Track {
         
         set_default_num_channels(INVALID_CHANNEL_COUNT);
         _set_pan(0);
-        _set_volume(8);
+        _set_volume(1.0);
     }
 
     protected override string name() { return "audio"; }
@@ -511,7 +511,7 @@ public class AudioTrack : Track {
     
     public void set_volume(double new_volume) {
         double old_volume = get_volume();
-        if (!float_within(old_volume - new_volume, 0.05)) {
+        if (!float_within(old_volume - new_volume, 0.005)) {
             ParameterCommand parameter_command =
                 new ParameterCommand(this, Parameter.VOLUME, new_volume, old_volume);
             project.do_command(parameter_command);
@@ -521,7 +521,7 @@ public class AudioTrack : Track {
     public void _set_volume(double new_volume) {
         assert(new_volume >= 0.0 && new_volume <= 10.0);
         double old_volume = get_volume();
-        if (!float_within(old_volume - new_volume, 0.05)) {
+        if (!float_within(old_volume - new_volume, 0.005)) {
             volume = new_volume;
             parameter_changed(Parameter.VOLUME, new_volume);
         }

@@ -43,6 +43,10 @@ public class LoaderHandler : Object {
         return true;
     }
 
+    public virtual bool commit_click(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+    
     public virtual void leave_library() {
     }
 
@@ -139,6 +143,12 @@ class ProjectBuilder : Object {
         }
     }
 
+    void handle_preference(XmlElement preference) {
+        if (check_name("click", preference)) {
+            handler.commit_click(preference.attribute_names, preference.attribute_values);
+        }
+    }
+    
     void handle_time_signature(XmlElement time_signature) {
         foreach (XmlElement child in time_signature.children) {
             if (check_name("entry", child)) {
@@ -190,6 +200,11 @@ class ProjectBuilder : Object {
         }
     }
 
+    void handle_preferences(XmlElement preferences) {
+        foreach (XmlElement child in preferences.children) {
+            handle_preference(child);
+        }
+    }
     void handle_maps(XmlElement maps) {
         foreach (XmlElement child in maps.children) {
             handle_map(child);
@@ -203,16 +218,17 @@ class ProjectBuilder : Object {
         
         if (check_name("marina", root) &&
             handler.commit_marina(root.attribute_names, root.attribute_values)) {
-            if (root.children.size != 2 && root.children.size != 3) {
+            if (root.children.size != 3 && root.children.size != 4) {
                 error_occurred("Improper number of children!");
                 return false;
             }
             
             if (!check_name("library", root.children[0]) ||
-                !check_name("tracks", root.children[1]))
+                !check_name("tracks", root.children[1]) ||
+                !check_name("preferences", root.children[2]))
                 return false;
                 
-            if (root.children.size == 3 && !check_name("maps", root.children[2])) {
+            if (root.children.size == 4 && !check_name("maps", root.children[3])) {
                 return false;
             }
         } else
@@ -223,8 +239,9 @@ class ProjectBuilder : Object {
     public void build_project(XmlElement? root) {
         handle_library(root.children[0]);
         handle_tracks(root.children[1]);
-        if (root.children.size == 3) {
-            handle_maps(root.children[2]);
+        handle_preferences(root.children[2]);
+        if (root.children.size == 4) {
+            handle_maps(root.children[3]);
         }
         
         handler.leave_marina();

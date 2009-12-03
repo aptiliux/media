@@ -39,6 +39,7 @@ GLOBAL_LIBS = 	--pkg gee-1.0 \
 				--pkg gdk-x11-2.0 \
 				--pkg gstreamer-0.10 \
 				--pkg gstreamer-base-0.10 \
+				--pkg gstreamer-controller-0.10 \
 				--pkg gstreamer-interfaces-0.10 \
 				--pkg gstreamer-pbutils-0.10 \
 				--pkg gtk+-2.0
@@ -59,7 +60,7 @@ FILLMORE_SOURCES = \
 FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
 
 $(FILLMORE): $(FILLMORE_FILES) marina/marina.vapi Makefile
-	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(FILLMORE_FILES) \
+	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(MARINA_FLAGS) $(FILLMORE_FILES) \
 		  marina/marina.vapi $(MARINA_C_FILES) -o $(FILLMORE)
 
 LOMBARD = lom
@@ -73,7 +74,7 @@ LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
 LOMBARD_LIBS =  --pkg glib-2.0
 
 $(LOMBARD): $(LOMBARD_FILES) marina/marina.vapi Makefile
-	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \
+	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(MARINA_FLAGS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \
 		  marina/marina.vapi $(MARINA_C_FILES) -o $(LOMBARD)
 
 MARINA_TEST_SOURCES = ProjectLoading.vala

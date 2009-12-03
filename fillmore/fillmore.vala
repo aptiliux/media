@@ -8,7 +8,7 @@ using Logging;
 
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
-    
+    View.ClickTrack click_track;
     HeaderArea header_area;
     TimeLine timeline;
     Model.TimeSystem provider;
@@ -164,7 +164,7 @@ class Recorder : Gtk.Window {
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
-        
+        click_track = new View.ClickTrack(project.media_engine, project);
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
         set_default_size(600, 400);
@@ -465,11 +465,14 @@ class Recorder : Gtk.Window {
     }
     
     void on_properties() {
-        ProjectProperties properties = new ProjectProperties(project.tempo, project.time_signature);
+        ProjectProperties properties = new ProjectProperties(project);
         int response = properties.run();
         if (response == Gtk.ResponseType.APPLY) {
             project.tempo = properties.get_tempo();
             project.time_signature = properties.get_time_signature();
+            project.click_during_record = properties.during_record();
+            project.click_during_play = properties.during_play();
+            project.click_volume = properties.get_click_volume();
         }
         properties.destroy();
     }

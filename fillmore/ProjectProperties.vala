@@ -14,13 +14,16 @@ class ProjectProperties : Gtk.Dialog {
     TimeVal[] tap_time = new TimeVal[NUMBER_OF_SAMPLES];
     Gtk.ComboBox time_signature;
     Gtk.HScale tempo;
+    Gtk.CheckButton click_during_play;
+    Gtk.CheckButton click_during_record;
+    VolumeSlider click_volume;
+    
     int tap_index = 0;
     bool sample_full = false;
     
-    public ProjectProperties(int bpm, Fraction signature_fraction) {
+    public ProjectProperties(Model.Project project) {
         set_modal(true);
         set_title("Project Properties");
-        set_size_request(300, 140);
         resizable = false;
 
         add_buttons(
@@ -29,25 +32,44 @@ class ProjectProperties : Gtk.Dialog {
             null);
         set_default_response(Gtk.ResponseType.APPLY);
 
-        Gtk.SizeGroup size_group = new Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL);
-
         time_signature = new Gtk.ComboBox.text();
         foreach (Fraction time in times) {
             time_signature.append_text(time.to_string());        
         }
-        time_signature.set_active(fraction_to_index(signature_fraction));
+        time_signature.set_active(fraction_to_index(project.time_signature));
 
-        add_row(size_group, "Time _Signature", time_signature);
+        add_row("Time _Signature", time_signature);
 
         tempo = new Gtk.HScale.with_range(30, 240, 1);
-        tempo.set_value(bpm);
-        Gtk.HBox row = add_row(size_group, "Tem_po", tempo);
+        tempo.set_size_request(100, -1);
+        tempo.set_value(project.tempo);
+        Gtk.HBox row = add_row("Temp_o", tempo);
 
         Gtk.Button button = new Gtk.Button.with_mnemonic("_Tap");
         button.clicked += on_tap;
         row.pack_start(button, false, false, 0);
+        
+        Gtk.HBox hbox = new Gtk.HBox(false, 0);
 
-        vbox.show_all();    
+        click_volume = new VolumeSlider();
+        click_volume.set_adjustment(
+            new Gtk.Adjustment(project.click_volume, 0.0, 1.0, 0.01, 0.1, 0.1));
+        click_volume.set_size_request(100, 20);
+
+        add_row("_Metronome", click_volume);
+        
+        hbox = new Gtk.HBox(false, 0);
+        click_during_play = new Gtk.CheckButton.with_mnemonic("During _playback");
+        click_during_play.set_active(project.click_during_play);
+        hbox.pack_start(click_during_play, false, false, 18);
+        vbox.pack_start(hbox, false, false, 3);
+
+        hbox = new Gtk.HBox(false, 0);
+        click_during_record = new Gtk.CheckButton.with_mnemonic("During _record");
+        click_during_record.set_active(project.click_during_record);
+        hbox.pack_start(click_during_record, false, false, 18);
+        vbox.pack_start(hbox, false, false, 3);
+        vbox.show_all();
     }
     
     public int get_tempo() {
@@ -56,6 +78,18 @@ class ProjectProperties : Gtk.Dialog {
     
     public Fraction get_time_signature() {
         return index_to_fraction(time_signature.get_active());
+    }
+    
+    public bool during_play() {
+        return click_during_play.get_active();
+    }
+    
+    public bool during_record() {
+        return click_during_record.get_active();
+    }
+    
+    public double get_click_volume() {
+        return click_volume.get_value();
     }
     
     Fraction index_to_fraction(int index) {
@@ -114,18 +148,17 @@ class ProjectProperties : Gtk.Dialog {
         tempo.set_value((int)(60.0/average));
     }
 
-    Gtk.HBox add_row(Gtk.SizeGroup size_group, string label, Gtk.Widget element) {
+    Gtk.HBox add_row(string label, Gtk.Widget element) {
+        string markup = "<span weight=\"bold\">" + label + "</span>";
         Gtk.HBox row = new Gtk.HBox(false, 0);
-        Gtk.Label element_label = new Gtk.Label.with_mnemonic(label);
-
-        Gtk.Alignment align = new Gtk.Alignment(1.0f, 0.5f, 0.0f, 0.0f);
-        align.add(element_label);
-        size_group.add_widget(align);
-
-        row.pack_start(align, false, false, 12);
-        row.pack_start(element, true, true, 0);
-        element_label.set_mnemonic_widget(element);
+        Gtk.Label element_label = new Gtk.Label(null);
+        element_label.set_markup_with_mnemonic(markup);
+        row.pack_start(element_label, false, false, 12);
         vbox.pack_start(row, false, false, 6);
+        row = new Gtk.HBox(false, 0);
+        row.pack_start(element, true, true, 18);
+        element_label.set_mnemonic_widget(element);
+        vbox.pack_start(row, false, false, 3);
         return row;
     }
 }

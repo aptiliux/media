@@ -140,8 +140,9 @@ public abstract class MediaTrack : Object {
         default_source.set("media-start", 0 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
         
-        if (!composition.add(default_source))
+        if (!composition.add(default_source)) {
             error("can't add default source");
+        }
   
         media_engine.pipeline.add(composition);
         composition.pad_added += on_pad_added;
@@ -253,6 +254,101 @@ public class MediaVideoTrack : MediaTrack {
     
     public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         pad.unlink(track_element.get_static_pad("sink"));
+    }
+}
+
+public class ClickTrack : Object {
+    Gst.Controller click_controller;
+    Gst.Controller volume_controller;
+    Gst.Element audio_source = make_element("audiotestsrc");
+    Gst.Element audio_convert = make_element("audioconvert");
+    Gst.Element volume = make_element("volume");
+    weak Model.Project project;
+    
+    public ClickTrack(MediaEngine engine, Model.Project project) {
+        this.project = project;
+        GLib.List<string> list = new GLib.List<string>();
+        list.append("freq");
+        click_controller = new Gst.Controller.list(audio_source, list);
+        list.remove_all("freq");
+        list.append("mute");
+        volume_controller = new Gst.Controller.list(volume, list);
+        engine.pipeline.add_many(audio_source, volume, audio_convert);
+        audio_source.set("volume", project.click_volume);
+
+        audio_source.link_many(audio_convert, volume, engine.adder);
+        engine.playstate_changed += on_playstate_changed;
+    }
+    
+    void clear_controllers() {    
+        volume_controller.unset_all("mute");
+        click_controller.unset_all("freq");
+        volume.set("mute", true);
+        volume.set("volume", 0.0);
+    }
+    
+    void on_playstate_changed() {
+        switch (project.media_engine.play_state) {
+            case PlayState.PRE_EXPORT:
+            case PlayState.STOPPED:
+                clear_controllers();
+            break;
+            case PlayState.PLAYING: {
+                if (project.click_during_play) {
+                    setup_clicks(project.tempo, project.time_signature);
+                } else {
+                    clear_controllers();
+                }
+            }
+            break;
+            case PlayState.PRE_RECORD: {
+                if (project.click_during_record) {
+                    setup_clicks(project.tempo, project.time_signature);
+                } else {
+                    clear_controllers();
+                }
+            }
+            break;
+        }
+    }
+    
+    void setup_clicks(int bpm, Fraction time_signature) {
+        clear_controllers();
+        volume.set("volume", project.click_volume);
+        
+        Gst.Value double_value = Gst.Value();
+        double_value.init(Type.from_name("gdouble"));
+        Gst.Value bool_value = Gst.Value();
+        bool_value.init(Type.from_name("gboolean"));
+        
+        Gst.ClockTime time = (Gst.ClockTime)(0);
+        bool_value.set_boolean(true);
+        volume_controller.set("volume", time, bool_value);
+
+        int64 conversion = (Gst.SECOND * 60) / bpm;
+        uint64 current_time = 0;
+        // TODO: We are playing for a hard-coded amount of time.
+        for (int i = 0; current_time < Gst.SECOND * 60 * 10; ++i) {
+            current_time = i * conversion;
+            if (i > 0) {
+                time = (Gst.ClockTime)(current_time - Gst.SECOND/10);
+                bool_value.set_boolean(true);
+                volume_controller.set("mute", time, bool_value);
+            }
+            time = (Gst.ClockTime)(current_time);
+            if ((i % time_signature.numerator) == 0) {
+                double_value.set_double(880.0);
+            } else {
+                double_value.set_double(440.0);
+            }
+            click_controller.set("freq", time, double_value);
+            bool_value.set_boolean(false);
+            volume_controller.set("mute", time, bool_value);
+            
+            time = (Gst.ClockTime)(current_time + Gst.SECOND/10);
+            bool_value.set_boolean(true);
+            volume_controller.set("mute", time, bool_value);
+        }
     }
 }
 

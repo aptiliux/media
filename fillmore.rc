@@ -3,7 +3,7 @@ style "pan" {
     GtkHScrollbar::min-slider-length = 12
     GtkHScrollbar::has-forward-stepper = 0
     GtkHScrollbar::has-backward-stepper = 0
-    fg[SELECTED] = "antique white"
+    fg[SELECTED] = "tan"
     fg[NORMAL] = "dark slate grey"
 }
 
