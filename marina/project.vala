@@ -606,6 +606,7 @@ public abstract class Project : Object {
     
     public void remove_track(Track track) {
         media_engine.pipeline.set_state(Gst.State.NULL);
+        track.track_removed(track);
         tracks.remove(track);
         track_removed(track);
     }
