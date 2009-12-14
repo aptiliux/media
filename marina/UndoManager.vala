@@ -28,19 +28,21 @@ public class UndoManager {
         dirty_changed(false);
     }
     
-    public void start_transaction() {
-        TransactionCommand command = new TransactionCommand(false);
+    public void start_transaction(string description) {
+        TransactionCommand command = new TransactionCommand(false, description);
         command_list.add(command);
+        undo_changed(true);
     }
     
-    public void end_transaction() {
-        TransactionCommand command = new TransactionCommand(true);
+    public void end_transaction(string description) {
+        TransactionCommand command = new TransactionCommand(true, description);
         command_list.add(command);
+        undo_changed(true);
     }
     
     public void do_command(Command the_command) {
         the_command.apply();
-        Command? current_command = get_current_command(true);
+        Command? current_command = get_current_command();
         if (current_command == null || !current_command.merge(the_command)) {
             command_list.add(the_command);
         }
@@ -48,18 +50,9 @@ public class UndoManager {
         undo_changed(can_undo);
     }
 
-    Command? get_current_command(bool allow_transaction) {
+    Command? get_current_command() {
         int index = command_list.size - 1;
         if (index >= 0) {
-            if (!allow_transaction) {
-                Command command = command_list[index];
-                if (command is TransactionCommand) {
-                    --index;
-                    command = command_list[index];
-                    assert(index >= 0); // transactions should always be closed and non-empty
-                    assert(!(command is TransactionCommand));
-                }
-            }
             return command_list[index];
         } else {
             return null;
@@ -69,7 +62,7 @@ public class UndoManager {
     public void undo() {
         bool in_transaction = false;
         do {
-            Command? the_command = get_current_command(true);
+            Command? the_command = get_current_command();
             if (the_command != null) {
                 command_list.remove(the_command);
                 TransactionCommand transaction_command = the_command as TransactionCommand;
@@ -87,7 +80,7 @@ public class UndoManager {
     }
     
     public string get_undo_title() {
-        Command? the_command = get_current_command(false);
+        Command? the_command = get_current_command();
         if (the_command != null) {
             return the_command.description();
         } else {

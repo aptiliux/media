@@ -75,7 +75,8 @@ class VideoProject : Project {
     }
     
     protected override void do_append(Track track, ClipFile clipfile, string name, int64 insert_time) {
-        undo_manager.start_transaction();
+        string description = "Append Clip";
+        undo_manager.start_transaction(description);
         if (clipfile.video_caps != null) {
             Track? video_track = find_video_track();
             if (video_track != null && track != video_track) {
@@ -84,7 +85,7 @@ class VideoProject : Project {
             }
         }
         base.do_append(track, clipfile, name, insert_time);
-        undo_manager.end_transaction();
+        undo_manager.end_transaction(description);
     }
     
     public void go_previous_frame() {

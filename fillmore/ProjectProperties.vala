@@ -36,13 +36,13 @@ class ProjectProperties : Gtk.Dialog {
         foreach (Fraction time in times) {
             time_signature.append_text(time.to_string());        
         }
-        time_signature.set_active(fraction_to_index(project.time_signature));
+        time_signature.set_active(fraction_to_index(project.get_time_signature()));
 
         add_row("Time _Signature", time_signature);
 
         tempo = new Gtk.HScale.with_range(30, 240, 1);
         tempo.set_size_request(100, -1);
-        tempo.set_value(project.tempo);
+        tempo.set_value(project.get_bpm());
         Gtk.HBox row = add_row("Temp_o", tempo);
 
         Gtk.Button button = new Gtk.Button.with_mnemonic("_Tap");

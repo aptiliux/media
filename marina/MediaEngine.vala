@@ -295,7 +295,7 @@ public class ClickTrack : Object {
             break;
             case PlayState.PLAYING: {
                 if (project.click_during_play) {
-                    setup_clicks(project.tempo, project.time_signature);
+                    setup_clicks(project.get_bpm(), project.get_time_signature());
                 } else {
                     clear_controllers();
                 }
@@ -303,7 +303,7 @@ public class ClickTrack : Object {
             break;
             case PlayState.PRE_RECORD: {
                 if (project.click_during_record) {
-                    setup_clicks(project.tempo, project.time_signature);
+                    setup_clicks(project.get_bpm(), project.get_time_signature());
                 } else {
                     clear_controllers();
                 }

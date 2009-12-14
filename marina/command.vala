@@ -289,11 +289,67 @@ public class ClipRevertCommand : Command {
     }
 }
 
+public class TimeSignatureCommand : Command {
+    Fraction new_time_signature;
+    Fraction old_time_signature;
+    Project project;
+    
+    public TimeSignatureCommand(Project project, Fraction new_time_signature) {
+        this.project = project;
+        this.new_time_signature = new_time_signature;
+        this.old_time_signature = project.get_time_signature();
+    }
+
+    public override void apply() {
+        project._set_time_signature(new_time_signature);
+    }
+
+    public override void undo() {
+        project._set_time_signature(old_time_signature);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Set Time Signature";
+    }
+}
+
+public class BpmCommand : Command {
+    int delta;
+    Project project;
+    
+    public BpmCommand(Project project, int new_bpm) {
+        delta = new_bpm - project.get_bpm();
+        this.project = project;
+    }
+    
+    public override void apply() {
+        project._set_bpm(project.get_bpm() + delta);
+    }
+    
+    public override void undo() {
+        project._set_bpm(project.get_bpm() - delta);
+    }
+    
+    public override bool merge(Command command) {
+        return false;
+    }
+    
+    public override string description() {
+        return "Set Tempo";
+    }
+}
+
 public class TransactionCommand : Command {
     bool open;
+    string transaction_description;
     
-    public TransactionCommand(bool open) {
+    public TransactionCommand(bool open, string transaction_description) {
         this.open = open;
+        this.transaction_description = transaction_description;
     }
     
     public bool in_transaction() {
@@ -311,8 +367,7 @@ public class TransactionCommand : Command {
     }
     
     public override string description() {
-        assert(false); // we should never display the description of a transaction
-        return "";
+        return transaction_description;
     }
 }
 }

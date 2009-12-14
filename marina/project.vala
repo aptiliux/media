@@ -236,7 +236,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
         
-        the_project.tempo = attr_values[0].to_int();
+        the_project.set_bpm(attr_values[0].to_int());
         return true;
     }
     
@@ -246,7 +246,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        the_project.time_signature = Fraction.from_string(attr_values[0]);
+        the_project.set_time_signature(Fraction.from_string(attr_values[0]));
         return true;
     }
     
@@ -276,10 +276,7 @@ public class MediaLoaderHandler : LoaderHandler {
     }
 }
 
-// TODO: Project derives from MultiFileProgress interface for exporting
-// Move exporting work to separate object similar to import.    
-public abstract class Project : Object {
-
+public abstract class Project : TempoInformation, Object {
     public const string FILLMORE_FILE_EXTENSION = "fill";
     public const string FILLMORE_FILE_FILTER = "*." + FILLMORE_FILE_EXTENSION;   
     public const string LOMBARD_FILE_EXTENSION = "lom";
@@ -301,8 +298,8 @@ public abstract class Project : Object {
     public LibraryImporter importer;
 
     public Fraction default_framerate;
-    public int tempo = 120;
-    public Fraction time_signature = Fraction(4, 4);
+    int tempo = 120;
+    Fraction time_signature = Fraction(4, 4);
     public bool click_during_play = false;
     public bool click_during_record = true;
     public double click_volume = 0.8;
@@ -475,21 +472,23 @@ public abstract class Project : Object {
     }
 
     public void split_at_playhead() {
-        undo_manager.start_transaction();
+        string description = "Split At Playhead";
+        undo_manager.start_transaction(description);
         foreach (Track track in tracks) {
             if (track.get_clip_by_position(transport_get_position()) != null) {
                 track.split_at(transport_get_position());
             }
         }
-        undo_manager.end_transaction();
+        undo_manager.end_transaction(description);
     }
     
     public void join_at_playhead() {
-        undo_manager.start_transaction();
+        string description = "Join At Playhead";
+        undo_manager.start_transaction(description);
         foreach (Track track in tracks) {
             track.join(transport_get_position());
         }
-        undo_manager.end_transaction();
+        undo_manager.end_transaction(description);
     }
     
     public bool can_trim(out bool left) {
@@ -539,9 +538,9 @@ public abstract class Project : Object {
         if (!can_trim(out left)) {
             return;
         }
-
+        string description = "Trim To Playhead";
         Clip first_clip = null;
-        undo_manager.start_transaction();
+        undo_manager.start_transaction(description);
         foreach (Track track in tracks) {
             Clip clip = track.get_clip_by_position(transport_get_position());
             if (clip != null) {
@@ -554,7 +553,7 @@ public abstract class Project : Object {
                 track.trim(clip, delta, left ? Gdk.WindowEdge.WEST : Gdk.WindowEdge.EAST);
             }
         }
-        undo_manager.end_transaction();
+        undo_manager.end_transaction(description);
             
         if (left && first_clip != null) {
             transport_go(first_clip.start);
@@ -662,14 +661,15 @@ public abstract class Project : Object {
     public void remove_clipfile(string filename) {
         ClipFile cf = find_clipfile(filename);
         if (cf != null) {
-            undo_manager.start_transaction();
+            string description = "Delete From Library";
+            undo_manager.start_transaction(description);
             
             delete_clipfile_from_tracks(cf);
     
             Command clipfile_delete = new ClipFileDeleteCommand(this, cf);
             do_command(clipfile_delete);
                 
-            undo_manager.end_transaction();
+            undo_manager.end_transaction(description);
         }
     }
     
@@ -950,6 +950,33 @@ public abstract class Project : Object {
     public abstract double get_version();
     public abstract string get_app_name();
 
+    public void set_time_signature(Fraction time_signature) {
+        TimeSignatureCommand command = new TimeSignatureCommand(this, time_signature);
+        undo_manager.do_command(command);
+    }
+
+    public void _set_time_signature(Fraction time_signature) {
+        this.time_signature = time_signature;
+        time_signature_changed(time_signature);
+    }
+
+    public Fraction get_time_signature() {
+        return time_signature;
+    }
+
+    public void set_bpm(int bpm) {
+        BpmCommand command = new BpmCommand(this, bpm);
+        undo_manager.do_command(command);
+    }
+
+    public void _set_bpm(int bpm) {
+        this.tempo = bpm;
+        bpm_changed(bpm);
+    }
+
+    public int get_bpm() {
+        return tempo;
+    }
 }
 }
 

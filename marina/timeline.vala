@@ -34,6 +34,7 @@ public class TimeLine : Gtk.EventBox {
         can_focus = true;
         project = p;
         this.provider = provider;
+        provider.geometry_changed += on_geometry_changed;
         
         vbox = new Gtk.VBox(false, 0);
         ruler = new View.Ruler(provider, RULER_HEIGHT);
@@ -70,6 +71,12 @@ public class TimeLine : Gtk.EventBox {
         }
         project.media_engine.position_changed(project.transport_get_position());
         queue_draw();
+    }
+
+    void on_geometry_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_geometry_changed");
+        provider.calculate_pixel_step(0, pixel_min, pixel_div);
+        ruler.queue_draw();
     }
     
     void on_position_changed() {

@@ -147,8 +147,9 @@ class Recorder : Gtk.Window {
     const string MIN_GNONLIN = "0.10.10.3";
     
     public Recorder(string? project_file) {
-        provider = new Model.TimecodeTimeSystem();
         project = new Model.AudioProject();
+        provider = new Model.BarBeatTimeSystem(project);
+        
         project.media_engine.callback_pulse += on_callback_pulse;
         project.media_engine.post_export += on_post_export;
         project.media_engine.position_changed += on_position_changed;
@@ -468,11 +469,14 @@ class Recorder : Gtk.Window {
         ProjectProperties properties = new ProjectProperties(project);
         int response = properties.run();
         if (response == Gtk.ResponseType.APPLY) {
-            project.tempo = properties.get_tempo();
-            project.time_signature = properties.get_time_signature();
+            string description = "Set Project Properties";
+            project.undo_manager.start_transaction(description);
+            project.set_bpm(properties.get_tempo());
+            project.set_time_signature(properties.get_time_signature());
             project.click_during_record = properties.during_record();
             project.click_during_play = properties.during_play();
             project.click_volume = properties.get_click_volume();
+            project.undo_manager.end_transaction(description);
         }
         properties.destroy();
     }
