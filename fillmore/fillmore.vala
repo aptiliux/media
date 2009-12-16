@@ -347,6 +347,7 @@ class Recorder : Gtk.Window {
             selected && project.playhead_on_contiguous_clip());
         set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && clip_is_trimmed);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
+        set_sensitive_menu("/MenuBar/TrackMenu/TrackRename", number_of_tracks > 0);
     }
     
     public Model.Track? selected_track() {
