@@ -161,6 +161,7 @@ class Recorder : Gtk.Window {
         project.error_occurred += on_error_occurred;
         project.playstate_changed += on_playstate_changed;
         project.track_added += on_track_added;
+        project.track_removed += on_track_removed;
         project.load_complete += on_load_complete;
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
@@ -282,11 +283,16 @@ class Recorder : Gtk.Window {
     
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
+        update_menu();
         track.clip_added += on_clip_added;
         track.clip_removed += on_clip_removed;
         track.track_selection_changed += on_track_selection_changed;
     }
     
+    void on_track_removed(Model.Track unused) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
+        update_menu();
+    }
     void on_clip_added(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         clip.moved += on_clip_moved;
@@ -317,6 +323,7 @@ class Recorder : Gtk.Window {
     void update_menu() {
         bool selected = timeline.is_clip_selected();
         bool playhead_on_clip = project.playhead_on_clip();
+        int number_of_tracks = project.tracks.size;
 
         bool clip_is_trimmed = false;
         if (selected) {
@@ -339,6 +346,7 @@ class Recorder : Gtk.Window {
         set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
             selected && project.playhead_on_contiguous_clip());
         set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && clip_is_trimmed);
+        set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
     }
     
     public Model.Track? selected_track() {
