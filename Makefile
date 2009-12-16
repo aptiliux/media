@@ -2,100 +2,30 @@ default: all
 
 BUILD_ROOT = 1
 
-MARINA_TESTABLE_SOURCES =	Logging.vala \
-							ProjectLoader.vala \
-							util.vala
-
-MARINA_TESTABLE_FILES = $(foreach src, $(MARINA_TESTABLE_SOURCES), marina/$(src))
-
-MARINA_SOURCES =	$(MARINA_TESTABLE_SOURCES) \
-					AudioMeter.vala \
-					clip.vala \
-					ClipLibraryView.vala \
-					command.vala \
-					DialogUtils.vala \
-					import.vala \
-					MediaEngine.vala \
-					MultiFileProgress.vala \
-					project.vala \
-					Ruler.vala \
-					singledecodebin.vala \
-					StatusBar.vala \
-					TimeSystem.vala \
-					thumbnailsink.vala \
-					timeline.vala \
-					track.vala \
-					TrackView.vala \
-					ui_clip.vala \
-					UndoManager.vala \
-					video_track.vala
-
-MARINA_FILES =  $(foreach src, $(MARINA_SOURCES), marina/$(src)) \
-
-MARINA_C_FILES = $(MARINA_FILES:.vala=.c)
-MARINA_FLAGS = --vapidir ./vapi
-
-GLOBAL_LIBS = 	--pkg gee-1.0 \
-				--pkg gdk-x11-2.0 \
-				--pkg gstreamer-0.10 \
-				--pkg gstreamer-base-0.10 \
-				--pkg gstreamer-controller-0.10 \
-				--pkg gstreamer-interfaces-0.10 \
-				--pkg gstreamer-pbutils-0.10 \
-				--pkg gtk+-2.0
-
-marina/marina.vapi marina/marina.h $(MARINA_C_FILES): $(MARINA_FILES) Makefile
-	valac $(VFLAGS) -C --library marina/marina -H marina/marina.h $(GLOBAL_LIBS) $(MARINA_FILES) \
-	$(MARINA_FLAGS)
-
 FILLMORE = fill
-
-FILLMORE_SOURCES = \
-	audio_project.vala \
-	fillmore.vala \
-	header_area.vala \
-	ProjectProperties.vala \
-	trackinformation.vala
-
-FILLMORE_FILES = $(foreach src, $(FILLMORE_SOURCES), fillmore/$(src))
-
-$(FILLMORE): $(FILLMORE_FILES) marina/marina.vapi Makefile
-	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(MARINA_FLAGS) $(FILLMORE_FILES) \
-		  marina/marina.vapi $(MARINA_C_FILES) -o $(FILLMORE)
-
 LOMBARD = lom
+MEDIA_TEST = media_test
 
-LOMBARD_SOURCES = \
-	ui_app.vala \
-	video_project.vala
+MARINA = marina/libmarina.a
 
-LOMBARD_FILES = $(foreach src, $(LOMBARD_SOURCES), lombard/$(src))
+$(MARINA):
+	$(MAKE) --directory=marina
 
-LOMBARD_LIBS =  --pkg glib-2.0
+$(FILLMORE): $(MARINA)
+	$(MAKE) --directory=fillmore
 
-$(LOMBARD): $(LOMBARD_FILES) marina/marina.vapi Makefile
-	valac $(VFLAGS) -X -Imarina $(GLOBAL_LIBS) $(MARINA_FLAGS) $(LOMBARD_LIBS) $(LOMBARD_FILES) \
-		  marina/marina.vapi $(MARINA_C_FILES) -o $(LOMBARD)
+$(LOMBARD): $(MARINA)
+	$(MAKE) --directory=lombard
 
-MARINA_TEST_SOURCES = ProjectLoading.vala
-MARINA_TEST_FILES = $(foreach src, $(MARINA_TEST_SOURCES), test/marina/$(src))
-
-TEST_SOURCES = test.vala 
-TEST_LIBS = --pkg gee-1.0 \
-			--pkg gstreamer-0.10 \
-			--pkg gtk+-2.0 \
-			--pkg glib-2.0
-			
-TEST_FILES = $(foreach src, $(TEST_SOURCES), test/$(src))
-
-TEST = media_test
-
-$(TEST): $(MARINA_TESTABLE_FILES) $(MARINA_TEST_SUPPORT) $(TEST_FILES) $(MARINA_TEST_FILES) Makefile
-	valac $(VFLAGS) $(TEST_LIBS) $(TEST_FILES) $(MARINA_FLAGS) $(MARINA_TEST_FILES) \
-	$(MARINA_TESTABLE_FILES) $(MARINA_TEST_SUPPORT) -o $(TEST)
-
-all: $(FILLMORE) $(LOMBARD) $(MARINA)
+$(MEDIA_TEST):
+	$(MAKE) --directory=test
+	
+all: $(FILLMORE) $(LOMBARD) $(MEDIA_TEST)
 
 clean:
-	rm -f marina/marina.vapi marina/marina.h $(MARINA_C_FILES) $(FILLMORE) $(LOMBARD) $(TEST)
+	$(MAKE) --directory=marina clean
+	$(MAKE) --directory=fillmore clean
+	$(MAKE) --directory=lombard clean
+	$(MAKE) --directory=test clean
+
 
