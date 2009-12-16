@@ -7,6 +7,10 @@ LOMBARD = lom
 MEDIA_TEST = media_test
 
 MARINA = marina/libmarina.a
+.PHONY: $(FILLMORE)
+.PHONY: $(LOMBARD)
+.PHONY: $(MEDIA_TEST)
+.PHONY: $(MARINA)
 
 $(MARINA):
 	$(MAKE) --directory=marina

@@ -5,6 +5,7 @@ USE_MARINA_VAPI=1
 
 VALA_LDFLAGS = -lmarina -L../marina
 VALA_LDFLAGS += `pkg-config --libs $(EXT_PKGS)`
+MARINA_DEPEND = ../marina/libmarina.a
 
 SRC_FILES = \
 	audio_project.vala \
