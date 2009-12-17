@@ -28,7 +28,8 @@ public class TimeLine : Gtk.EventBox {
     float pixel_max = 4505.0f;
     
     public const int RULER_HEIGHT = 20;
-    public GapView gap_view;
+    // GapView will re-emerge after 0.1 release
+    // public GapView gap_view;
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
         can_focus = true;
@@ -161,10 +162,11 @@ public class TimeLine : Gtk.EventBox {
     
     void on_clip_view_selection_request(ClipView clip_view, bool extend) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_selection_request");
+/*
         if (gap_view != null) {
             gap_view.unselect();
         }
-        
+*/        
         bool in_selected_clips = selected_clips.contains(clip_view);
         if (!extend) {
             if (!in_selected_clips) {
@@ -258,7 +260,8 @@ public class TimeLine : Gtk.EventBox {
     }
     
     public bool gap_selected() {
-        return gap_view != null;
+        return false;
+//        return gap_view != null;
     }
     
     public void delete_selection() {
@@ -268,6 +271,7 @@ public class TimeLine : Gtk.EventBox {
                 selected_clips.remove_at(0);
             }
         } else {
+/*
             if (gap_view != null) {
                 if (!project.can_delete_gap(gap_view.gap)) {
                     if (DialogUtils.delete_cancel("Really delete single-track gap?") ==
@@ -280,6 +284,7 @@ public class TimeLine : Gtk.EventBox {
                 
                 gap_view.unselect();
             }
+*/
         }
     }
     
@@ -382,9 +387,10 @@ public class TimeLine : Gtk.EventBox {
     }
 
     public override bool button_press_event(Gdk.EventButton event) {
+/*
         if (gap_view != null)
             gap_view.unselect();
-      
+*/      
         Gtk.Widget? drag = find_child(event.x, event.y);
         if (drag != null) {
             drag.button_press_event(event);

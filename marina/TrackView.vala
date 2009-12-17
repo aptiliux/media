@@ -117,11 +117,12 @@ public class TrackView : Gtk.Fixed {
     }
 
     public void unselect_gap() {
-        if (timeline.gap_view != null) {
+/*        if (timeline.gap_view != null) {
             TrackView parent = timeline.gap_view.parent as TrackView;
             parent.remove(timeline.gap_view);
             timeline.gap_view = null;
         }
+*/
     }  
 
     public override bool button_press_event(Gdk.EventButton e) {
@@ -132,6 +133,7 @@ public class TrackView : Gtk.Fixed {
 
         if (e.button == 1 ||
             e.button == 3) {
+/*
             int x = (int) e.x;
             int64 time = timeline.provider.xpos_to_time(x);
             Model.Gap g;
@@ -148,11 +150,12 @@ public class TrackView : Gtk.Fixed {
                 put(timeline.gap_view, timeline.provider.time_to_xpos(g.start), TimeLine.BORDER);
                 timeline.gap_view.show();
             }
+*/
             timeline.deselect_all_clips();
         }
         return false;
     }
-
+/*
     void on_gap_view_removed(GapView gap_view) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_gap_view_removed");
         track.delete_gap(gap_view.gap);
@@ -162,7 +165,7 @@ public class TrackView : Gtk.Fixed {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_gap_view_unselected");
         unselect_gap();
     }
-
+*/
     public void clear_drag() {
         window.set_cursor(null);
         queue_draw();
