@@ -360,6 +360,7 @@ class Recorder : Gtk.Window {
     }
 
     void update_menu() {
+        bool library_selected = library.has_selection();
         bool selected = timeline.is_clip_selected();
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
@@ -374,7 +375,7 @@ class Recorder : Gtk.Window {
             }
         }
 
-        delete_action.set_sensitive(selected);
+        delete_action.set_sensitive(selected || library_selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard_clip != null);
@@ -583,7 +584,11 @@ class Recorder : Gtk.Window {
     }
     
     void on_delete() {
-        timeline.delete_selection();
+        if (library.has_selection()) {
+            library.delete_selection();
+        } else {
+            timeline.delete_selection();
+        }
     }
     
     public void on_split_at_playhead() {
