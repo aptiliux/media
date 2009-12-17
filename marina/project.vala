@@ -285,6 +285,7 @@ public abstract class Project : TempoInformation, Object {
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
     public Gee.ArrayList<Track> inactive_tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
+    Gee.ArrayList<ThumbnailFetcher> pending_thumbs = new Gee.ArrayList<ThumbnailFetcher>();
     Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
     // TODO: media_engine is a member of project only temporarily.  It will be
     // less work to move it to fillmore/lombard once we have a transport class.
@@ -612,6 +613,19 @@ public abstract class Project : TempoInformation, Object {
 
     public virtual void add_clipfile(ClipFile clipfile) {
         clipfiles.add(clipfile);
+        if (clipfile.is_online() && clipfile.is_of_type(MediaType.VIDEO)) {
+            ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
+            fetcher.ready += on_thumbnail_ready;
+            pending_thumbs.add(fetcher);
+        } else {
+            clipfile_added(clipfile);
+        }
+    }
+
+    void on_thumbnail_ready(ThumbnailFetcher f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_thumbnail_ready");
+        clipfile_added(f.clipfile);
+        pending_thumbs.remove(f);
     }
     
     public bool clipfile_on_track(string filename) {

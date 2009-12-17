@@ -11,8 +11,6 @@ namespace Model {
 class VideoProject : Project {
     public TimecodeTimeSystem time_provider;
     
-    Gee.ArrayList<ThumbnailFetcher> pending = new Gee.ArrayList<ThumbnailFetcher>();
-
     public override void load_complete() {
         if (find_video_track() == null) {
             add_track(new VideoTrack(this));
@@ -30,23 +28,6 @@ class VideoProject : Project {
     
     public override string get_app_name() {
         return App.NAME;
-    }
-
-    public override void add_clipfile(ClipFile f) {
-        base.add_clipfile(f);
-        if (f.is_online() &&
-            f.is_of_type(MediaType.VIDEO)) {
-            ThumbnailFetcher fetcher = new ThumbnailFetcher(f, 0);
-            fetcher.ready += on_thumbnail_ready;
-            pending.add(fetcher);
-        } else
-            clipfile_added(f);
-    }
-
-    void on_thumbnail_ready(ThumbnailFetcher f) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_thumbnail_ready");
-        clipfile_added(f.clipfile);
-        pending.remove(f);
     }
 
     public override TimeCode get_clip_time(ClipFile f) {

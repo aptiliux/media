@@ -236,8 +236,6 @@ class App : Gtk.Window {
 
         add_accel_group(manager.get_accel_group());
         
-        Gtk.drag_dest_set(library, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
-        
         on_undo_changed(false);
         
         delete_event += on_delete_event;

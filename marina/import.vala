@@ -380,8 +380,9 @@ public class LibraryImporter : Object {
     protected virtual void on_clip_complete(ClipFile f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_complete");
         ClipFile cf = project.find_clipfile(f.filename);
-        if (cf == null)    
+        if (cf == null) {
             project.add_clipfile(f);
+        }
     }
     
     public void add_file(string filename) {

@@ -11,8 +11,11 @@ class Recorder : Gtk.Window {
     View.ClickTrack click_track;
     HeaderArea header_area;
     TimeLine timeline;
+    ClipLibraryView library;
     Model.TimeSystem provider;
     Gtk.Adjustment h_adjustment;
+    Gtk.HPaned timeline_library_pane;
+    Gtk.ScrolledWindow library_scrolled;
     int cursor_pos = -1;
     
     Gtk.Action delete_action;
@@ -70,7 +73,8 @@ class Recorder : Gtk.Window {
     
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
-        { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record }
+        { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
+        { "Library", null, "Library", "F9", null, on_view_library, true }
     };
     
     const string ui = """
@@ -169,7 +173,7 @@ class Recorder : Gtk.Window {
         click_track = new View.ClickTrack(project.media_engine, project);
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
-        set_default_size(600, 400);
+        set_default_size(800, 400);
         
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
@@ -183,6 +187,10 @@ class Recorder : Gtk.Window {
         try {
             manager.add_ui_from_string(ui, -1);
         } catch (Error e) { error("%s", e.message); }
+
+        uint view_merge_id = manager.new_merge_id();
+        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/ViewZoomOut",
+                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
@@ -190,11 +198,21 @@ class Recorder : Gtk.Window {
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
         on_undo_changed(false);
 
+        library = new ClipLibraryView(project);
+        library.selection_changed += on_library_selection_changed;
+        library.drag_data_received += on_drag_data_received;
+
         timeline = new TimeLine(project, provider);
         timeline.track_changed += on_track_changed;
+        timeline.drag_data_received += on_drag_data_received;
+        
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         update_menu();
+
+        library_scrolled = new Gtk.ScrolledWindow(null, null);
+        library_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
+        library_scrolled.add_with_viewport(library);
         
         Gtk.HBox hbox = new Gtk.HBox(false, 0);
         header_area = new HeaderArea(this, provider, TimeLine.RULER_HEIGHT);
@@ -209,7 +227,14 @@ class Recorder : Gtk.Window {
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(menubar, false, false, 0);
         vbox.pack_start(toolbar, false, false, 0);
-        vbox.pack_start(hbox, true, true, 0);
+        timeline_library_pane = new Gtk.HPaned();        
+        timeline_library_pane.set_position(700);
+        timeline_library_pane.add1(hbox);
+        timeline_library_pane.child1_resize = 1;
+        timeline_library_pane.add2(library_scrolled);
+        timeline_library_pane.child2_resize = 0;
+
+        vbox.pack_start(timeline_library_pane, true, true, 0);
         add(vbox);
         
         Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
@@ -320,6 +345,20 @@ class Recorder : Gtk.Window {
         update_menu();
     }
     
+    public void on_library_selection_changed(bool selected) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
+        if (selected) {
+            timeline.deselect_all_clips();
+            timeline.queue_draw();
+        }
+        update_menu();
+    }
+    
+    void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
+                                Gtk.SelectionData selection_data, uint drag_info, uint time) {
+        present();
+    }
+
     void update_menu() {
         bool selected = timeline.is_clip_selected();
         bool playhead_on_clip = project.playhead_on_clip();
@@ -612,6 +651,14 @@ class Recorder : Gtk.Window {
     
     void on_zoom_out() {
         timeline.zoom(-0.1f);
+    }
+    
+    void on_view_library() {
+        if (timeline_library_pane.child2 == library_scrolled) {
+            timeline_library_pane.remove(library_scrolled);
+        } else {
+            timeline_library_pane.add2(library_scrolled);
+        }
     }
     
     // Help menu

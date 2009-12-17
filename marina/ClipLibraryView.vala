@@ -38,6 +38,7 @@ public class ClipLibraryView : Gtk.EventBox {
     SortMode sort_mode;
 
     public ClipLibraryView(Model.Project p) {
+        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
         project = p;
         
         icon_theme = Gtk.IconTheme.get_default();
