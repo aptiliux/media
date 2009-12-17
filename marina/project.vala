@@ -857,10 +857,29 @@ public abstract class Project : TempoInformation, Object {
         
         f.printf("  </library>\n");
     }
+
+    void move_audio_files(string filename) {
+        string audio_path = get_audio_path();    
+        string destination_path = Path.build_filename(Path.get_dirname(filename), "audio files");
+        GLib.DirUtils.create(destination_path, 0777);
+        foreach (ClipFile clip_file in clipfiles) {
+            if (Path.get_dirname(clip_file.filename) == audio_path) {
+                string base_name = Path.get_basename(clip_file.filename);
+                string destination = Path.build_filename(destination_path, base_name);
+                FileUtils.rename(clip_file.filename, destination);
+                clip_file.filename = destination;
+            }
+        }
+    }
     
     public void save(string? filename) {
-        if (filename != null)
+        if (project_file == null) {
+            move_audio_files(filename);
+        }
+        
+        if (filename != null) {
             set_name(filename);
+        }
 
         FileStream f = FileStream.open(project_file, "w");
         
@@ -990,6 +1009,18 @@ public abstract class Project : TempoInformation, Object {
 
     public int get_bpm() {
         return tempo;
+    }
+    
+    public string get_audio_path() {
+        return Path.build_filename(get_path(), "audio files");
+    }
+    
+    public string get_path() {
+        if (project_file == null) {
+            return GLib.Environment.get_home_dir();
+        } else {
+            return Path.get_dirname(project_file);
+        }
     }
 }
 }

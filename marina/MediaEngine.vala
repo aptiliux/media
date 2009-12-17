@@ -1084,7 +1084,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     string new_audio_filename(Model.Track track) {
         int i = 1;
-        string base_path = Path.build_filename(GLib.Environment.get_home_dir(), "audio files");
+        string base_path = project.get_audio_path();
         GLib.DirUtils.create(base_path, 0777);
         string base_name = Path.build_filename(base_path, generate_base(track.display_name));
         while (true) {

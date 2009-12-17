@@ -453,8 +453,8 @@ class Recorder : Gtk.Window {
     
     // File menu
     void on_export() {
-        string filename;
-        if (DialogUtils.save(this, "Export", export_filters, out filename)) {
+        string filename = null;
+        if (DialogUtils.save(this, "Export", false, export_filters, ref filename)) {
             new MultiFileProgress(this, 1, "Export", project.media_engine);
             project.media_engine.disconnect_output(audio_output);
             audio_export = new View.OggVorbisExport(View.MediaConnector.MediaTypes.Audio, 
@@ -505,8 +505,9 @@ class Recorder : Gtk.Window {
     }
     
     bool save_dialog() {
-        string filename;
-        if (DialogUtils.save(this, "Save Project", filters, out filename)) {
+        string filename = project.project_file;
+        bool create_directory = project.project_file == null;
+        if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             return true;
         }

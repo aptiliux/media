@@ -406,8 +406,9 @@ class App : Gtk.Window {
     }
 
     bool do_save_dialog() {
-        string filename;
-        if (DialogUtils.save(this, "Save Project", filters, out filename)) {
+        string filename = project.project_file;
+        bool create_directory = project.project_file == null;
+        if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             return true;
         }
@@ -609,8 +610,8 @@ class App : Gtk.Window {
     }
     
     void on_export() {
-        string filename;
-        if (DialogUtils.save(this, "Export", export_filters, out filename)) {
+        string filename = null;
+        if (DialogUtils.save(this, "Export", false, export_filters, ref filename)) {
             new MultiFileProgress(this, 1, "Export", project.media_engine);
             project.media_engine.disconnect_output(audio_output);
             project.media_engine.disconnect_output(video_output);

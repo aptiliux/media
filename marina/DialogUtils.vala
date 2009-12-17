@@ -52,7 +52,7 @@ namespace DialogUtils {
                                                             Gtk.ResponseType.CANCEL,
                                                             Gtk.STOCK_OPEN, 
                                                             Gtk.ResponseType.ACCEPT, null);
-
+        d.set_current_folder(GLib.Environment.get_home_dir());
         Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();    
         add_filters(filter_descriptions, d, filters, allow_all);
         d.set_select_multiple(allow_multiple);
@@ -64,13 +64,17 @@ namespace DialogUtils {
         return return_value;
     }
 
-    public bool save(Gtk.Window parent, string title, 
-            filter_description_struct[] filter_descriptions, out string filename) {
+    public bool save(Gtk.Window parent, string title, bool create_directory,
+            filter_description_struct[] filter_descriptions, ref string filename) {
         bool return_value = false;
         Gtk.FileChooserDialog d = new Gtk.FileChooserDialog(title, parent, 
             Gtk.FileChooserAction.SAVE, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
             Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT, null);
-
+        if (filename != null) {
+            d.set_current_folder(Path.get_dirname(filename));
+        } else {
+            d.set_current_folder(GLib.Environment.get_home_dir());
+        }
         int length = filter_descriptions.length;
         Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();    
 
@@ -81,6 +85,12 @@ namespace DialogUtils {
         
         while (d.run() == Gtk.ResponseType.ACCEPT) {
             string local_filename = d.get_filename();
+            if (create_directory) {
+                GLib.DirUtils.create(local_filename, 0777);
+                local_filename = Path.build_filename(local_filename, 
+                    Path.get_basename(local_filename));
+            }
+            
             unowned Gtk.FileFilter selected_filter = d.get_filter();
 
             int i = 0;
