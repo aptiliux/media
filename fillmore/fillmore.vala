@@ -378,7 +378,7 @@ class Recorder : Gtk.Window {
         delete_action.set_sensitive(selected || library_selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
-        set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard_clip != null);
+        set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard.clips.size != 0);
         set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && clip_is_trimmed);

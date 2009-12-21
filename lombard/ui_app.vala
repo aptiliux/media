@@ -507,13 +507,12 @@ class App : Gtk.Window {
     
     void update_menu() {
         bool clip_selected = timeline.is_clip_selected();
-        bool multiple_clips_selected = timeline.selected_clips.size > 1;
         
         delete_action.set_sensitive(clip_selected || timeline.gap_selected() || 
             library.has_selection());
-        cut_action.set_sensitive(clip_selected && !multiple_clips_selected);
-        copy_action.set_sensitive(clip_selected && !multiple_clips_selected);
-        paste_action.set_sensitive(timeline.clipboard_clip != null);
+        cut_action.set_sensitive(clip_selected);
+        copy_action.set_sensitive(clip_selected);
+        paste_action.set_sensitive(timeline.clipboard.clips.size > 0);
 
         bool clip_is_trimmed = false;
         if (clip_selected) {

@@ -70,7 +70,7 @@ $(EXPANDED_OBJ_FILES): %.o: %.c $(CONFIG_IN) Makefile
 	$(CC) -c $(VALA_CFLAGS) $(CFLAGS) -o $@ $<
 
 $(VALA_STAMP): $(EXPANDED_SRC_FILES) $(EXPANDED_VAPI_FILES) $(EXPANDED_SRC_HEADER_FILES) Makefile \
-	$(CONFIG_IN)
+	$(CONFIG_IN) $(TEMP_MARINA_VAPI)
 ifndef PROGRAM
 ifndef LIBRARY
 	@echo 'You must define either PROGRAM or LIBRARY in makefile'; exit 1

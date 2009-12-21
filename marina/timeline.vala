@@ -7,6 +7,44 @@
 using Gee;
 using Logging;
 
+public class TrackClipPair {
+    public TrackClipPair(Model.Track track, Model.Clip clip) {
+        this.track = track;
+        this.clip = clip;
+    }
+    public Model.Track track;
+    public Model.Clip clip;
+}
+
+public class Clipboard {
+    public ArrayList<TrackClipPair> clips = new ArrayList<TrackClipPair>();
+    int64 minimum_time = -1;
+    
+    public void select(ArrayList<ClipView> selected_clips) {
+        clips.clear();
+        minimum_time = -1;
+        foreach(ClipView clip_view in selected_clips) {
+            TrackView track_view = clip_view.parent as TrackView;
+            if (minimum_time < 0 || clip_view.clip.start < minimum_time) {
+                minimum_time = clip_view.clip.start;
+            }
+            TrackClipPair track_clip_pair = new TrackClipPair(track_view.track, clip_view.clip);
+            clips.add(track_clip_pair);
+        }
+    }
+    
+    public void paste(Model.Track selected_track, int64 time) {
+        if (clips.size != 1) {
+            foreach (TrackClipPair pair in clips) {
+                pair.track.do_clip_paste(pair.clip.copy(), time + pair.clip.start - minimum_time, 
+                    true);
+            }
+        } else {
+            selected_track.do_clip_paste(clips[0].clip.copy(), time, true);
+        }
+    }
+}
+
 public class TimeLine : Gtk.EventBox {
     public Model.Project project;
     public weak Model.TimeSystem provider;
@@ -15,7 +53,7 @@ public class TimeLine : Gtk.EventBox {
     Gtk.VBox vbox;
     
     public ArrayList<ClipView> selected_clips = new ArrayList<ClipView>();
-    public Model.Clip clipboard_clip = null;
+    public Clipboard clipboard = new Clipboard();
     
     public const int BAR_HEIGHT = 20;
     public const int BORDER = 4;
@@ -289,39 +327,33 @@ public class TimeLine : Gtk.EventBox {
     }
     
     public void do_cut() {
-        assert(selected_clips.size == 1);
-        clipboard_clip = selected_clips[0].clip;
+        clipboard.select(selected_clips);
         delete_selection();
     }
     
     public void do_copy() {
-        assert(selected_clips.size == 1);
-        clipboard_clip = selected_clips[0].clip;
+        clipboard.select(selected_clips);
         selection_changed(true);
     }
     
     public void paste() {
-        do_paste(clipboard_clip.copy(), project.transport_get_position(), true);
+        do_paste(project.transport_get_position());
     }
     
-    public void do_paste(Model.Clip c, int64 pos, bool new_clip) {
-        TrackView? view = c.type == Model.MediaType.VIDEO ? 
-            find_video_track_view() : null;
+    public void do_paste(int64 pos) {
+        TrackView? view = null;
+        foreach (TrackView track_view in tracks) {
+            if (track_view.track.get_is_selected()) {
+                view = track_view;
+            }
+        }
+        // TODO: Lombard doesn't use selected state.  The following check should be removed
+        // when it does
         if (view == null) {
-            foreach (TrackView track_view in tracks) {
-                if (track_view.track.get_is_selected()) {
-                    view = track_view;
-                }
-            }
-            // TODO: Lombard doesn't use selected state.  The following check should be removed
-            // when it does
-            if (view == null) {
-                view = find_audio_track_view();
-            }
+            view = clipboard.clips[0].clip.type == Model.MediaType.VIDEO ?
+                            find_video_track_view() : find_audio_track_view();
         }
-        if (view != null) {
-            view.track.do_clip_paste(c, pos, new_clip);
-        }
+        clipboard.paste(view.track, pos);
         queue_draw();
     }
     
