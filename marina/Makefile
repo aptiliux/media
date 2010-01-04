@@ -8,6 +8,7 @@ BUILD_RELEASE=1
 
 SRC_FILES = \
 	AudioMeter.vala \
+	ClassFactory.vala \
 	ClipLibraryView.vala \
 	clip.vala \
 	command.vala \

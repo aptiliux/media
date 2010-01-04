@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -6,25 +6,14 @@
 
 using Logging;
 
-public class TrackView : Gtk.Fixed {
-    public Model.Track track;
-    public TimeLine timeline;
+class TrackViewConcrete : TrackView, Gtk.Fixed {
+    Model.Track track;
+    TimeLine timeline;
     
-    public int drag_x_coord = 0;
-    
-    public const int clip_height = 50;
-    public const int TrackHeight = clip_height + TimeLine.BORDER * 2;
-    
-    Model.Clip? drag_clip_destination = null;
-    bool drag_after_destination;
+    const int clip_height = 50;
+    const int TrackHeight = clip_height + TimeLine.BORDER * 2;
 
-    public bool adding = false;
-    public bool dragging = false;
-    public bool drag_intersect = false;
-    
-    public signal void clip_view_added(ClipView clip_view);
-
-    public TrackView(Model.Track track, TimeLine timeline) {
+    public TrackViewConcrete(Model.Track track, TimeLine timeline) {
         this.track = track;
         this.timeline = timeline;
         
@@ -32,26 +21,26 @@ public class TrackView : Gtk.Fixed {
         track.clip_removed += on_clip_removed;
     }
     
-    public override void size_request(out Gtk.Requisition requisition) {
+    override void size_request(out Gtk.Requisition requisition) {
         base.size_request(out requisition);
         requisition.height = TrackHeight;
         requisition.width += TimeLine.BORDER;    // right margin
     }
     
-    public void on_clip_moved(ClipView clip) {
+    void on_clip_moved(ClipView clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         set_clip_pos(clip);
     }
     
-    public void on_clip_deleted(Model.Clip clip) {
+    void on_clip_deleted(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_deleted");
         track.delete_clip(clip);
         clear_drag();
     }
 
-    public void on_clip_added(Model.Track t, Model.Clip clip) {
+    void on_clip_added(Model.Track t, Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
-        ClipView view = new ClipView(clip, timeline.provider, TrackView.clip_height);
+        ClipView view = new ClipView(clip, timeline.provider, clip_height);
         view.clip_moved += on_clip_moved;
         view.clip_deleted += on_clip_deleted;
         view.move_begin += on_move_begin;
@@ -89,7 +78,7 @@ public class TrackView : Gtk.Fixed {
         move_to_top(clip_view);
     }
 
-    public void set_clip_pos(ClipView view) {
+    void set_clip_pos(ClipView view) {
         move(view, timeline.provider.time_to_xpos(view.clip.start), TimeLine.BORDER);
         queue_draw();
     }
@@ -103,7 +92,7 @@ public class TrackView : Gtk.Fixed {
         }            
     }
 
-    public void on_clip_removed(Model.Clip clip) {
+    void on_clip_removed(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
@@ -116,7 +105,7 @@ public class TrackView : Gtk.Fixed {
         }
     }
 
-    public void unselect_gap() {
+    void unselect_gap() {
 /*        if (timeline.gap_view != null) {
             TrackView parent = timeline.gap_view.parent as TrackView;
             parent.remove(timeline.gap_view);
@@ -125,7 +114,7 @@ public class TrackView : Gtk.Fixed {
 */
     }  
 
-    public override bool button_press_event(Gdk.EventButton e) {
+    override bool button_press_event(Gdk.EventButton e) {
         if (e.type != Gdk.EventType.BUTTON_PRESS &&
             e.type != Gdk.EventType.2BUTTON_PRESS &&
             e.type != Gdk.EventType.3BUTTON_PRESS)
@@ -166,40 +155,16 @@ public class TrackView : Gtk.Fixed {
         unselect_gap();
     }
 */
-    public void clear_drag() {
+    void clear_drag() {
         window.set_cursor(null);
         queue_draw();
     }
 
-    int get_x_from_pos(Model.Clip pos, bool after) {                
-        if (after)
-            return timeline.BORDER + timeline.provider.time_to_xsize(pos.end);
-        else
-            return timeline.BORDER + timeline.provider.time_to_xsize(pos.start);
+    public Model.Track get_track() {
+        return track;
     }
-
-    void calc_drag_intersect(ClipView clip_view) {
-        int64 start = clip_view.clip.start;
-        if (start < 0) {
-            start = 0;
-        }
-        drag_intersect = track.find_overlapping_clip(start, 
-                                clip_view.clip.duration) != null;
-    }
-
-    public void update_intersect_state(ClipView clip_view) {
-        calc_drag_intersect(clip_view);
-        if (!drag_intersect) {
-            drag_x_coord = timeline.provider.time_to_xpos(clip_view.clip.start);
-            drag_clip_destination = null;
-            calc_drag_intersect(clip_view);
-        } else {
-            if (drag_intersect) {
-                drag_clip_destination = track.find_nearest_clip_edge(
-                        clip_view.clip.start + clip_view.clip.duration / 2, 
-                        out drag_after_destination);
-                drag_x_coord = get_x_from_pos(drag_clip_destination, drag_after_destination);
-            }
-        }
+    
+    public int get_track_height() {
+        return TrackHeight;
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -82,9 +82,13 @@ public class ClipLibraryView : Gtk.EventBox {
         tree_view.button_press_event += on_button_pressed;
         tree_view.button_release_event += on_button_released;
 
-        default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
-        default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
-        default_error_icon = icon_theme.load_icon("error", 32, (Gtk.IconLookupFlags) 0);
+        try {
+            default_audio_icon = icon_theme.load_icon("audio-x-generic", 32, (Gtk.IconLookupFlags) 0);
+            default_video_icon = icon_theme.load_icon("video-x-generic", 32, (Gtk.IconLookupFlags) 0);
+            default_error_icon = icon_theme.load_icon("error", 32, (Gtk.IconLookupFlags) 0);
+        } catch (GLib.Error e) {
+            // TODO: what shall we do if these icons are not available?        
+        }
     
         sort_mode = SortMode.ABC;
     }

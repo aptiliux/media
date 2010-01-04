@@ -1,12 +1,10 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
 using Logging;
-using Gee;
-
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
     
@@ -720,6 +718,7 @@ void main(string[] args) {
     string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
     debug_enabled = (str != null && (str[0] >= '1'));
 
+    ClassFactory.set_class_factory(new ClassFactory());
     new App(project_file);
     Gtk.main();
 }

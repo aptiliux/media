@@ -1,5 +1,5 @@
 VALAC = valac
-MIN_VALAC_VERSION = 0.7.7
+MIN_VALAC_VERSION = 0.7.9
 
 ifndef MARINA_VAPI
 MARINA_VAPI = ../marina/marina/marina.vapi
@@ -81,7 +81,7 @@ ifdef LIBRARY
 	@echo 'Both program and library are defined.  This is invalid.'; exit 1
 endif
 endif
-	@ bash -c "[ '`valac --version`' '>' 'Vala $(MIN_VALAC_VERSION)' ]" || bash -c "[ '`valac --version`' '==' 'Vala $(MIN_VALAC_VERSION)' ]" || ( echo '$(PROGRAM)$(LIBRARY) requires Vala compiler $(MIN_VALAC_VERSION) or greater.  You are running' `valac --version` '\b.'; exit 1 )
+	@ ../minver `valac --version | awk '{print $$2}'` $(MIN_VALAC_VERSION) || ( echo '$(PROGRAM)$(LIBRARY) requires Vala compiler $(MIN_VALAC_VERSION) or greater.  You are running' `valac --version` '\b.'; exit 1 )
 ifndef ASSUME_PKGS
 ifdef EXT_PKG_VERSIONS
 	pkg-config --print-errors --exists '$(EXT_PKG_VERSIONS)'

@@ -8,9 +8,9 @@ using Logging;
 
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
+    public TimeLine timeline;
     View.ClickTrack click_track;
     HeaderArea header_area;
-    TimeLine timeline;
     ClipLibraryView library;
     Model.TimeSystem provider;
     Gtk.Adjustment h_adjustment;
@@ -747,7 +747,7 @@ class Recorder : Gtk.Window {
         if (args.length > 1) {
             project_file = args[1];
         }
-        
+        ClassFactory.set_class_factory(new FillmoreClassFactory());
         Recorder recorder = new Recorder(project_file);
         recorder.show_all();
     

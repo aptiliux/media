@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -13,13 +13,13 @@ class TrackHeader : Gtk.EventBox {
     
     public const int width = 100;
     
-    public TrackHeader(Model.Track track, HeaderArea area) {
+    public TrackHeader(Model.Track track, HeaderArea area, int height) {
         this.track = track;
         this.header_area = area;
         
         track.track_renamed += on_track_renamed;
         track.track_selection_changed += on_track_selection_changed;
-        set_size_request(width, TrackView.TrackHeight);
+        set_size_request(width, height);
         modify_bg(Gtk.StateType.NORMAL, header_area.background_color);
         modify_bg(Gtk.StateType.SELECTED, parse_color("#68a"));
         
@@ -92,8 +92,8 @@ class AudioTrackHeader : TrackHeader {
     public PanSlider pan;
     public VolumeSlider volume;
     
-    public AudioTrackHeader(Model.AudioTrack track, HeaderArea header) {
-        base(track, header);
+    public AudioTrackHeader(Model.AudioTrack track, HeaderArea header, int height) {
+        base(track, header, height);
         pan = new PanSlider();
         pan.set_adjustment(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
         pan.value_changed += on_pan_value_changed;
@@ -149,16 +149,14 @@ class AudioTrackHeader : TrackHeader {
 
 class HeaderArea : Gtk.EventBox {
     weak Model.Project project;
-    public weak Recorder recorder;
     
     Gtk.VBox vbox;
     public Gdk.Color background_color = parse_color("#666");
     
     public HeaderArea(Recorder recorder, Model.TimeSystem provider, int height) {
         this.project = recorder.project;
-        this.recorder = recorder;
-        project.track_added += add_track;
-        project.track_removed += on_track_removed;
+        recorder.timeline.trackview_removed += on_trackview_removed;
+        recorder.timeline.trackview_added += on_trackview_added;
         
         set_size_request(TrackHeader.width, 0);
         modify_bg(Gtk.StateType.NORMAL, background_color);
@@ -169,35 +167,30 @@ class HeaderArea : Gtk.EventBox {
         
         vbox.pack_start(status_bar, false, false, 0);
 
-        vbox.pack_start(separator(), false, false, 0);
+        vbox.pack_start(new TrackSeparator(), false, false, 0);
         
-        foreach (Model.Track track in project.tracks) {
-            add_track(track);
+        foreach (TrackView track in recorder.timeline.tracks) {
+            on_trackview_added(track);
         }
     }
     
-    Gtk.HSeparator separator() {
-        Gtk.HSeparator separator = new Gtk.HSeparator();
-        separator.modify_bg(Gtk.StateType.NORMAL, background_color);
-        return separator;
-    }
-    
-    public void add_track(Model.Track track) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "add_track");
-        Model.AudioTrack audio_track = track as Model.AudioTrack;
+    public void on_trackview_added(TrackView trackview) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_trackview_added");
+        Model.AudioTrack audio_track = trackview.get_track() as Model.AudioTrack;
         assert(audio_track != null);
         //we are currently only supporting audio tracks.  We'll probably have
         //a separate method for adding video track, midi track, aux input, etc
 
-        TrackHeader header = new AudioTrackHeader(audio_track, this);
+        TrackHeader header = new AudioTrackHeader(audio_track, this, trackview.get_track_height());
         vbox.pack_start(header, false, false, 0);
-        vbox.pack_start(separator(), false, false, 0);
+        vbox.pack_start(new TrackSeparator(), false, false, 0);
         vbox.show_all();
-        select(track);
+        select(audio_track);
     }
     
-    public void on_track_removed(Model.Track track) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
+    public void on_trackview_removed(TrackView trackview) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_trackview_removed");
+        Model.Track track = trackview.get_track();
         TrackHeader? my_track_header = null;
         Gtk.HSeparator? my_separator = null;
         foreach(Gtk.Widget widget in vbox.get_children()) {
