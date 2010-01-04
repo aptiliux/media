@@ -387,7 +387,7 @@ public class TimeLine : Gtk.EventBox {
         
         track = track_view.get_track();
         
-        project.create_clip_importer(track, true);
+        project.create_clip_importer(track, true, provider.xpos_to_time(x));
 
         foreach (string s in a) {
             string filename;

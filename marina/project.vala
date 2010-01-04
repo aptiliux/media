@@ -466,6 +466,11 @@ public abstract class Project : TempoInformation, Object {
         }
         do_append(track, clipfile, name, insert_time);        
     }
+    
+    public void add(Track track, ClipFile clipfile, int64 time) {
+        string name = isolate_filename(clipfile.filename);
+        do_append(track, clipfile, name, time);
+    }
 
     public void on_clip_removed(Track t, Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
@@ -971,10 +976,10 @@ public abstract class Project : TempoInformation, Object {
         }
     }
 
-    public void create_clip_importer(Model.Track? track, bool timeline_add) {
+    public void create_clip_importer(Model.Track? track, bool timeline_add, int64 time_to_add) {
         if (timeline_add) {
             assert(track != null);
-            importer = new Model.TimelineImporter(track, this);
+            importer = new Model.TimelineImporter(track, this, time_to_add);
         } else {
             importer = new Model.LibraryImporter(this);
         }

@@ -197,7 +197,7 @@ public class ClipLibraryView : Gtk.EventBox {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
         
-        project.create_clip_importer(null, false);
+        project.create_clip_importer(null, false, 0);
 
         foreach (string s in a) {
             string filename;

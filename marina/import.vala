@@ -401,18 +401,20 @@ public class LibraryImporter : Object {
 
 public class TimelineImporter : LibraryImporter {
     Track track;
-    public TimelineImporter(Track track, Project p) {
+    int64 time_to_add;
+    public TimelineImporter(Track track, Project p, int64 time_to_add) {
         base(p);
-        this.track = track;      
+        this.track = track;
+        this.time_to_add = time_to_add;
     }
     
     protected override void append_existing_clipfile(ClipFile f) {
-        project.append(track, f);
+        project.add(track, f, time_to_add);
     }
     
     protected override void on_clip_complete(ClipFile f) {
         base.on_clip_complete(f);
-        project.append(track, f);
+        project.add(track, f, time_to_add);
     }    
 }
 }

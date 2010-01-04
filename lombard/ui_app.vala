@@ -385,7 +385,7 @@ class App : Gtk.Window {
     void on_open() {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
-            project.create_clip_importer(null, false);
+            project.create_clip_importer(null, false, 0);
             project.importer.started += on_importer_started;
             foreach (string s in filenames) {
                 string str;
