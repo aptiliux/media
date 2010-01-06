@@ -106,9 +106,9 @@ class Recorder : Gtk.Window {
       <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
     <menu name="ViewMenu" action="View">
+        <separator name="AfterZoom" />
         <menuitem name="ViewZoomIn" action="ZoomIn" />
         <menuitem name="ViewZoomOut" action="ZoomOut" />
-        <separator name="AfterZoom" />
     </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack" />
@@ -191,7 +191,7 @@ class Recorder : Gtk.Window {
 
         uint view_merge_id = manager.new_merge_id();
         manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
-                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
+                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, true);
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
