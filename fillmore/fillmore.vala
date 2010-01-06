@@ -290,11 +290,11 @@ class Recorder : Gtk.Window {
     }
 
     void set_sensitive_menu(string menu_path, bool sensitive) {
-        Gtk.MenuItem? the_menuitem = (Gtk.MenuItem?) get_widget(manager, menu_path);
-        if (the_menuitem == null) {
-            error("invalid menu path %s".printf(menu_path));
+        Gtk.Widget? the_item = get_widget(manager, menu_path);
+        if (the_item == null) {
+            error("invalid path %s".printf(menu_path));
         }
-        the_menuitem.set_sensitive(sensitive);
+        the_item.set_sensitive(sensitive);
     }
     
     void on_track_changed() {
@@ -389,6 +389,7 @@ class Recorder : Gtk.Window {
         set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && clip_is_trimmed);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackRename", number_of_tracks > 0);
+        set_sensitive_menu("/Toolbar/Record", number_of_tracks > 0);
     }
     
     public Model.Track? selected_track() {
