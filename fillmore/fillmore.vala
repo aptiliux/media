@@ -54,14 +54,14 @@ class Recorder : Gtk.Window {
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Control><Alt>Return", 
             null, on_clip_properties },
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _in", "equal", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _out", "minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "equal", null, on_zoom_in },
+        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "minus", null, on_zoom_out },
 
         { "Track", null, "_Track", null, null, null },
-        { "NewTrack", Gtk.STOCK_ADD, "_New", "<Control><Shift>N", 
+        { "NewTrack", Gtk.STOCK_ADD, "_New...", "<Control><Shift>N", 
             "Create new track", on_track_new },
         { "Rename", null, "_Rename...", null, "Rename track", on_track_rename },
-        { "DeleteTrack", null, "_Delete Track", "<Control><Shift>Delete", 
+        { "DeleteTrack", null, "_Delete", "<Control><Shift>Delete", 
             "Delete track", on_track_remove },
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
@@ -108,6 +108,7 @@ class Recorder : Gtk.Window {
     <menu name="ViewMenu" action="View">
         <menuitem name="ViewZoomIn" action="ZoomIn" />
         <menuitem name="ViewZoomOut" action="ZoomOut" />
+        <separator name="AfterZoom" />
     </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack" />
@@ -189,8 +190,8 @@ class Recorder : Gtk.Window {
         } catch (Error e) { error("%s", e.message); }
 
         uint view_merge_id = manager.new_merge_id();
-        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/ViewZoomOut",
-                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
+        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
+                    "_Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
