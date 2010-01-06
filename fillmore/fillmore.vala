@@ -74,7 +74,7 @@ class Recorder : Gtk.Window {
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
-        { "Library", null, "Library", "F9", null, on_view_library, true }
+        { "Library", null, "_Library", "F9", null, on_view_library, true }
     };
     
     const string ui = """
@@ -191,7 +191,7 @@ class Recorder : Gtk.Window {
 
         uint view_merge_id = manager.new_merge_id();
         manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
-                    "_Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
+                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
         
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
