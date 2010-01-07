@@ -10,7 +10,7 @@ public class ClipLibraryView : Gtk.EventBox {
     Model.Project project;
     Gtk.TreeView tree_view;
     Gtk.TreeSelection selection;
-    Gtk.Label label;
+    Gtk.Label label = null;
     Gtk.ListStore list_store;
     int num_clipfiles;
     Gee.ArrayList<string> files_dragging = new Gee.ArrayList<string>();
@@ -37,7 +37,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
     SortMode sort_mode;
 
-    public ClipLibraryView(Model.Project p) {
+    public ClipLibraryView(Model.Project p, string? drag_message) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
         project = p;
         
@@ -53,8 +53,10 @@ public class ClipLibraryView : Gtk.EventBox {
         add_column(ColumnType.DURATION);
         
         num_clipfiles = 0;
-        label = new Gtk.Label("Drag clips here.");
-        label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
+        if (drag_message != null) {
+            label = new Gtk.Label(drag_message);
+            label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
+        }
         
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
         tree_view.modify_base(Gtk.StateType.NORMAL, parse_color("#444"));
@@ -71,8 +73,9 @@ public class ClipLibraryView : Gtk.EventBox {
         
         selection = tree_view.get_selection();
         selection.set_mode(Gtk.SelectionMode.MULTIPLE);
-        
-        add(label);
+        if (label != null) {
+            add(label);
+        }
 
         // We have to have our own button press and release handlers
         // since the normal drag-selection handling does not allow you
@@ -324,7 +327,9 @@ public class ClipLibraryView : Gtk.EventBox {
             list_store.remove(it);
         } else {
             if (num_clipfiles == 0) {
-                remove(label);
+                if (label != null) {
+                    remove(label);
+                }
                 add(tree_view);
                 tree_view.show();
             }
@@ -371,8 +376,10 @@ public class ClipLibraryView : Gtk.EventBox {
         num_clipfiles--;
         if (num_clipfiles == 0) {
             remove(tree_view);
-            add(label);
-            label.show();
+            if (label != null) {
+                add(label);
+                label.show();
+            }
         }
         return b;
     }

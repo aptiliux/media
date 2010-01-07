@@ -211,7 +211,7 @@ class App : Gtk.Window {
         project.media_engine.position_changed += on_position_changed;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
-        library = new ClipLibraryView(project);
+        library = new ClipLibraryView(project, "Drag clips here.");
         library.selection_changed += on_library_selection_changed;
         library.drag_data_received += on_drag_data_received;
         
