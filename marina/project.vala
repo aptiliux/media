@@ -878,6 +878,7 @@ public abstract class Project : TempoInformation, Object {
     }
     
     public void save(string? filename) {
+        bool reopen = project_file == null;
         if (project_file == null) {
             move_audio_files(filename);
         }
@@ -917,8 +918,14 @@ public abstract class Project : TempoInformation, Object {
         f.printf("  </maps>\n");
         
         f.printf("</marina>\n");
+        f.flush();
+
         // TODO: clean up responsibility between dirty and undo
         undo_manager.mark_clean();
+        if (reopen) {
+            this.close();
+            this.load(filename);
+        }
     }
 
     public void close() {
