@@ -94,6 +94,7 @@ class Recorder : Gtk.Window {
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
+      <separator />
       <menuitem name="EditCut" action="Cut" />
       <menuitem name="EditCopy" action="Copy" />
       <menuitem name="EditPaste" action="Paste" />
@@ -102,6 +103,7 @@ class Recorder : Gtk.Window {
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
+      <separator />
       <menuitem name="ClipRevertToOriginal" action="RevertToOriginal" />
       <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
