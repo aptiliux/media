@@ -51,6 +51,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
 
         timeline.track_changed();
         clip_view_added(view);
+        view.selection_request(view, false);
     }
 
     // TODO: This method should not be public.  When linking/grouping is done, this method
