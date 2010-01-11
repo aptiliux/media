@@ -47,6 +47,10 @@ public class LoaderHandler : Object {
         return true;
     }
     
+    public virtual bool commit_library_preference(string[] attr_names, string[] attr_values) {
+        return true;
+    }
+    
     public virtual void leave_library() {
     }
 
@@ -144,8 +148,13 @@ class ProjectBuilder : Object {
     }
 
     void handle_preference(XmlElement preference) {
-        if (check_name("click", preference)) {
+        if ("click" == preference.name) {
             handler.commit_click(preference.attribute_names, preference.attribute_values);
+        } else if ("library" == preference.name) {
+            handler.commit_library_preference(
+                preference.attribute_names, preference.attribute_values);
+        } else {
+            error_occurred("Unknown preference: %s".printf(preference.name));
         }
     }
     
@@ -280,6 +289,9 @@ public class ProjectLoader : Object {
     LoaderHandler loader_handler;
     string text;
     size_t text_len;
+    bool project_load_completed = false;
+    bool load_completed_fired = false;
+    bool handler_completed = false;
 
     public signal void load_started(string filename);
     public signal void load_complete();
@@ -299,7 +311,11 @@ public class ProjectLoader : Object {
     
     void on_handler_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_handler_complete");
-        load_complete();    
+        handler_completed = true;
+        if (project_load_completed && !load_completed_fired) {
+            load_completed_fired = true;
+            load_complete();
+        }
     }
     
     public void load() {
@@ -312,7 +328,6 @@ public class ProjectLoader : Object {
             load_complete();
             return;
         }
-        
         emit(this, Facility.LOADING, Level.VERBOSE, "Building tree for %s".printf(file_name));
         XmlTreeLoader tree_loader = new XmlTreeLoader(text);
         
@@ -323,6 +338,11 @@ public class ProjectLoader : Object {
             emit(this, Facility.LOADING, Level.VERBOSE, "project checked out.  starting load");
             load_started(file_name);
             builder.build_project(tree_loader.root);
+            project_load_completed = true;
+            if (handler_completed && !load_completed_fired) {
+                load_completed_fired = true;
+                load_complete();
+            }
         }
         else {
             emit(this, Facility.LOADING, Level.INFO, "project did not check out.  stopping.");

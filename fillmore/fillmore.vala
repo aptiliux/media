@@ -17,6 +17,7 @@ class Recorder : Gtk.Window {
     Gtk.HPaned timeline_library_pane;
     Gtk.ScrolledWindow library_scrolled;
     int cursor_pos = -1;
+    bool loading;
     
     Gtk.Action delete_action;
     Gtk.Action record_action;
@@ -230,12 +231,13 @@ class Recorder : Gtk.Window {
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(menubar, false, false, 0);
         vbox.pack_start(toolbar, false, false, 0);
-        timeline_library_pane = new Gtk.HPaned();        
-        timeline_library_pane.set_position(700);
+        timeline_library_pane = new Gtk.HPaned();
+        timeline_library_pane.set_position(project.library_width);
         timeline_library_pane.add1(hbox);
         timeline_library_pane.child1_resize = 1;
         timeline_library_pane.add2(library_scrolled);
         timeline_library_pane.child2_resize = 0;
+        timeline_library_pane.child1.size_allocate += on_library_size_allocate;
 
         vbox.pack_start(timeline_library_pane, true, true, 0);
         add(vbox);
@@ -252,6 +254,7 @@ class Recorder : Gtk.Window {
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
         delete_event += on_delete_event;
+        loading = true;
         project.load(project_file);
         if (project_file == null) {
             default_track_set();
@@ -496,6 +499,7 @@ class Recorder : Gtk.Window {
     void on_project_open() {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, false, false, out filenames)) {
+            loading = true;
             project.load(filenames.data);
         }
     }
@@ -675,8 +679,16 @@ class Recorder : Gtk.Window {
     void on_view_library() {
         if (timeline_library_pane.child2 == library_scrolled) {
             timeline_library_pane.remove(library_scrolled);
+            project.library_visible = false;
         } else {
             timeline_library_pane.add2(library_scrolled);
+            project.library_visible = true;
+        }
+    }
+    
+    void on_library_size_allocate(Gdk.Rectangle rectangle) {
+        if (!loading && timeline_library_pane.child2 == library_scrolled) {
+            project.library_width = rectangle.width;
         }
     }
     
@@ -779,6 +791,17 @@ class Recorder : Gtk.Window {
     public void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+        timeline_library_pane.set_position(project.library_width);
+        if (project.library_visible) {
+            if (timeline_library_pane.child2 != library_scrolled) {
+                timeline_library_pane.add2(library_scrolled);
+            }
+        } else {
+            if (timeline_library_pane.child2 == library_scrolled) {
+                timeline_library_pane.remove(library_scrolled);
+            }
+        }
+        loading = false;
     }
     
     void on_name_changed() {

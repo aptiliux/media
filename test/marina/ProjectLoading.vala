@@ -116,11 +116,16 @@ class ProjectLoaderSuite : TestSuite {
             ValidDocument(true, "<marina><library/><tracks/><preferences/></marina>"),
             ValidDocument(true, "<marina><library/><tracks/><preferences><click/></preferences>"
                 + "</marina>"),
+            ValidDocument(true, "<marina><library/><tracks/><preferences><library/>" + 
+                "</preferences></marina>"),
+            ValidDocument(true, "<marina><library/><tracks/><preferences><click/><library/>" +
+                "</preferences></marina>"),
             ValidDocument(false, "<marina><tracks></tracks><library></library></marina>"),
             ValidDocument(false, "<marina><library></library><track></track></marina>"),
             ValidDocument(false, "<marina><library><clip /></library><tracks><clipfile />"
                     + "</tracks></marina>"),
             ValidDocument(false, "<marina />"),            
+            ValidDocument(false, "<library />"),
             ValidDocument(false, "<track />"),
             ValidDocument(false, "<clip />"),
             ValidDocument(false, "<entry />"),
@@ -144,11 +149,13 @@ class ProjectLoaderSuite : TestSuite {
             ValidDocument(false, "<marina><library/><tracks/><maps/><preferences/></marina>")
         };
         
-        int length = Test.thorough() ? project_documents.length : 10;
+        int length = project_documents.length;
         
         for (int i = 0; i < length; ++i) {
-            add(new TestCase("Document%d".printf(i), state_change_fixture_buildup, check_document, 
-                                state_change_fixture_teardown, sizeof(StateChangeFixture)));
+            if (Test.thorough() || project_documents[i].valid) {
+                add(new TestCase("Document%d".printf(i), state_change_fixture_buildup, 
+                    check_document, state_change_fixture_teardown, sizeof(StateChangeFixture)));
+            }
         }
     }
 }

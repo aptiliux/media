@@ -270,6 +270,23 @@ public class MediaLoaderHandler : LoaderHandler {
         return true;
     }
     
+    public override bool commit_library_preference(string[] attr_names, string[] attr_values) {
+        for (int i = 0; i < attr_names.length; ++i) {
+            switch (attr_names[i]) {
+                case "width":
+                    the_project.library_width = attr_values[i].to_int();
+                break;
+                case "visible":
+                    the_project.library_visible = attr_values[i] == "true";
+                break;
+                default:
+                    load_error("unknown attribute for library '%s'".printf(attr_names[i]));
+                    return false;
+            }
+        }
+        return true;
+    }
+    
     public override void leave_library() {
         if (clipfetchers.size == 0)
             complete();
@@ -304,6 +321,8 @@ public abstract class Project : TempoInformation, Object {
     public bool click_during_play = false;
     public bool click_during_record = true;
     public double click_volume = 0.8;
+    public bool library_visible = true;
+    public int library_width = 600;
     
     /* TODO:
         * This can't be const since the Vala compiler
@@ -907,6 +926,8 @@ public abstract class Project : TempoInformation, Object {
             click_during_play ? "true" : "false",
             click_during_record ? "true" : "false",
             click_volume);
+        f.printf("    <library width=\"%d\" visible=\"%s\" />\n",
+            library_width, library_visible ? "true" : "false");
         f.printf("  </preferences>\n");
         f.printf("  <maps>\n");
         f.printf("    <tempo>\n");
