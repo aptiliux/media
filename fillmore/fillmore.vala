@@ -38,7 +38,7 @@ class Recorder : Gtk.Window {
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>S", 
             "Save project with new name", on_project_save_as },
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
-        { "Properties", Gtk.STOCK_PROPERTIES, null, "<Alt>Return", null, on_properties },
+        { "Settings", Gtk.STOCK_PROPERTIES, "Se_ttings", "<Control><Alt>Return", null, on_properties },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
         
         { "Edit", null, "_Edit", null, null, null },
@@ -52,7 +52,7 @@ class Recorder : Gtk.Window {
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
           "<Control>R", null, on_revert_to_original },
-        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Control><Alt>Return", 
+        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
         { "View", null, "_View", null, null, null },
         { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "equal", null, on_zoom_in },
@@ -89,7 +89,7 @@ class Recorder : Gtk.Window {
       <separator />
       <menuitem name="FileExport" action="Export" />
       <separator />
-      <menuitem name="FileProperty" action="Properties" />
+      <menuitem name="FileProperty" action="Settings" />
       <separator />
       <menuitem name="FileQuit" action="Quit"/>
     </menu>
