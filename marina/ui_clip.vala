@@ -200,11 +200,11 @@ public class ClipView : Gtk.EventBox {
         // The clip is not responsible for changing the selection state.
         // It may depend upon knowledge of multiple clips.  Let anyone who is interested
         // update our state.
-        if (is_left_trim(event.x)) {
+        if (is_left_trim(event.x, event.y)) {
             selection_request(this, false);
             trim_begin(this, Gdk.WindowEdge.WEST);
             motion_mode = MotionMode.LEFT_TRIM;
-        } else if (is_right_trim(event.x)){
+        } else if (is_right_trim(event.x, event.y)){
             selection_request(this, false);
             trim_begin(this, Gdk.WindowEdge.EAST);
             motion_mode = MotionMode.RIGHT_TRIM;
@@ -250,9 +250,9 @@ public class ClipView : Gtk.EventBox {
         
         switch (motion_mode) {
             case MotionMode.NONE:
-                if (is_left_trim(event.x)) {
+                if (is_left_trim(event.x, event.y)) {
                     window.set_cursor(left_trim_cursor);
-                } else if (is_right_trim(event.x)) {
+                } else if (is_right_trim(event.x, event.y)) {
                     window.set_cursor(right_trim_cursor);
                 } else if (is_selected && button_down) {
                     if (delta.abs() > MIN_DRAG) {
@@ -292,14 +292,18 @@ public class ClipView : Gtk.EventBox {
                 return true;
         }
         return false;
-    }    
+    }
 
-    bool is_left_trim(double x) {
-        return x > TRIM_OFFSET && x < TRIM_OFFSET + TRIM_WIDTH;
+    bool is_trim_height(double y) {
+        return y > allocation.height / 2;
+    }
+
+    bool is_left_trim(double x, double y) {
+        return is_trim_height(y) && x > TRIM_OFFSET && x < TRIM_OFFSET + TRIM_WIDTH;
     }
     
-    bool is_right_trim(double x) {
-        return x > allocation.width - (TRIM_OFFSET + TRIM_WIDTH) && 
+    bool is_right_trim(double x, double y) {
+        return is_trim_height(y) && x > allocation.width - (TRIM_OFFSET + TRIM_WIDTH) && 
             x < allocation.width - TRIM_OFFSET;
     }    
 }
