@@ -419,10 +419,15 @@ public class TimeLine : Gtk.EventBox {
         if (gap_view != null)
             gap_view.unselect();
 */      
-        foreach (ClipView clip_view in selected_clips) {
-            clip_view.is_selected = false;
+        Gtk.Widget? ruler = find_child(event.x, event.y) as View.Ruler;
+        if (ruler != null) {
+            ruler.button_press_event(event);
+        } else {
+            foreach (ClipView clip_view in selected_clips) {
+                clip_view.is_selected = false;
+            }
+            selected_clips.clear();        
         }
-        selected_clips.clear();
         queue_draw();
 
         return true;
