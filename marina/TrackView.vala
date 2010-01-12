@@ -38,7 +38,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         clear_drag();
     }
 
-    void on_clip_added(Model.Track t, Model.Clip clip) {
+    void on_clip_added(Model.Track t, Model.Clip clip, bool select) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         ClipView view = new ClipView(clip, timeline.provider, clip_height);
         view.clip_moved += on_clip_moved;
@@ -51,7 +51,9 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
 
         timeline.track_changed();
         clip_view_added(view);
-        view.selection_request(view, false);
+        if (select) {
+            view.selection_request(view, false);
+        }
     }
 
     // TODO: This method should not be public.  When linking/grouping is done, this method

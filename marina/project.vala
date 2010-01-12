@@ -185,7 +185,7 @@ public class MediaLoaderHandler : LoaderHandler {
         
         Clip clip = new Clip(clipfetchers[id].clipfile, current_track.media_type(), clip_name, 
             start, media_start, duration, false);
-        current_track.add(clip, start);
+        current_track.add(clip, start, false);
         return true;
     }
     
@@ -472,7 +472,7 @@ public abstract class Project : TempoInformation, Object {
         
         if (clipfile.audio_caps != null) {
             Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
-            track.append_at_time(clip, insert_time);
+            track.append_at_time(clip, insert_time, true);
         }
     }
     

@@ -62,7 +62,7 @@ class VideoProject : Project {
             Track? video_track = find_video_track();
             if (video_track != null && track != video_track) {
                 Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length, false);
-                video_track.append_at_time(clip, insert_time);
+                video_track.append_at_time(clip, insert_time, true);
             }
         }
         base.do_append(track, clipfile, name, insert_time);

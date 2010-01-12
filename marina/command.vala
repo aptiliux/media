@@ -74,19 +74,21 @@ public class ClipCommand : Command {
     int64 time;
     Action action;
     int index;
+    bool select;
     
-    public ClipCommand(Action action, Track track, Clip clip, int64 time) {
+    public ClipCommand(Action action, Track track, Clip clip, int64 time, bool select) {
         this.track = track;
         this.clip = clip;
         this.time = time;
         this.action = action;
+        this.select = select;
         this.index = track.get_clip_index(clip);
     }
     
     public override void apply() {
         switch(action) {
             case Action.APPEND:
-                track._append_at_time(clip, time);
+                track._append_at_time(clip, time, select);
                 break;
             case Action.DELETE:
                 track._delete_clip(clip);
@@ -103,7 +105,7 @@ public class ClipCommand : Command {
                 track._delete_clip(clip);
                 break;
             case Action.DELETE:
-                track.add(clip, time);
+                track.add(clip, time, false);
                 break;
             default:
                 assert(false);

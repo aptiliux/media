@@ -14,7 +14,7 @@ public abstract class Track : Object {
     public string display_name;
     bool is_selected;
     
-    public signal void clip_added(Clip clip);
+    public signal void clip_added(Clip clip, bool select);
     public signal void clip_removed(Clip clip);
 
     public signal void track_renamed(Track track);
@@ -189,7 +189,7 @@ public abstract class Track : Object {
                                     clips[end_index].name, c.end, 
                                     clips[end_index].media_start + diff,
                                     clips[end_index].duration - diff, false);
-                    add(cl, cl.start);
+                    add(cl, cl.start, true);
                 }
             } else {
                 clips[end_index].set_media_start_duration(
@@ -230,12 +230,12 @@ public abstract class Track : Object {
         project.reseek();
     }
 
-    public void add(Clip c, int64 pos) {
+    public void add(Clip c, int64 pos, bool select) {
         if (!check(c))
             return;
 
         _move(c, pos);
-        clip_added(c);
+        clip_added(c, select);
     }
     
     public virtual void on_clip_updated(Clip clip) {
@@ -244,7 +244,7 @@ public abstract class Track : Object {
     
     public void do_clip_paste(Clip clip, int64 position, bool new_clip) {
         if (new_clip)
-            add(clip, position);
+            add(clip, position, true);
         else
             _move(clip, position);
     }
@@ -277,18 +277,18 @@ public abstract class Track : Object {
         return clips.size == 0 ? 0 : clips[clips.size - 1].start + clips[clips.size - 1].duration;
     }
 
-    public void _append_at_time(Clip c, int64 time) {
-        add(c, time);
+    public void _append_at_time(Clip c, int64 time, bool select) {
+        add(c, time, select);
     }
     
-    public void append_at_time(Clip c, int64 time) {
-        Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time);
+    public void append_at_time(Clip c, int64 time, bool select) {
+        Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time, select);
         project.do_command(command);
     }
     
     public void delete_clip(Clip clip) {
         Command clip_command = new ClipCommand(ClipCommand.Action.DELETE, 
-            this, clip, clip.start);
+            this, clip, clip.start, false);
         project.do_command(clip_command);
     }
     
@@ -363,7 +363,7 @@ public abstract class Track : Object {
         
         c.duration = position - c.start;
         
-        add(cn, position);  
+        add(cn, position, false);
     }  
     
     public void join(int64 position) {

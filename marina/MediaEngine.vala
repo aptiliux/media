@@ -1072,7 +1072,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             error("can't record now: %s", gst_state.to_string());
 
         record_track._move(record_region, position);
-        record_track.clip_added(record_region);
+        record_track.clip_added(record_region, true);
         audio_in = make_element("gconfaudiosrc");
         record_capsfilter = make_element("capsfilter");
         record_capsfilter.set("caps", get_record_audio_caps());

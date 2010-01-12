@@ -180,7 +180,7 @@ public class TimeLine : Gtk.EventBox {
                 // We'll want to call move_begin for each clip that is linked, or in a group 
                 // or selected and not iterate over them in this fashion in the timeline.
                 Model.Clip clip = selected_clip.clip.copy();
-                track_view.get_track().add(clip, selected_clip.clip.start);
+                track_view.get_track().add(clip, selected_clip.clip.start, false);
                 track_view.move_to_top(clip_view);
             }
         }    
