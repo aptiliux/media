@@ -267,6 +267,24 @@ class Recorder : Gtk.Window {
         project.tracks[0].set_selected(true);
     }
 
+    static int default_track_number_compare(void *a, void *b) {
+        string* s1 = (string *) a;
+        string* s2 = (string *) b;
+        int i = -1;
+        int j = -1;
+        s1->scanf("track %d", &i);
+        s2->scanf("track %d", &j);
+        assert(i > 0);
+        assert(j > 0);
+        if (i == j) {
+            return 0;
+        } else if (i < j) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+    
     public string get_default_track_name() {
         List<string> default_track_names = new List<string>();
         foreach(Model.Track track in project.tracks) {
@@ -274,7 +292,7 @@ class Recorder : Gtk.Window {
                 default_track_names.append(track.display_name);
             }
         }
-        default_track_names.sort(strcmp);
+        default_track_names.sort(default_track_number_compare);
         
         int i = 1;
         foreach(string s in default_track_names) {
