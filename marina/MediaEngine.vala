@@ -358,6 +358,7 @@ public class MediaAudioTrack : MediaTrack {
     Gst.Element level;
     Gst.Element pan;
     Gst.Element volume;
+    Gst.Pad adder_pad;
 
     public MediaAudioTrack(MediaEngine media_engine, Model.AudioTrack track) {
         base(media_engine, track);
@@ -435,13 +436,22 @@ public class MediaAudioTrack : MediaTrack {
     }
     
     override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
-        if (!bin.link_many(audio_convert, audio_resample, level, pan, volume, track_element)) {
-            error("could not link_new_pad for audio track");
+        if (!bin.link_many(audio_convert, audio_resample, level, pan, volume)) {
+            stderr.printf("could not link_new_pad for audio track");
+        }
+
+        Gst.Pad volume_pad = volume.get_pad("src");
+        adder_pad = track_element.request_new_pad(
+            track_element.get_compatible_pad_template(volume_pad.get_pad_template()), null);
+
+        if (volume_pad.link(adder_pad) != Gst.PadLinkReturn.OK) {
+            error("could not link to adder %s->%s\n", volume.name, track_element.name);
         }
     }
-    
+
     public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         bin.unlink_many(audio_convert, audio_resample, level, pan, volume, track_element);
+        track_element.release_request_pad(adder_pad);
     }
 
     public override Gst.Element? get_element() {
