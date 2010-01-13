@@ -136,7 +136,8 @@ public class ClipView : Gtk.EventBox {
     public void draw() {
         weak Gdk.Color fill = is_selected ? color_selected : color_normal;
                                                                          
-        bool left_trimmed = clip.media_start != 0;
+        bool left_trimmed = clip.media_start != 0 && !clip.is_recording;
+        
         bool right_trimmed = clip.clipfile.is_online() ? 
                               (clip.media_start + clip.duration != clip.clipfile.length) : false;
             
