@@ -7,6 +7,7 @@ BUILD_RELEASE=1
 -include ../configure.mk
 
 SRC_FILES = \
+	AppDirs.vala \
 	AudioMeter.vala \
 	ClassFactory.vala \
 	ClipLibraryView.vala \

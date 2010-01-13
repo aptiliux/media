@@ -691,7 +691,8 @@ const string MIN_GNONLIN = "0.10.10.3";
 void main(string[] args) {
     Gtk.init(ref args);
     GLib.Environment.set_application_name("lombard");
-    
+
+    AppDirs.init(args[0]);    
     Gst.init(ref args);
 
     if (args.length > 2) {

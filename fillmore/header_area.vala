@@ -44,47 +44,39 @@ class TrackHeader : Gtk.EventBox {
 }
 
 public class SliderBase : Gtk.HScrollbar {
-    protected string label;
+    Gdk.Pixbuf slider_image;
     construct {
         can_focus = true;
+        try {
+            slider_image = new Gdk.Pixbuf.from_file(
+                AppDirs.get_resources_dir().get_child("dot.png").get_path());
+        } catch (GLib.Error e) {
+            warning("Could not load resource for slider: %s", e.message);
+        }
     }
     
     public override bool expose_event (Gdk.EventExpose event) {
         Gdk.GC gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
-
         int radius = (slider_end - slider_start) / 2;
         int center = allocation.x + slider_start + radius;
         int height = allocation.y + allocation.height / 2;
 
         event.window.draw_rectangle(gc, false,
-            allocation.x + radius, height, allocation.width - 2 * radius, 1);
+            allocation.x + radius, height - 2, allocation.width - 2 * radius, 1);
 
-        gc = style.fg_gc[(int) Gtk.StateType.SELECTED];
-        event.window.draw_arc(gc, true, 
-            center - radius, allocation.y + 2,
-            radius * 2, radius * 2, 0, 360 * 64);
-        
-        gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
-        Pango.Layout layout = create_pango_layout(label);
-        Pango.FontDescription f = Pango.FontDescription.from_string("Sans 8");
-        layout.set_font_description(f);
-        int text_width, text_height;
-        layout.get_pixel_size(out text_width, out text_height);
-        Gdk.draw_layout(event.window, style.black_gc, 
-            center - text_width / 2, allocation.y + 3, layout);
+        event.window.draw_pixbuf(gc, slider_image, 0, 0, center - radius, allocation.y + 1, 
+            slider_image.get_width(), slider_image.get_height(), Gdk.RgbDither.NORMAL, 0, 0);
         return true;
     }
 }
 
 class PanSlider : SliderBase {
     construct {
-        label = "P";
     }
 }
 
 public class VolumeSlider : SliderBase {
     construct {
-        label = "V";
     }
 }
 
@@ -94,13 +86,25 @@ class AudioTrackHeader : TrackHeader {
     
     public AudioTrackHeader(Model.AudioTrack track, HeaderArea header, int height) {
         base(track, header, height);
+        Gtk.HBox pan_box = new Gtk.HBox(false, 0);
+        pan_box.pack_start(new Gtk.Label(" L"), false, false, 0);
         pan = new PanSlider();
         pan.set_adjustment(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
         pan.value_changed += on_pan_value_changed;
-        
+        pan_box.pack_start(pan, true, true, 1);
+        pan_box.pack_start(new Gtk.Label("R "), false, false, 0);
+
+        Gtk.HBox volume_box = new Gtk.HBox(false, 0);
+        Gtk.Image min_speaker = new Gtk.Image.from_file(
+            AppDirs.get_resources_dir().get_child("min_speaker.png").get_path());
+        volume_box.pack_start(min_speaker, false, false, 0);
         volume = new VolumeSlider();
         volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 1, 0));
         volume.value_changed += on_volume_value_changed;
+        volume_box.pack_start(volume, true, true, 0);
+        Gtk.Image max_speaker = new Gtk.Image.from_file(
+            AppDirs.get_resources_dir().get_child("max_speaker.png").get_path());
+        volume_box.pack_start(max_speaker, false, false, 0);
 
         track.parameter_changed += on_parameter_changed;
 
@@ -109,8 +113,8 @@ class AudioTrackHeader : TrackHeader {
         View.AudioMeter meter = new View.AudioMeter(track);
         vbox.add(meter);
         
-        vbox.add(pan);
-        vbox.add(volume);
+        vbox.add(volume_box);
+        vbox.add(pan_box);
         add(vbox);
     }
 

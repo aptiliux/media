@@ -768,6 +768,7 @@ class Recorder : Gtk.Window {
         Gtk.init(ref args);
         GLib.Environment.set_application_name("fillmore");
 
+        AppDirs.init(args[0]);
         Gtk.rc_parse("fillmore.rc");
         Gst.init(ref args);
 
