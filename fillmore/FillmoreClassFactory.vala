@@ -38,6 +38,10 @@ class FillmoreTrackView : Gtk.VBox, TrackView {
     void on_clip_view_added(ClipView clip_view) {
         clip_view_added(clip_view);
     }
+    
+    Gtk.Widget? find_child(double x, double y) {
+        return track_view.find_child(x, y);
+    }
 }
 
 public class FillmoreClassFactory : ClassFactory {

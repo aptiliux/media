@@ -39,7 +39,7 @@ public class GapView : Gtk.DrawingArea {
     }
 }
 
-public class ClipView : Gtk.EventBox {
+public class ClipView : Gtk.DrawingArea {
     enum MotionMode {
         NONE,
         DRAGGING,
@@ -61,8 +61,7 @@ public class ClipView : Gtk.EventBox {
     MotionMode motion_mode = MotionMode.NONE;
     bool button_down = false;
     const int MIN_DRAG = 5;
-    const int TRIM_WIDTH = 5;
-    const int TRIM_OFFSET = 5;
+    const int TRIM_WIDTH = 10;
     
     static Gdk.Cursor left_trim_cursor = new Gdk.Cursor(Gdk.CursorType.LEFT_SIDE);
     static Gdk.Cursor right_trim_cursor = new Gdk.Cursor(Gdk.CursorType.RIGHT_SIDE);
@@ -79,7 +78,6 @@ public class ClipView : Gtk.EventBox {
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
     
     public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
-        add_events(Gdk.EventMask.POINTER_MOTION_MASK);
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
@@ -195,6 +193,7 @@ public class ClipView : Gtk.EventBox {
     }
     
     public override bool button_press_event(Gdk.EventButton event) {
+        event.x -= allocation.x;
         button_down = true;
         drag_point = (int)event.x;
         bool extend_selection = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
@@ -216,6 +215,7 @@ public class ClipView : Gtk.EventBox {
     }
     
     public override bool button_release_event(Gdk.EventButton event) {
+        event.x -= allocation.x;
         button_down = false;
         
         if (event.button == 3) {
@@ -247,6 +247,7 @@ public class ClipView : Gtk.EventBox {
     }
     
     public override bool motion_notify_event(Gdk.EventMotion event) {
+        event.x -= allocation.x;
         int delta = (int) event.x - drag_point;
         
         switch (motion_mode) {
@@ -283,8 +284,11 @@ public class ClipView : Gtk.EventBox {
                         }
                         clip.trim(time_delta, Gdk.WindowEdge.WEST);
                     } else {
-                        drag_point += (int)delta;
+                        int64 duration = clip.duration;
                         clip.trim(time_delta, Gdk.WindowEdge.EAST);
+                        if (duration != clip.duration) {
+                            drag_point += (int)delta;
+                        }
                     }
                 }
                 return true;
@@ -300,11 +304,11 @@ public class ClipView : Gtk.EventBox {
     }
 
     bool is_left_trim(double x, double y) {
-        return is_trim_height(y) && x > TRIM_OFFSET && x < TRIM_OFFSET + TRIM_WIDTH;
+        return is_trim_height(y) && x > 0 && x < TRIM_WIDTH;
     }
     
     bool is_right_trim(double x, double y) {
-        return is_trim_height(y) && x > allocation.width - (TRIM_OFFSET + TRIM_WIDTH) && 
-            x < allocation.width - TRIM_OFFSET;
+        return is_trim_height(y) && x > allocation.width - TRIM_WIDTH && 
+            x < allocation.width;
     }    
 }

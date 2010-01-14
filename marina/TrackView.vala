@@ -170,4 +170,13 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
     public int get_track_height() {
         return TrackHeight;
     }
+    
+    public Gtk.Widget? find_child(double x, double y) {
+        foreach (Gtk.Widget w in get_children()) {
+            if (w.allocation.x <= x && x < w.allocation.x + w.allocation.width) {
+                return w;
+            }
+        }
+        return null;
+    }
 }

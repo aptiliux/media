@@ -48,6 +48,7 @@ public class TimeLine : Gtk.EventBox {
     public Model.Project project;
     public weak Model.TimeSystem provider;
     public View.Ruler ruler;
+    ClipView? drag_clip = null;
     public Gee.ArrayList<TrackView> tracks = new Gee.ArrayList<TrackView>();
     Gtk.VBox vbox;
     
@@ -71,6 +72,8 @@ public class TimeLine : Gtk.EventBox {
     // public GapView gap_view;
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
+        add_events(Gdk.EventMask.POINTER_MOTION_MASK);
+        drag_clip = null;
         can_focus = true;
         project = p;
         this.provider = provider;
@@ -419,20 +422,55 @@ public class TimeLine : Gtk.EventBox {
         if (gap_view != null)
             gap_view.unselect();
 */      
-        Gtk.Widget? ruler = find_child(event.x, event.y) as View.Ruler;
-        if (ruler != null) {
+        drag_clip = null;
+        Gtk.Widget? child = find_child(event.x, event.y);
+        
+        if (child is View.Ruler) {
+            View.Ruler ruler = child as View.Ruler;
             ruler.button_press_event(event);
-        } else {
-            foreach (ClipView clip_view in selected_clips) {
-                clip_view.is_selected = false;
+        } else if (child is TrackView) {
+            TrackView track_view = child as TrackView;
+            
+            drag_clip = track_view.find_child(event.x, event.y) as ClipView;
+            if (drag_clip != null) {
+                drag_clip.button_press_event(event);
+            } else {
+                foreach (ClipView clip_view in selected_clips) {
+                    clip_view.is_selected = false;
+                }
+                selected_clips.clear();
             }
-            selected_clips.clear();        
         }
         queue_draw();
 
         return true;
     }
 
+    public override bool button_release_event(Gdk.EventButton event) {
+        if (drag_clip != null) {
+            drag_clip.button_release_event(event);
+            drag_clip = null;
+        }
+        return true;
+    }
+    
+    public override bool motion_notify_event(Gdk.EventMotion event) {
+        if (drag_clip != null) {
+            drag_clip.motion_notify_event(event);
+        } else {
+            TrackView? track_view = find_child(event.x, event.y) as TrackView;
+            if (track_view != null) {
+                ClipView? clip_view = track_view.find_child(event.x, event.y) as ClipView;
+                if (clip_view != null) {
+                    clip_view.motion_notify_event(event);
+                } else {
+                    window.set_cursor(null);
+                }
+            }
+        }
+        return true;
+    }
+    
     TrackView? find_video_track_view() {
         foreach (TrackView track in tracks) {
             if (track.get_track().media_type() == Model.MediaType.VIDEO) {

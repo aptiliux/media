@@ -9,7 +9,8 @@ public interface TrackView : Gtk.Widget {
     public abstract void move_to_top(ClipView clip_view);
     public abstract void resize();
     public abstract Model.Track get_track();
-    public abstract int get_track_height(); 
+    public abstract int get_track_height();
+    public abstract Gtk.Widget? find_child(double x, double y);
 }
 
 public class ClassFactory {
