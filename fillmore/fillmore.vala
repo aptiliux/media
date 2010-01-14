@@ -18,6 +18,7 @@ class Recorder : Gtk.Window {
     Gtk.ScrolledWindow library_scrolled;
     Gtk.ScrolledWindow timeline_scrolled;
     int cursor_pos = -1;
+    int64 center_time = -1;
     bool loading;
     
     Gtk.Action delete_action;
@@ -210,6 +211,7 @@ class Recorder : Gtk.Window {
         timeline = new TimeLine(project, provider);
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
+        timeline.size_allocate += on_timeline_size_allocate;
         
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
@@ -700,11 +702,11 @@ class Recorder : Gtk.Window {
     
     // View menu
     void on_zoom_in() {
-        timeline.zoom(0.1f);
+        do_zoom(0.1f);
     }
     
     void on_zoom_out() {
-        timeline.zoom(-0.1f);
+        do_zoom(-0.1f);
     }
     
     void on_view_library() {
@@ -775,6 +777,26 @@ class Recorder : Gtk.Window {
         }
         timeline.queue_draw();
     }
+
+    int64 get_zoom_center_time() {
+        return project.transport_get_position();
+    }
+    
+    void do_zoom(float increment) {
+        center_time = get_zoom_center_time();
+        timeline.zoom(increment);
+    }
+    
+    void on_timeline_size_allocate(Gdk.Rectangle rectangle) {
+        if (center_time != -1) {
+            int new_center_pixel = provider.time_to_xpos(center_time);
+            int page_size = (int)(h_adjustment.get_page_size() / 2);
+            h_adjustment.clamp_page(new_center_pixel - page_size, new_center_pixel + page_size);
+            center_time = -1;
+        }
+    }
+    
+
     // main
     
     static void main(string[] args) {
