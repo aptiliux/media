@@ -16,6 +16,7 @@ class Recorder : Gtk.Window {
     Gtk.Adjustment h_adjustment;
     Gtk.HPaned timeline_library_pane;
     Gtk.ScrolledWindow library_scrolled;
+    Gtk.ScrolledWindow timeline_scrolled;
     int cursor_pos = -1;
     bool loading;
     
@@ -222,11 +223,11 @@ class Recorder : Gtk.Window {
         header_area = new HeaderArea(this, provider, TimeLine.RULER_HEIGHT);
         hbox.pack_start(header_area, false, false, 0);
 
-        Gtk.ScrolledWindow scrolled = new Gtk.ScrolledWindow(null, null);
-        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
-        scrolled.add_with_viewport(timeline);
-        hbox.pack_start(scrolled, true, true, 0);
-        h_adjustment = scrolled.get_hadjustment();
+        timeline_scrolled = new Gtk.ScrolledWindow(null, null);
+        timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
+        timeline_scrolled.add_with_viewport(timeline);
+        hbox.pack_start(timeline_scrolled, true, true, 0);
+        h_adjustment = timeline_scrolled.get_hadjustment();
         
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(menubar, false, false, 0);
@@ -458,10 +459,9 @@ class Recorder : Gtk.Window {
     }
     
     public void scroll_toward_center(int xpos) {
-        int current = (int) h_adjustment.value;
-        if (cursor_pos == -1)
-            cursor_pos = xpos - current;
-        
+        if (cursor_pos == -1) {
+            cursor_pos = xpos - (int) h_adjustment.value;
+        }
         // Move the cursor position toward the center of the window.  We compute
         // the remaining distance and move by its square root; this results in
         // a smooth decelerating motion.
@@ -469,8 +469,11 @@ class Recorder : Gtk.Window {
         int diff = page_size / 2 - cursor_pos;
         int d = sgn(diff) * (int) Math.sqrt(diff.abs());
         cursor_pos += d;
-        
         int x = int.max(0, xpos - cursor_pos);
+        int max_value = (int)(h_adjustment.upper - timeline_scrolled.allocation.width);
+        if (x > max_value) {
+            x = max_value;
+        }
         h_adjustment.set_value(x);
     }
 
