@@ -56,8 +56,8 @@ class Recorder : Gtk.Window {
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "equal", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
+        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
 
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New...", "<Control><Shift>N", 
@@ -478,15 +478,25 @@ class Recorder : Gtk.Window {
     }
 
     public override bool key_press_event(Gdk.EventKey event) {
-        switch(event.keyval) {
-            case KeySyms.LEFT:
+        switch(Gdk.keyval_name(event.keyval)) {
+            case "left":
                 project.media_engine.go(project.transport_get_position() - Gst.SECOND);
-                return true;
-            case KeySyms.RIGHT:
+                break;
+            case "right":
                 project.media_engine.go(project.transport_get_position() + Gst.SECOND);
-                return true;
+                break;
+            case "equal":
+            case "plus":
+                on_zoom_in();
+                break;
+            case "minus":
+            case "underscore":
+                on_zoom_out();
+                break;
+            default:
+                return base.key_press_event(event);
         }
-        return base.key_press_event(event);
+        return true;
     }
     
     // File menu
