@@ -197,7 +197,7 @@ public class ClipView : Gtk.EventBox {
     public override bool button_press_event(Gdk.EventButton event) {
         button_down = true;
         drag_point = (int)event.x;
-        bool extend_selection = (event.state & Gdk.ModifierType.SHIFT_MASK) != 0;
+        bool extend_selection = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
         // The clip is not responsible for changing the selection state.
         // It may depend upon knowledge of multiple clips.  Let anyone who is interested
         // update our state.
