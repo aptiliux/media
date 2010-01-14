@@ -236,7 +236,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
         
-        the_project.set_bpm(attr_values[0].to_int());
+        the_project._set_bpm(attr_values[0].to_int());
         return true;
     }
     
@@ -246,7 +246,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        the_project.set_time_signature(Fraction.from_string(attr_values[0]));
+        the_project._set_time_signature(Fraction.from_string(attr_values[0]));
         return true;
     }
     
