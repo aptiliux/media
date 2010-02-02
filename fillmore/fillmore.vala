@@ -157,6 +157,12 @@ class Recorder : Gtk.Window {
     const string MIN_GNONLIN = "0.10.10.3";
     
     public Recorder(string? project_file) {
+        try {
+            set_icon_from_file(
+                AppDirs.get_resources_dir().get_child("fillmore_icon.png").get_path());
+        } catch (GLib.Error e) {
+            warning("Could not load application icon: %s", e.message);
+        }
         project = new Model.AudioProject();
         provider = new Model.BarBeatTimeSystem(project);
         

@@ -152,6 +152,12 @@ class App : Gtk.Window {
     };
 
     public App(string? project_file) {
+        try {
+            set_icon_from_file(
+                AppDirs.get_resources_dir().get_child("lombard_icon.png").get_path());
+        } catch (GLib.Error e) {
+            warning("Could not load application icon: %s", e.message);
+        }
         set_default_size(600, 500);
         project_filename = project_file;
 
