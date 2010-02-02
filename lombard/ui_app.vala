@@ -7,7 +7,7 @@
 using Logging;
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
-    
+
     Model.VideoProject project;
     View.VideoOutput video_output;
     View.AudioOutput audio_output;
@@ -16,16 +16,16 @@ class App : Gtk.Window {
     TimeLine timeline;
     ClipLibraryView library;
     View.StatusBar status_bar;
-    
+
     Gtk.HPaned h_pane;
-    
+
     Gtk.ScrolledWindow library_scrolled;
     Gtk.ScrolledWindow timeline_scrolled;
     Gtk.Adjustment h_adjustment;
-    
+
     double prev_adjustment_lower;
     double prev_adjustment_upper;
-    
+
     Gtk.Action export_action;
     Gtk.Action delete_action;
     Gtk.Action cut_action;
@@ -37,19 +37,19 @@ class App : Gtk.Window {
     Gtk.Action clip_properties_action;
     Gtk.Action zoom_to_project_action;
     Gtk.Action join_at_playhead_action;
-    
+
     Gtk.ToggleAction library_view_action;
-    
+
     bool done_zoom = false;
-    
+
     Gtk.VBox vbox = null;
     Gtk.MenuBar menubar;
     Gtk.UIManager manager;
-    
+
     string project_filename;
 
     public const string NAME = "lombard";
-   
+
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, null, on_open },
@@ -81,7 +81,7 @@ class App : Gtk.Window {
         { "Go", null, "_Go", null, null, null },
         { "Start", Gtk.STOCK_GOTO_FIRST, "_Start", "Home", null, on_go_start },
         { "End", Gtk.STOCK_GOTO_LAST, "_End", "End", null, on_go_end },
-        
+
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph }
@@ -90,7 +90,7 @@ class App : Gtk.Window {
     const Gtk.ToggleActionEntry[] check_actions = { 
         { "Library", null, "Library", "F9", null, on_view_library, true }
     };
-    
+
     const string ui = """
 <ui>
   <menubar name="MenuBar">
@@ -132,7 +132,7 @@ class App : Gtk.Window {
       <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
   </menubar>
-  
+
   <popup name="ClipContextMenu">
     <menuitem name="ClipContextCut" action="Cut"/>
     <menuitem name="ClipContextCopy" action="Copy"/>
@@ -154,17 +154,17 @@ class App : Gtk.Window {
     public App(string? project_file) {
         set_default_size(600, 500);
         project_filename = project_file;
-        
+
         drawing_area = new Gtk.DrawingArea();
         drawing_area.realize += on_drawing_realize;
         drawing_area.modify_bg(Gtk.StateType.NORMAL, parse_color("#000"));
-        
+
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
-        
+
         Gtk.ActionGroup view_library_action_group = new Gtk.ActionGroup("viewlibrary");
         view_library_action_group.add_toggle_actions(check_actions, this);
-  
+
         export_action = group.get_action("Export");
         delete_action = group.get_action("Delete");
         cut_action = group.get_action("Cut");
@@ -185,12 +185,11 @@ class App : Gtk.Window {
         } catch (Error e) { error("%s", e.message); }
 
         manager.insert_action_group(view_library_action_group, 1);
-        
+
         uint view_merge_id = manager.new_merge_id();
         manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/ViewZoomProject",
                     "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
 
-        
         menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
 
         project = new Model.VideoProject(project_filename);
@@ -211,18 +210,18 @@ class App : Gtk.Window {
         project.media_engine.position_changed += on_position_changed;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
-        library = new ClipLibraryView(project, "Drag clips here.");
+        library = new ClipLibraryView(project, project.time_provider, "Drag clips here.");
         library.selection_changed += on_library_selection_changed;
         library.drag_data_received += on_drag_data_received;
-        
+
         status_bar = new View.StatusBar(project, project.time_provider, TimeLine.BAR_HEIGHT);
-        
+
         library_scrolled = new Gtk.ScrolledWindow(null, null);
         library_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
         library_scrolled.add_with_viewport(library);
 
         toggle_library(true);
-        
+
         Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
             get_widget(manager, "/MenuBar/HelpMenu/SaveGraph");
 
@@ -233,11 +232,11 @@ class App : Gtk.Window {
         }
 
         add_accel_group(manager.get_accel_group());
-        
+
         on_undo_changed(false);
-        
+
         delete_event += on_delete_event;
-        
+
         if (project_filename == null) {
             default_track_set();
         }
@@ -245,18 +244,18 @@ class App : Gtk.Window {
         update_menu();
         show_all();
     }
-    
+
     void default_track_set() {
         project.add_track(new Model.VideoTrack(project));
         project.add_track(new Model.AudioTrack(project, "Audio Track"));
     }
-    
+
     bool on_delete_event() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_delete_event");
         on_quit();
         return true;
     }
-    
+
     void on_quit() {
         if (project.undo_manager.is_dirty) {
             switch (DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
@@ -276,20 +275,20 @@ class App : Gtk.Window {
             }
         }
 
-        Gtk.main_quit();           
+        Gtk.main_quit();
     }
-    
+
     void toggle_library(bool showing) {
         if (vbox == null) {
             vbox = new Gtk.VBox(false, 0);
             vbox.pack_start(menubar, false, false, 0);
 
-            h_pane = new Gtk.HPaned();        
+            h_pane = new Gtk.HPaned();
             h_pane.set_position(300);
-            
+
             if (showing) {
                 h_pane.add1(library_scrolled);
-                h_pane.add2(drawing_area);            
+                h_pane.add2(drawing_area);
             } else {
                 h_pane.add2(drawing_area);
             }
@@ -305,14 +304,14 @@ class App : Gtk.Window {
             h_adjustment.changed += on_adjustment_changed;
             prev_adjustment_lower = h_adjustment.get_lower();
             prev_adjustment_upper = h_adjustment.get_upper();
-            
+
             v_pane.add1(h_pane);
             Gtk.VBox timeline_vbox = new Gtk.VBox(false, 0);
             timeline_vbox.pack_start(status_bar, false, false, 0);
             timeline_vbox.pack_start(timeline_scrolled, true, true, 0);
             v_pane.add2(timeline_vbox);
             vbox.pack_start(v_pane, true, true, 0);
-            
+
             add(vbox);
         } else {
             if (showing) {
@@ -323,14 +322,14 @@ class App : Gtk.Window {
         }
         show_all();
     }
-    
+
     void on_drawing_realize() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drawing_realize");
         project.load(project_filename);
         video_output = new View.VideoOutput(drawing_area);
         project.media_engine.connect_output(video_output);
     }
-    
+
     void on_adjustment_changed(Gtk.Adjustment a) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_adjustment_changed");
         if (prev_adjustment_upper != a.get_upper() ||
@@ -338,7 +337,7 @@ class App : Gtk.Window {
 
             prev_adjustment_lower = a.get_lower();
             prev_adjustment_upper = a.get_upper();
-            
+
             if (done_zoom)
                 on_position_changed();
         }
@@ -349,7 +348,7 @@ class App : Gtk.Window {
                                 Gtk.SelectionData selection_data, uint drag_info, uint time) {
         present();
     }
-    
+
     public void set_project_name(string? filename) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_project_name");
         set_title(project.get_file_display_name());
@@ -359,20 +358,20 @@ class App : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "do_error_dialog");
         DialogUtils.error(message, minor_message);
     }
-    
+
     public void on_load_error(string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         DialogUtils.error("Load error", message);
     }
-    
+
     public void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         on_zoom_to_project();
         queue_draw();
     }
-    
+
     // Loader code
-    
+
     public void load_file(string name, Model.LibraryImporter im) {
         if (get_file_extension(name) == Model.Project.LOMBARD_FILE_EXTENSION ||
             get_file_extension(name) == Model.Project.FILLMORE_FILE_EXTENSION)
@@ -381,7 +380,7 @@ class App : Gtk.Window {
             im.add_file(name);
         }
     }
-    
+
     void on_open() {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
@@ -412,11 +411,11 @@ class App : Gtk.Window {
         }
         return false;
     }
-    
+
     void on_save_as() {
         do_save_dialog();
     }
-    
+
     void on_save() {
         do_save();
     }
@@ -428,27 +427,27 @@ class App : Gtk.Window {
         }
         return do_save_dialog();
     }
-    
+
     public void load_project(string filename) {
         project.load(filename);
     }
-    
+
     const float SCROLL_MARGIN = 0.05f;
-    
+
     // Scroll if necessary so that horizontal position xpos is visible in the window.
     void scroll_to(int xpos) {
         float margin = project.transport_is_playing() ? 0.0f : SCROLL_MARGIN;
         int page_size = (int) h_adjustment.page_size;
-        
+
         if (xpos < h_adjustment.value + page_size * margin)  // too far left
             h_adjustment.set_value(xpos - h_adjustment.page_size / 3);
         else if (xpos > h_adjustment.value + page_size * (1 - margin))   // too far right
             h_adjustment.set_value(xpos - h_adjustment.page_size * 2 / 3);
     }
-    
+
     void scroll_toward_center(int xpos) {
         int cursor_pos = xpos - (int) h_adjustment.value;
-        
+
         // Move the cursor position toward the center of the window.  We compute
         // the remaining distance and move by its square root; this results in
         // a smooth decelerating motion.
@@ -456,22 +455,22 @@ class App : Gtk.Window {
         int diff = page_size / 2 - cursor_pos;
         int d = sign(diff) * (int) Math.sqrt(diff.abs());
         cursor_pos += d;
-        
+
         h_adjustment.set_value(xpos - cursor_pos);
     }
-    
+
     public void on_split_at_playhead() {
         project.split_at_playhead();
     }
-    
+
     public void on_join_at_playhead() {
         project.join_at_playhead();
     }
-    
+
     public void on_trim_to_playhead() {
         project.trim_to_playhead();
     }
-    
+
     public void on_revert_to_original() {
         foreach (ClipView clip_view in timeline.selected_clips) {
             Model.Track? track = project.track_from_clip(clip_view.clip);
@@ -480,7 +479,7 @@ class App : Gtk.Window {
             }
         }
     }
-  
+
     public void on_clip_properties() {
         Fraction? frames_per_second = null;
         project.get_framerate_fraction(out frames_per_second);
@@ -488,7 +487,7 @@ class App : Gtk.Window {
             DialogUtils.show_clip_properties(this, clip_view, frames_per_second);
         }
     }
-    
+
     public void on_position_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         int xpos = timeline.provider.time_to_xpos(project.transport_get_position());
@@ -497,15 +496,15 @@ class App : Gtk.Window {
             scroll_toward_center(xpos);  
         update_menu();
     }
-    
+
     public void on_track_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_changed");
         update_menu();
     }
-    
+
     void update_menu() {
         bool clip_selected = timeline.is_clip_selected();
-        
+
         delete_action.set_sensitive(clip_selected || timeline.gap_selected() || 
             library.has_selection());
         cut_action.set_sensitive(clip_selected);
@@ -523,27 +522,26 @@ class App : Gtk.Window {
         }
         revert_to_original_action.set_sensitive(clip_is_trimmed);
         clip_properties_action.set_sensitive(clip_selected);
-        
-        
+
         bool playhead_on_clip = project.playhead_on_clip();
         split_at_playhead_action.set_sensitive(playhead_on_clip);
         join_at_playhead_action.set_sensitive(project.playhead_on_contiguous_clip());
-        
+
         bool dir;
         trim_to_playhead_action.set_sensitive(project.can_trim(out dir));
-        
+
         zoom_to_project_action.set_sensitive(project.get_length() != 0);
-    
+
         export_action.set_sensitive(project.can_export());
     }
-    
+
     public void on_timeline_selection_changed(bool selected) { 
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_timeline_selection_changed");
         if (selected)
             library.unselect_all();
         update_menu();
     }
-    
+
     public void on_library_selection_changed(bool selected) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
         if (selected) {
@@ -552,7 +550,7 @@ class App : Gtk.Window {
         }
         update_menu();
     }
-    
+
     // We must use a key press event to handle the up arrow and down arrow keys,
     // since GTK does not allow them to be used as accelerators.
     public override bool key_press_event(Gdk.EventKey event) {
@@ -572,28 +570,28 @@ class App : Gtk.Window {
         }
         return base.key_press_event(event);
     }
-    
+
     void on_view_library() {
         toggle_library(library_view_action.get_active());
     }
-    
+
     void on_zoom_in() {
         timeline.zoom(0.1f);
         done_zoom = true;
     }
-    
+
     void on_zoom_out() {
         timeline.zoom(-0.1f);
         done_zoom = true;
     }
-    
+
     void on_zoom_to_project() {
         //The 12.0 is just a magic number to completely get rid of the scrollbar on this operation
         timeline.zoom_to_project(h_adjustment.page_size - 12.0);
     }
-    
+
     // File commands
-    
+
     void on_play_pause() {
         if (project.transport_is_playing())
             project.media_engine.pause();
@@ -605,7 +603,7 @@ class App : Gtk.Window {
             project.media_engine.do_play(PlayState.PLAYING);
         }
     }
-    
+
     void on_export() {
         string filename = null;
         if (DialogUtils.save(this, "Export", false, export_filters, ref filename)) {
@@ -619,7 +617,7 @@ class App : Gtk.Window {
             project.media_engine.start_export(filename);
         }
     }
-    
+
     void on_post_export(bool canceled) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         project.media_engine.disconnect_output(export_connector);
@@ -636,26 +634,26 @@ class App : Gtk.Window {
     void on_undo() {
         project.undo();
     }
-    
+
     void on_delete() {
         if (library.has_selection())
             library.delete_selection();
         else
             timeline.delete_selection();
     }
-    
+
     void on_cut() {
         timeline.do_cut();
     }
-    
+
     void on_copy() {
         timeline.do_copy();
     }
-    
+
     void on_paste() {
         timeline.paste();
     }
-    
+
     void on_undo_changed(bool can_undo) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_undo_changed");
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
@@ -665,13 +663,13 @@ class App : Gtk.Window {
     }
 
     // Go commands
-    
+
     void on_go_start() { project.go_start(); }
-    
+
     void on_go_end() { project.go_end(); }
 
     // Help commands
-    
+
     void on_about() {
         Gtk.show_about_dialog(this,
           "version", "0.1",
@@ -679,7 +677,7 @@ class App : Gtk.Window {
           "copyright", "(c) 2009 yorba"
         );
     }
-    
+
     void on_save_graph() {
         project.print_graph(project.media_engine.pipeline, "save_graph");
     }
@@ -687,7 +685,7 @@ class App : Gtk.Window {
 
 // Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
 const string MIN_GNONLIN = "0.10.10.3";
-    
+
 void main(string[] args) {
     Gtk.init(ref args);
     GLib.Environment.set_application_name("lombard");
@@ -700,14 +698,14 @@ void main(string[] args) {
         return;
     }
     string project_file = args.length > 1 ? args[1] : null;
-    
+
     Gst.Registry registry = Gst.Registry.get_default();
     Gst.Plugin gnonlin = registry.find_plugin("gnonlin");
     if (gnonlin == null) {
         stderr.puts("This program requires Gnonlin, which is not installed.  Exiting.\n");
         return;
     }
-    
+
     string version = gnonlin.get_version();
     if (!version_at_least(version, MIN_GNONLIN)) {
         stderr.printf(
@@ -715,7 +713,7 @@ void main(string[] args) {
             version, MIN_GNONLIN);
         return;
     }
-    
+
     string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
     debug_enabled = (str != null && (str[0] >= '1'));
 

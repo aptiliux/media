@@ -204,7 +204,7 @@ class Recorder : Gtk.Window {
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
         on_undo_changed(false);
 
-        library = new ClipLibraryView(project, null);
+        library = new ClipLibraryView(project, provider, null);
         library.selection_changed += on_library_selection_changed;
         library.drag_data_received += on_drag_data_received;
 
