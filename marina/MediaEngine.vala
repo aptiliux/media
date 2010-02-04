@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -288,7 +288,7 @@ public class ClickTrack : Object {
     }
     
     void on_playstate_changed() {
-        switch (project.media_engine.play_state) {
+        switch (project.media_engine.get_play_state()) {
             case PlayState.PRE_EXPORT:
             case PlayState.STOPPED:
                 clear_controllers();
@@ -745,6 +745,13 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         return 16;
     }
     
+    public PlayState get_play_state() {
+        return play_state;
+    }
+    
+    public void set_play_state(PlayState play_state) {
+        this.play_state = play_state;
+    }
     protected Gst.Caps build_audio_caps(int num_channels) {
         string caps = "audio/x-raw-int,rate=%d,channels=%d,width=%d,depth=%d";
         caps = caps.printf(get_sample_rate(), num_channels, get_sample_width(), get_sample_depth());
@@ -971,7 +978,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         playing = false;
     }
 
-    protected void set_gst_state(Gst.State state) {
+    // TODO: don't expose Gst.State
+    public void set_gst_state(Gst.State state) {
         if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE)
             error("can't set state");
     }
@@ -983,7 +991,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         pipeline.seek_simple(Gst.Format.TIME, flags, pos);
     }
 
-    protected void do_play(PlayState new_state) {
+    public void do_play(PlayState new_state) {
         seek(Gst.SeekFlags.FLUSH, position);
         play_state = new_state;
         play();

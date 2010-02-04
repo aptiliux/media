@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -362,7 +362,7 @@ public abstract class Project : TempoInformation, Object {
     
     public void on_playstate_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
-        switch (media_engine.play_state) {
+        switch (media_engine.get_play_state()) {
             case PlayState.STOPPED:
                 ClearTrackMeters();
                 break;
@@ -370,7 +370,7 @@ public abstract class Project : TempoInformation, Object {
                 closed();
                 break;
         }
-        playstate_changed(media_engine.play_state);
+        playstate_changed(media_engine.get_play_state());
     }
     
     public ClipFile? get_clipfile(int index) {
@@ -594,8 +594,8 @@ public abstract class Project : TempoInformation, Object {
     }
 
     public bool transport_is_recording() {
-        return media_engine.play_state == PlayState.PRE_RECORD ||
-               media_engine.play_state == PlayState.RECORDING;
+        return media_engine.get_play_state() == PlayState.PRE_RECORD ||
+               media_engine.get_play_state() == PlayState.RECORDING;
     }
     
     public bool playhead_on_clip() {
@@ -845,7 +845,7 @@ public abstract class Project : TempoInformation, Object {
         loader.load_error += on_load_error;
         loader.load_complete += on_load_complete;
         loader.load_complete += media_engine.on_load_complete;
-        media_engine.play_state = PlayState.LOADING;
+        media_engine.set_play_state(PlayState.LOADING);
         media_engine.pipeline.set_state(Gst.State.NULL);
         loader.load();
     }

@@ -41,6 +41,10 @@ class TrackHeader : Gtk.EventBox {
         header_area.select(track);
         return true;
     }
+    
+    public Model.Track get_track() {
+        return track;
+    }
 }
 
 public class SliderBase : Gtk.HScrollbar {
@@ -200,7 +204,7 @@ class HeaderArea : Gtk.EventBox {
         foreach(Gtk.Widget widget in vbox.get_children()) {
             if (my_track_header == null) {
                 TrackHeader? track_header = widget as TrackHeader;
-                if (track_header != null && track_header.track == track) {
+                if (track_header != null && track_header.get_track() == track) {
                     my_track_header = track_header;
                 }
             } else {
