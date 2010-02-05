@@ -409,8 +409,8 @@ class App : Gtk.Window {
     }
 
     bool do_save_dialog() {
-        string filename = project.project_file;
-        bool create_directory = project.project_file == null;
+        string? filename = project.get_project_file();
+        bool create_directory = filename == null;
         if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             return true;
@@ -427,7 +427,7 @@ class App : Gtk.Window {
     }
 
     bool do_save() {
-        if (project.project_file != null) {
+        if (project.get_project_file() != null) {
             project.save(null);
             return true;
         }

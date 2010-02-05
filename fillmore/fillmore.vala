@@ -157,13 +157,14 @@ class Recorder : Gtk.Window {
     const string MIN_GNONLIN = "0.10.10.3";
     
     public Recorder(string? project_file) {
+        GLib.DirUtils.create(get_fillmore_directory(), 0777);
         try {
             set_icon_from_file(
                 AppDirs.get_resources_dir().get_child("fillmore_icon.png").get_path());
         } catch (GLib.Error e) {
             warning("Could not load application icon: %s", e.message);
         }
-        project = new Model.AudioProject();
+        project = new Model.AudioProject(project_file);
         provider = new Model.BarBeatTimeSystem(project);
         
         project.media_engine.callback_pulse += on_callback_pulse;
@@ -552,7 +553,7 @@ class Recorder : Gtk.Window {
     }
     
     bool do_save() {
-        if (project.project_file != null) {
+        if (project.get_project_file() != null) {
             project.save(null);
             return true;
         }
@@ -562,8 +563,8 @@ class Recorder : Gtk.Window {
     }
     
     bool save_dialog() {
-        string filename = project.project_file;
-        bool create_directory = project.project_file == null;
+        string filename = project.get_project_file();
+        bool create_directory = project.get_project_file() == null;
         if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             return true;
@@ -609,6 +610,10 @@ class Recorder : Gtk.Window {
                     }
                     break;
                 case Gtk.ResponseType.CLOSE:
+                    // if the user has never saved the file but quits anyway, save in .fillmore
+                    if (project.get_project_file() == null) {
+                        project.save(null);
+                    }
                     break;
                 case Gtk.ResponseType.DELETE_EVENT: // when user presses escape.
                 case Gtk.ResponseType.CANCEL:
@@ -894,6 +899,10 @@ class Recorder : Gtk.Window {
     void on_error_occurred(string major_message, string? minor_message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         DialogUtils.error(major_message, minor_message);
+    }
+    
+    string get_fillmore_directory() {
+        return Path.build_filename(GLib.Environment.get_home_dir(), ".fillmore");
     }
 }
 
