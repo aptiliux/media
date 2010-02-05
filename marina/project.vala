@@ -931,8 +931,10 @@ public abstract class Project : TempoInformation, Object {
 
         // TODO: clean up responsibility between dirty and undo
         undo_manager.mark_clean();
-        this.close();
-        this.load(filename);
+        if (filename != null) {
+            this.close();
+            this.load(filename);
+        }
     }
 
     public void close() {

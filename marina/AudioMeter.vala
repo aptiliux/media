@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -76,11 +76,11 @@ public class AudioMeter : Gtk.DrawingArea {
         int bar_height = stereo ? (allocation.height / 2) - 1 : allocation.height - 2;
 
         context.set_source_surface(meter, 0, 0);
-        int width = (int) ((current_level_left - minDB) * allocation.width / -minDB);
+        int width = (int) (Math.pow10(current_level_left / 40) * allocation.width);
         context.rectangle(0, 1, width, bar_height);
 
         if (stereo) {
-            width = (int) ((current_level_right - minDB) * allocation.width / -minDB);
+            width = (int) (Math.pow10(current_level_right / 40) * allocation.width);
             context.rectangle(0, bar_height + 2, width, bar_height);
         }
 

@@ -113,7 +113,6 @@ class AudioProject : Project {
         try {
             dir = Dir.open(audio_path);
         } catch (FileError e) {
-            on_error_occurred("An error occurred saving files", e.message);
             return;
         }
 
