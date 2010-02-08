@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -30,18 +30,18 @@ public abstract class TimeSystemBase : Object {
     public float pixel_percentage = 0.0f;
     public float pixels_per_second;
     public int64 pixel_snap_time;
-    
+
     const int BORDER = 4;  // TODO: should use same value as timeline.  will happen when this gets
-                            // refactored back into view code.
+                           // refactored back into view code.
 
     abstract int[] get_timeline_seconds();    
     abstract int correct_sub_second_value(float seconds, int div, int fps);
-    
+
     protected int correct_seconds_value (float seconds, int div, int fps) {
         if (seconds < 1.0f) {
             return correct_sub_second_value(seconds, div, fps);
         }
-        
+
         int i;
         int secs = (int) seconds;
         int [] timeline_seconds = get_timeline_seconds();
@@ -62,7 +62,7 @@ public abstract class TimeSystemBase : Object {
 
     public int64 get_pixel_snap_time() {
         return pixel_snap_time;
-    }    
+    }
 
     public float get_pixel_percentage() {
         return pixel_percentage;
@@ -103,11 +103,11 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         if (frames == 0) {
             return 1;
         }
-            
+
         if (div == 0) {
             div = fps;
         }
-            
+
         int mod = div % frames;
         while (mod != 0) {
             mod = div % (++frames);
@@ -117,13 +117,13 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
 
     public string get_time_string(int64 the_time) {
         string time;
-        
+
         int frame = time_to_frame_with_rate(the_time, frame_rate_fraction);
         time = frame_to_string(frame, frame_rate_fraction);
-        
+
         return time;
     }
-    
+
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
         int pixels_per_large = 300;
         int pixels_per_medium = 50;
@@ -134,7 +134,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
             pixel_percentage = 0.0f;
         else if (pixel_percentage > 1.0f)
             pixel_percentage = 1.0f;
-         
+
         pixels_per_second = pixel_min * GLib.Math.powf(pixel_div, pixel_percentage);
         int fps = frame_rate_fraction.nearest_int();
         large_pixel_frames = correct_seconds_value(pixels_per_large / pixels_per_second, 0, fps);
@@ -145,7 +145,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
     
         if (small_pixel_frames == medium_pixel_frames) {
             int i = medium_pixel_frames;
-            
+
             while (--i > 0) {
                 if ((medium_pixel_frames % i) == 0) {
                     small_pixel_frames = i;
@@ -153,7 +153,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
                 }
             }
         }
-    
+
         pixels_per_frame = pixels_per_second / (float) fps;
         pixel_snap_time = xsize_to_time(PIXEL_SNAP_INTERVAL);
     }
@@ -165,7 +165,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
     public int get_start_token() {
         return 0;
     }
-    
+
     public int get_next_position(int token) {
         return token + small_pixel_frames;
     }
@@ -175,7 +175,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
             return frame_to_time(frame, frame_rate_fraction).to_string();
         }
         return null;
-    }    
+    }
 
     public int get_pixel_height(int frame) {
         if ((frame % medium_pixel_frames) == 0) {
@@ -191,7 +191,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
             return 2;
         }
     }
-    
+
     override int[] get_timeline_seconds() {
         return { 1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600, 900, 1200, 1800, 3600 };
     }
@@ -220,7 +220,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
     float bars_per_second;
     int sixteenths_per_bar;
     int sixteenths_per_beat;
-    
+
     public BarBeatTimeSystem(TempoInformation tempo_information) {
         bpm = tempo_information.get_bpm();
         time_signature = tempo_information.get_time_signature();
@@ -228,19 +228,19 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         tempo_information.time_signature_changed += on_time_signature_changed;
         set_constants();
     }
-    
+
     void on_time_signature_changed(Fraction time_signature) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_time_signature_changed");
         this.time_signature = time_signature;
         set_constants();
     }
-    
+
     void on_bpm_changed(int bpm) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_bpm_changed");
         this.bpm = bpm;
         set_constants();
     }
-    
+
     void set_constants() {
         bars_per_minute = bpm / (float)time_signature.numerator;
         bars_per_second = bars_per_minute / 60.0f;
@@ -256,15 +256,15 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         if (sixteenths == 0) {
             return 1;
         }
-        
+
         if (sixteenths > sixteenths_per_beat) {
             return sixteenths_per_beat;
         }
-        
+
         if (sixteenths > 2) {
             return 2;
         }
-        
+
         return 1;
     }
 
@@ -285,7 +285,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             return "%d".printf(number_of_measures);
         }
     }
-    
+
     public string get_time_string(int64 the_time) {
         double beats_per_second = bpm / 60.0;
         double sixteenths_per_second = sixteenths_per_beat * beats_per_second;
@@ -293,10 +293,10 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         int total_beats = (int)(the_time * sixteenths_per_nanosecond);
         return beats_to_string(total_beats, true);
     }
-    
+
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
-        int pixels_per_large = 150;
-        int pixels_per_medium = 50;
+        int pixels_per_large = 80;
+        int pixels_per_medium = 40;
         int pixels_per_small = 20;
 
         pixel_percentage += inc;
@@ -310,11 +310,11 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         float pixels_per_bar = pixels_per_second / bars_per_second;
         large_pixel_sixteenth = correct_seconds_value(
             pixels_per_large / pixels_per_bar, 0, sixteenths_per_bar);
+
         medium_pixel_sixteenth = correct_seconds_value(pixels_per_medium / pixels_per_bar,
             large_pixel_sixteenth, sixteenths_per_bar);
         small_pixel_sixteenth = correct_seconds_value(pixels_per_small / pixels_per_bar,
             medium_pixel_sixteenth, sixteenths_per_bar);
-
         if (small_pixel_sixteenth == medium_pixel_sixteenth) {
             int i = medium_pixel_sixteenth;
 
@@ -337,7 +337,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
     public int get_start_token() {
         return 0;
     }
-    
+
     public int get_next_position(int token) {
         return token + small_pixel_sixteenth;
     }
@@ -347,7 +347,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             return beats_to_string(frame, false);
         }
         return null;
-    }    
+    }
 
     public int get_pixel_height(int frame) {
         if ((frame % medium_pixel_sixteenth) == 0) {
@@ -363,7 +363,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             return 2;
         }
     }
-    
+
     override int[] get_timeline_seconds() {
         return timeline_bars;
     }
