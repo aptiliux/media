@@ -573,7 +573,16 @@ class Recorder : Gtk.Window {
     }
     
     void on_properties() {
-        ProjectProperties properties = new ProjectProperties(project);
+        Gtk.Builder builder = new Gtk.Builder();
+        try {
+            builder.add_from_file(AppDirs.get_resources_dir().get_child("fillmore.glade").get_path());
+        } catch(GLib.Error e) {
+            return;
+        }
+        builder.connect_signals(null);
+        ProjectProperties properties = (ProjectProperties)builder.get_object("projectproperties1");
+        properties.setup(project, builder);
+
         int response = properties.run();
         if (response == Gtk.ResponseType.APPLY) {
             string description = "Set Project Properties";

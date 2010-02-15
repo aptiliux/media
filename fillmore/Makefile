@@ -1,4 +1,6 @@
 PROGRAM = ../fill
+GLADE_NAME = ../libfill.so
+
 all: $(PROGRAM)
 USE_MARINA_VAPI=1
 -include ../configure.mk

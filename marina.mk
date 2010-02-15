@@ -109,6 +109,9 @@ endif
 
 ifdef PROGRAM
 $(PROGRAM): $(EXPANDED_OBJ_FILES) $(MARINA_DEPEND)
-	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -o $@
+	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -o $@
+ifdef GLADE_NAME
+	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -shared -o $(GLADE_NAME)
+endif
 endif
 

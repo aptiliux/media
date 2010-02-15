@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<glade-catalog name="vala1" library="libfill.so" depends="gtk+">
+<glade-widget-classes>
+<glade-widget-class name="ProjectProperties" generic-name="projectproperties" title="Project Properties" />
+<glade-widget-class name="VolumeSlider" generic-name="volumeslider" title="Volume Slider" />
+</glade-widget-classes>
+<glade-widget-group name="fillmorewidgets" title="Fillmore Widgets">
+<glade-widget-class-ref name="ProjectProperties"/>
+<glade-widget-class-ref name="VolumeSlider" />
+</glade-widget-group>
+</glade-catalog>
