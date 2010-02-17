@@ -1060,6 +1060,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void record(Model.AudioTrack track) {
+        assert(gst_state != Gst.State.NULL);
         play_state = PlayState.PRE_RECORD_NULL;
         set_gst_state(Gst.State.NULL);
         record_track = track;

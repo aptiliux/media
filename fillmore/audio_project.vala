@@ -94,6 +94,14 @@ class AudioProject : Project {
             media_engine.record_region.start), media_engine.record_region.clipfile.filename);
     }
 
+    public override void load(string? filename) {
+        has_been_saved = filename != null;
+        if (!has_been_saved) {
+            project_file = generate_filename();
+        }
+        base.load(filename);
+    }
+
     public override void save(string? filename) {
         if (!has_been_saved && filename != null) {
             move_audio_files(filename);

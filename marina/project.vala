@@ -323,7 +323,6 @@ public abstract class Project : TempoInformation, Object {
     public double click_volume = 0.8;
     public bool library_visible = true;
     public int library_width = 600;
-
     /* TODO:
         * This can't be const since the Vala compiler
         * (0.7.7) crashes if we try to make it a const.
@@ -829,16 +828,14 @@ public abstract class Project : TempoInformation, Object {
     void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         undo_manager.reset();
-
         set_name(project_file);
-
         load_complete(); 
     }
 
     // Load a project file.  The load is asynchronous: it may continue after this method returns.
     // Any load error will be reported via the load_error signal, which may run either while this
     // method executes or afterward.
-    public void load(string? fname) {
+    public virtual void load(string? fname) {
         emit(this, Facility.LOADING, Level.INFO, "loading project");
         clear();
         set_name(null);
@@ -932,8 +929,8 @@ public abstract class Project : TempoInformation, Object {
         // TODO: clean up responsibility between dirty and undo
         undo_manager.mark_clean();
         if (filename != null) {
-            this.close();
-            this.load(filename);
+            close();
+            load(filename);
         }
     }
 

@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -20,10 +20,11 @@ class Recorder : Gtk.Window {
     int cursor_pos = -1;
     int64 center_time = -1;
     bool loading;
-    
+    const int scroll_speed = 8;
+
     Gtk.Action delete_action;
     Gtk.Action record_action;
-    
+
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
     Gtk.UIManager manager;
@@ -42,7 +43,7 @@ class Recorder : Gtk.Window {
         { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
         { "Settings", Gtk.STOCK_PROPERTIES, "Se_ttings", "<Control><Alt>Return", null, on_properties },
         { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
-        
+
         { "Edit", null, "_Edit", null, null, null },
         { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
         { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
@@ -69,17 +70,17 @@ class Recorder : Gtk.Window {
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
-        
+
         { "Rewind", Gtk.STOCK_MEDIA_PREVIOUS, "Rewind", "Home", "Go to beginning", on_rewind },
         { "End", Gtk.STOCK_MEDIA_NEXT, "End", "End", "Go to end", on_end }
     };
-    
+
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
         { "Library", null, "_Library", "F9", null, on_view_library, true }
     };
-    
+
     const string ui = """
 <ui>
   <menubar name="MenuBar">
@@ -148,14 +149,16 @@ class Recorder : Gtk.Window {
         { "Fillmore Project Files", Model.Project.FILLMORE_FILE_EXTENSION },
         { "Lombard Project Files", Model.Project.LOMBARD_FILE_EXTENSION }
     };
-    
+
     const DialogUtils.filter_description_struct[] export_filters = {
         { "Ogg Files", "ogg" }
     };
 
     // Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
     const string MIN_GNONLIN = "0.10.10.3";
-    
+
+    public signal void finished_closing(bool project_did_close);
+
     public Recorder(string? project_file) {
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
         try {
@@ -180,6 +183,7 @@ class Recorder : Gtk.Window {
         project.track_added += on_track_added;
         project.track_removed += on_track_removed;
         project.load_complete += on_load_complete;
+        project.closed += on_project_close;
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
@@ -187,14 +191,14 @@ class Recorder : Gtk.Window {
         set_position(Gtk.WindowPosition.CENTER);
         title = "fillmore";
         set_default_size(800, 400);
-        
+
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");
         group.add_actions(entries, this);
         group.add_toggle_actions(toggle_entries, this);
 
         delete_action = group.get_action("Delete");    
         record_action = group.get_action("Record");
-        
+
         manager = new Gtk.UIManager();
         manager.insert_action_group(group, 0);
         try {
@@ -204,7 +208,7 @@ class Recorder : Gtk.Window {
         uint view_merge_id = manager.new_merge_id();
         manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
                     "Library", "Library", Gtk.UIManagerItemType.MENUITEM, true);
-        
+
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
         play_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Play");
@@ -227,7 +231,7 @@ class Recorder : Gtk.Window {
         library_scrolled = new Gtk.ScrolledWindow(null, null);
         library_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
         library_scrolled.add_with_viewport(library);
-        
+
         Gtk.HBox hbox = new Gtk.HBox(false, 0);
         header_area = new HeaderArea(this, provider, TimeLine.RULER_HEIGHT);
         hbox.pack_start(header_area, false, false, 0);
@@ -237,7 +241,7 @@ class Recorder : Gtk.Window {
         timeline_scrolled.add_with_viewport(timeline);
         hbox.pack_start(timeline_scrolled, true, true, 0);
         h_adjustment = timeline_scrolled.get_hadjustment();
-        
+
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(menubar, false, false, 0);
         vbox.pack_start(toolbar, false, false, 0);
@@ -251,7 +255,7 @@ class Recorder : Gtk.Window {
 
         vbox.pack_start(timeline_library_pane, true, true, 0);
         add(vbox);
-        
+
         Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
             get_widget(manager, "/MenuBar/HelpMenu/SaveGraph");
 
@@ -294,7 +298,7 @@ class Recorder : Gtk.Window {
             return 1;
         }
     }
-    
+
     public string get_default_track_name() {
         List<string> default_track_names = new List<string>();
         foreach(Model.Track track in project.tracks) {
@@ -303,7 +307,7 @@ class Recorder : Gtk.Window {
             }
         }
         default_track_names.sort(default_track_number_compare);
-        
+
         int i = 1;
         foreach(string s in default_track_names) {
             string track_name = "track %d".printf(i);
@@ -314,7 +318,7 @@ class Recorder : Gtk.Window {
         }
         return "track %d".printf(i);
     }
-   
+
     Gtk.Widget get_widget(Gtk.UIManager manager, string name) {
         Gtk.Widget widget = manager.get_widget(name);
         if (widget == null)
@@ -329,17 +333,17 @@ class Recorder : Gtk.Window {
         }
         the_item.set_sensitive(sensitive);
     }
-    
+
     void on_track_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_changed");
         update_menu();
     }
-    
+
     void on_position_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         update_menu();
     }
-    
+
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         update_menu();
@@ -347,23 +351,24 @@ class Recorder : Gtk.Window {
         track.clip_removed += on_clip_removed;
         track.track_selection_changed += on_track_selection_changed;
     }
-    
+
     void on_track_removed(Model.Track unused) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         update_menu();
     }
+
     void on_clip_added(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         clip.moved += on_clip_moved;
         update_menu();
     }
-    
+
     void on_clip_removed(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
         clip.moved -= on_clip_moved;
         update_menu();
     }
-    
+
     void on_track_selection_changed(Model.Track track) {
         if (track.get_is_selected()) {
             foreach (Model.Track t in project.tracks) {
@@ -373,12 +378,12 @@ class Recorder : Gtk.Window {
             }
         }
     }
-    
+
     void on_clip_moved(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         update_menu();
     }
-    
+
     public void on_library_selection_changed(bool selected) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
         if (selected) {
@@ -387,7 +392,7 @@ class Recorder : Gtk.Window {
         }
         update_menu();
     }
-    
+
     void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
                                 Gtk.SelectionData selection_data, uint drag_info, uint time) {
         present();
@@ -408,7 +413,7 @@ class Recorder : Gtk.Window {
                 }
             }
         }
-        
+
         bool any_clips = false;
         foreach (Model.Track track in project.tracks) {
             if (track.clips.size > 0) {
@@ -433,7 +438,7 @@ class Recorder : Gtk.Window {
         set_sensitive_menu("/Toolbar/Record", number_of_tracks > 0);
         set_sensitive_menu("/MenuBar/FileMenu/FileExport", any_clips);
     }
-    
+
     public Model.Track? selected_track() {
         foreach (Model.Track track in project.tracks) {
             if (track.get_is_selected()) {
@@ -443,11 +448,11 @@ class Recorder : Gtk.Window {
         error("can't find selected track");
         return null;
     }
-    
+
     public void scroll_to_beginning() {
         h_adjustment.set_value(0.0);
     }
-    
+
     public void scroll_to_end() {
         int new_adjustment = timeline.provider.time_to_xpos(project.get_length());
         int window_width = timeline.parent.allocation.width;
@@ -458,9 +463,7 @@ class Recorder : Gtk.Window {
         }
         h_adjustment.set_value(new_adjustment);
     }
-    
-    const int scroll_speed = 8;
-    
+
     static int sgn(int x) {
         if (x == 0)
             return 0;
@@ -507,7 +510,7 @@ class Recorder : Gtk.Window {
         }
         return true;
     }
-    
+
     // File menu
     void on_export() {
         string filename = null;
@@ -520,7 +523,7 @@ class Recorder : Gtk.Window {
             project.media_engine.start_export(filename);
         }
     }
-    
+
     void on_post_export(bool canceled) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         project.media_engine.disconnect_output(audio_export);
@@ -532,26 +535,51 @@ class Recorder : Gtk.Window {
 
         audio_export = null;
     }
-    
-    void on_project_new() {
-    }
-    
-    void on_project_open() {
-        GLib.SList<string> filenames;
-        if (DialogUtils.open(this, filters, false, false, out filenames)) {
-            loading = true;
-            project.load(filenames.data);
+
+    void on_project_new_finished_closing(bool project_did_close) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_new_finished_closing");
+        project.closed -= on_project_close;
+        finished_closing -= on_project_new_finished_closing;
+        if (project_did_close) {
+            project.media_engine.set_play_state(PlayState.LOADING);
+            project.load(null);
+            default_track_set();
+            project.media_engine.pipeline.set_state(Gst.State.PAUSED);
         }
     }
-    
+
+    void on_project_new() {
+        project.closed += on_project_close;
+        finished_closing += on_project_new_finished_closing;
+        project.close();
+    }
+
+    void on_project_open_finished_closing(bool project_did_close) {
+        project.closed -= on_project_close;
+        finished_closing -= on_project_open_finished_closing;
+        if (project_did_close) {
+            GLib.SList<string> filenames;
+            if (DialogUtils.open(this, filters, false, false, out filenames)) {
+                loading = true;
+                project.load(filenames.data);
+            }
+        }
+    }
+
+    void on_project_open() {
+        project.closed += on_project_close;
+        finished_closing += on_project_open_finished_closing;
+        project.close();
+    }
+
     void on_project_save_as() {
         save_dialog();
     }
-    
+
     void on_project_save() {
         do_save();
     }
-    
+
     bool do_save() {
         if (project.get_project_file() != null) {
             project.save(null);
@@ -561,7 +589,7 @@ class Recorder : Gtk.Window {
             return save_dialog();
         }
     }
-    
+
     bool save_dialog() {
         string filename = project.get_project_file();
         bool create_directory = project.get_project_file() == null;
@@ -571,7 +599,7 @@ class Recorder : Gtk.Window {
         }
         return false;
     }
-    
+
     void on_properties() {
         Gtk.Builder builder = new Gtk.Builder();
         try {
@@ -597,11 +625,20 @@ class Recorder : Gtk.Window {
         properties.destroy();
     }
 
+    void on_quit_finished_closing(bool project_did_close) {
+        project.closed -= on_project_close;
+        finished_closing -= on_quit_finished_closing;
+        if (project_did_close) {
+            Gtk.main_quit();
+        }
+    }
+
     void on_quit() {
         project.closed += on_project_close;
+        finished_closing += on_quit_finished_closing;
         project.close();
     }
-    
+
     bool on_delete_event() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_delete_event");
         on_quit();
@@ -610,11 +647,11 @@ class Recorder : Gtk.Window {
 
     void on_project_close() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_close");
-        project.closed -= on_project_close;
         if (project.undo_manager.is_dirty) {
             switch(DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
                 case Gtk.ResponseType.ACCEPT:
                     if (!do_save()) {
+                        finished_closing(false);
                         return;
                     }
                     break;
@@ -626,25 +663,25 @@ class Recorder : Gtk.Window {
                     break;
                 case Gtk.ResponseType.DELETE_EVENT: // when user presses escape.
                 case Gtk.ResponseType.CANCEL:
+                    finished_closing(false);
                     return;
                 default:
                     assert(false);
                     break;
             }
         }
-
-        Gtk.main_quit();
+        finished_closing(true);
     }
-    
+
     // Edit menu
     void on_cut() {
         timeline.do_cut();
     }
-    
+
     void on_copy() {
         timeline.do_copy();
     }
-    
+
     void on_paste() {
         timeline.paste();
     }
@@ -652,7 +689,7 @@ class Recorder : Gtk.Window {
     void on_undo() {
         project.undo();
     }
-    
+
     void on_delete() {
         if (library.has_selection()) {
             library.delete_selection();
@@ -660,19 +697,19 @@ class Recorder : Gtk.Window {
             timeline.delete_selection();
         }
     }
-    
+
     public void on_split_at_playhead() {
         project.split_at_playhead();
     }
-    
+
     public void on_join_at_playhead() {
         project.join_at_playhead();
     }
-    
+
     public void on_trim_to_playhead() {
         project.trim_to_playhead();
     }
-    
+
     public void on_revert_to_original() {
         foreach (ClipView clip_view in timeline.selected_clips) {
             Model.Track? track = project.track_from_clip(clip_view.clip);
@@ -681,7 +718,7 @@ class Recorder : Gtk.Window {
             }
         }
     }
-  
+
     public void on_clip_properties() {
         foreach (ClipView clip_view in timeline.selected_clips) {
             DialogUtils.show_clip_properties(this, clip_view, null);
@@ -701,7 +738,7 @@ class Recorder : Gtk.Window {
         }
         dialog.destroy();
     }
-    
+
     void on_track_rename() {
         UI.TrackInformation dialog = new UI.TrackInformation();
         Model.Track track = selected_track();
@@ -719,16 +756,16 @@ class Recorder : Gtk.Window {
     void on_track_remove() {
         project.remove_track(selected_track());
     }
-    
+
     // View menu
     void on_zoom_in() {
         do_zoom(0.1f);
     }
-    
+
     void on_zoom_out() {
         do_zoom(-0.1f);
     }
-    
+
     void on_view_library() {
         if (timeline_library_pane.child2 == library_scrolled) {
             timeline_library_pane.remove(library_scrolled);
@@ -738,15 +775,15 @@ class Recorder : Gtk.Window {
             project.library_visible = true;
         }
     }
-    
+
     void on_library_size_allocate(Gdk.Rectangle rectangle) {
         if (!loading && timeline_library_pane.child2 == library_scrolled) {
             project.library_width = rectangle.width;
         }
     }
-    
+
     // Help menu
-    
+
     void on_about() {
         Gtk.show_about_dialog(this,
           "version", "%1.2lf".printf(project.get_version()),
@@ -754,18 +791,18 @@ class Recorder : Gtk.Window {
           "copyright", "(c) 2009 yorba"
         );
     }
-    
+
     void on_save_graph() {
         project.print_graph(project.media_engine.pipeline, "save_graph");
     }
 
     // toolbar
-    
+
     void on_rewind() {
         project.media_engine.go(0);
         scroll_to_beginning();
     }
-    
+
     void on_end() {
         project.go_end();
         scroll_to_end();
@@ -781,7 +818,7 @@ class Recorder : Gtk.Window {
         else
             project.media_engine.pause();
     }
-    
+
     void on_record() {
         if (record_button.get_active()) {
             project.record(selected_track() as Model.AudioTrack);
@@ -789,7 +826,7 @@ class Recorder : Gtk.Window {
             project.media_engine.pause();
         }
     }
-        
+
     void on_callback_pulse() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
         if (project.transport_is_playing()) {
@@ -801,12 +838,12 @@ class Recorder : Gtk.Window {
     int64 get_zoom_center_time() {
         return project.transport_get_position();
     }
-    
+
     void do_zoom(float increment) {
         center_time = get_zoom_center_time();
         timeline.zoom(increment);
     }
-    
+
     void on_timeline_size_allocate(Gdk.Rectangle rectangle) {
         if (center_time != -1) {
             int new_center_pixel = provider.time_to_xpos(center_time);
@@ -815,10 +852,9 @@ class Recorder : Gtk.Window {
             center_time = -1;
         }
     }
-    
 
     // main
-    
+
     static void main(string[] args) {
         Gtk.init(ref args);
         GLib.Environment.set_application_name("fillmore");
@@ -833,7 +869,7 @@ class Recorder : Gtk.Window {
             stderr.puts("This program requires Gnonlin, which is not installed.  Exiting.\n");
             return;
         }
-        
+
         string version = gnonlin.get_version();
         if (!version_at_least(version, MIN_GNONLIN)) {
             stderr.printf(
@@ -842,21 +878,21 @@ class Recorder : Gtk.Window {
             return;
         }
 
-        string? project_file = null;        
+        string? project_file = null;
         if (args.length > 1) {
             project_file = args[1];
         }
         ClassFactory.set_class_factory(new FillmoreClassFactory());
         Recorder recorder = new Recorder(project_file);
         recorder.show_all();
-    
+
         Gtk.main();
     }
 
     public void do_error_dialog(string message) {
         DialogUtils.error("Error", message);
     }
-    
+
     public void on_load_error(string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         do_error_dialog(message);
@@ -877,19 +913,19 @@ class Recorder : Gtk.Window {
         }
         loading = false;
     }
-    
+
     void on_name_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_name_changed");
         set_title(project.get_file_display_name());
     }
-    
+
     void on_dirty_changed(bool isDirty) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_dirty_changed");
         Gtk.MenuItem? file_save = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/FileMenu/FileSave");
         assert(file_save != null);
         file_save.set_sensitive(isDirty);
     }
-    
+
     void on_undo_changed(bool can_undo) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_undo_changed");
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
@@ -904,12 +940,12 @@ class Recorder : Gtk.Window {
             play_button.set_active(false);
         }
     }
-    
+
     void on_error_occurred(string major_message, string? minor_message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         DialogUtils.error(major_message, minor_message);
     }
-    
+
     string get_fillmore_directory() {
         return Path.build_filename(GLib.Environment.get_home_dir(), ".fillmore");
     }
