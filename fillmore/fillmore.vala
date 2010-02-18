@@ -578,7 +578,17 @@ class Recorder : Gtk.Window {
     }
 
     void on_project_save() {
+        bool saving_new_file = project.get_project_file() == null;
         do_save();
+        if (saving_new_file && project.get_project_file() != null) {
+            project.closed += on_project_close;
+            finished_closing += on_save_new_file_finished_closing;
+            project.close();
+        }
+    }
+
+    void on_save_new_file_finished_closing(bool did_close) {
+        project.load(project.get_project_file());
     }
 
     bool do_save() {

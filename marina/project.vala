@@ -928,10 +928,6 @@ public abstract class Project : TempoInformation, Object {
 
         // TODO: clean up responsibility between dirty and undo
         undo_manager.mark_clean();
-        if (filename != null) {
-            close();
-            load(filename);
-        }
     }
 
     public void close() {
