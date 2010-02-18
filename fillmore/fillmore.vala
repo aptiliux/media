@@ -545,6 +545,7 @@ class Recorder : Gtk.Window {
             project.load(null);
             default_track_set();
             project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+            project.undo_manager.reset();
         }
     }
 
