@@ -967,6 +967,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     public virtual void pause() {
         if (project.transport_is_recording()) {
+            pipeline.send_event(new Gst.Event.eos());
             play_state = PlayState.POST_RECORD;
         } else {
             if (!playing) {
