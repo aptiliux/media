@@ -1,27 +1,21 @@
-PROGRAM = ../fill
-GLADE_NAME = ../libfill.so
-
+PROGRAM = ../../lombard
 all: $(PROGRAM)
 USE_MARINA_VAPI=1
--include ../configure.mk
+-include ../../configure.mk
 
 VALA_LDFLAGS = -lmarina -L../marina
 VALA_LDFLAGS += `pkg-config --libs $(EXT_PKGS)`
 MARINA_DEPEND = ../marina/libmarina.a
 
 SRC_FILES = \
-	audio_project.vala \
-	fillmore.vala \
-	FillmoreClassFactory.vala \
-	header_area.vala \
-	ProjectProperties.vala \
-	trackinformation.vala
+	ui_app.vala \
+	video_project.vala
 
 ifndef BUILD_DIR
-BUILD_DIR=fillmore
+BUILD_DIR=lombard
 endif
 
--include ../marina.mk
+-include ../../marina.mk
 HEADER_DIRS += ../marina
 
 clean:

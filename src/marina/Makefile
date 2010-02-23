@@ -4,7 +4,7 @@ all: $(LIBRARY)
 # defaults that may be overridden by configure.mk
 BUILD_RELEASE=1
 
--include ../configure.mk
+-include ../../configure.mk
 
 SRC_FILES = \
 	AppDirs.vala \
@@ -40,7 +40,7 @@ ifndef BUILD_DIR
 BUILD_DIR=marina
 endif
 
--include ../marina.mk
+-include ../../marina.mk
 
 clean:
 	rm -f $(EXPANDED_C_FILES)

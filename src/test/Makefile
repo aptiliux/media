@@ -1,7 +1,7 @@
-PROGRAM = ../media_test
+PROGRAM = ../../media_test
 all: $(PROGRAM)
 
--include ../configure.mk
+-include ../../configure.mk
 
 VALA_LDFLAGS = `pkg-config --libs $(EXT_PKGS)`
 
@@ -16,7 +16,7 @@ ifndef BUILD_DIR
 BUILD_DIR=debug
 endif
 
--include ../marina.mk
+-include ../../marina.mk
 HEADER_DIRS += ../marina
 
 clean:

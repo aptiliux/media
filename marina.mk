@@ -10,10 +10,10 @@ TEMP_MARINA_VAPI = $(MARINA_VAPI)
 endif
 
 VAPI_DIRS = \
-	../vapi
+	../../vapi
 
 HEADER_DIRS = \
-	../vapi
+	../../vapi
 
 EXT_PKGS = \
 	gee-1.0 \
@@ -81,7 +81,7 @@ ifdef LIBRARY
 	@echo 'Both program and library are defined.  This is invalid.'; exit 1
 endif
 endif
-	@ ../minver `valac --version | awk '{print $$2}'` $(MIN_VALAC_VERSION) || ( echo '$(PROGRAM)$(LIBRARY) requires Vala compiler $(MIN_VALAC_VERSION) or greater.  You are running' `valac --version` '\b.'; exit 1 )
+	@ ../../minver `valac --version | awk '{print $$2}'` $(MIN_VALAC_VERSION) || ( echo '$(PROGRAM)$(LIBRARY) requires Vala compiler $(MIN_VALAC_VERSION) or greater.  You are running' `valac --version` '\b.'; exit 1 )
 ifndef ASSUME_PKGS
 ifdef EXT_PKG_VERSIONS
 	pkg-config --print-errors --exists '$(EXT_PKG_VERSIONS)'

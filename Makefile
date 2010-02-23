@@ -2,8 +2,8 @@ default: all
 
 BUILD_ROOT = 1
 
-FILLMORE = fill
-LOMBARD = lom
+FILLMORE = fillmore
+LOMBARD = lombard
 MEDIA_TEST = media_test
 
 MARINA = marina/libmarina.a
@@ -13,23 +13,23 @@ MARINA = marina/libmarina.a
 .PHONY: $(MARINA)
 
 $(MARINA):
-	$(MAKE) --directory=marina
+	$(MAKE) --directory=src/marina
 
 $(FILLMORE): $(MARINA)
-	$(MAKE) --directory=fillmore
+	$(MAKE) --directory=src/fillmore
 
 $(LOMBARD): $(MARINA)
-	$(MAKE) --directory=lombard
+	$(MAKE) --directory=src/lombard
 
 $(MEDIA_TEST):
-	$(MAKE) --directory=test
+	$(MAKE) --directory=src/test
 	
 all: $(FILLMORE) $(LOMBARD) $(MEDIA_TEST)
 
 clean:
-	$(MAKE) --directory=marina clean
-	$(MAKE) --directory=fillmore clean
-	$(MAKE) --directory=lombard clean
-	$(MAKE) --directory=test clean
+	$(MAKE) --directory=src/marina clean
+	$(MAKE) --directory=src/fillmore clean
+	$(MAKE) --directory=src/lombard clean
+	$(MAKE) --directory=src/test clean
 
 
