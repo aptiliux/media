@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -31,14 +31,14 @@ namespace DialogUtils {
                                                 filter_descriptions[i].extension);
             filters.add(filter);
         }
-        
+
         if (allow_all) {
             add_filter(d, "All files", null);
             //don't add to filters.  filters should have same number of items as filter_descriptions
         }
-        
+
         assert(filter_descriptions.length == filters.size);
-        
+
         d.set_filter(filters[0]);
     }
 
@@ -59,7 +59,7 @@ namespace DialogUtils {
         if (d.run() == Gtk.ResponseType.ACCEPT) {
             return_value = true;
             filenames = d.get_filenames();
-        }                                                    
+        }
         d.destroy();
         return return_value;
     }
@@ -90,7 +90,7 @@ namespace DialogUtils {
                 local_filename = Path.build_filename(local_filename, 
                     Path.get_basename(local_filename));
             }
-            
+
             unowned Gtk.FileFilter selected_filter = d.get_filter();
 
             int i = 0;
@@ -100,7 +100,7 @@ namespace DialogUtils {
                 }
                 ++i;
             }
-            
+
             assert(i < length);
 
             local_filename = append_extension(local_filename, filter_descriptions[i].extension);
@@ -120,7 +120,7 @@ namespace DialogUtils {
 
     string bold_message(string message) {
         return "<span weight=\"bold\" size=\"larger\">" + message +
-            "</span>";    
+            "</span>";
     }
 
     public void error(string major_message, string? minor_message) {
@@ -128,7 +128,7 @@ namespace DialogUtils {
         if (minor_message != null) {
             message = message + "\n\n" + minor_message;
         }
-        
+
         Gtk.MessageDialog d = new Gtk.MessageDialog.with_markup(null, Gtk.DialogFlags.MODAL, 
                                 Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, message, null);
         d.run();
@@ -143,30 +143,38 @@ namespace DialogUtils {
         if (title != null) {
             dialog.set_title(title);
         }
-        
+
         int length = buttons.length;
         for (int i = 0; i < length; ++i) {
             dialog.add_button(buttons[i].title, buttons[i].type);
         }
-        
+
         Gtk.ResponseType response = (Gtk.ResponseType) dialog.run();
         dialog.destroy();
-        
+
         return response;
     }
-    
-    public Gtk.ResponseType delete_cancel(string message) {
+
+    Gtk.ResponseType two_button_dialog(string message, string first_button, string second_button) {
         Gtk.MessageDialog d = new Gtk.MessageDialog(null, Gtk.DialogFlags.MODAL, 
                                         Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE, message,
-                                        null);                                                
-        
-        d.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.NO,
-                      Gtk.STOCK_DELETE, Gtk.ResponseType.YES);
-        
+                                        null);
+
+        d.add_buttons(first_button, Gtk.ResponseType.NO,
+                      second_button, Gtk.ResponseType.YES);
+
         Gtk.ResponseType r = (Gtk.ResponseType) d.run();
         d.destroy();
-        
+
         return r;
+    }
+
+    public Gtk.ResponseType delete_keep(string message) {
+        return two_button_dialog(message, "Keep", Gtk.STOCK_DELETE);
+    }
+
+    public Gtk.ResponseType delete_cancel(string message) {
+        return two_button_dialog(message, Gtk.STOCK_CANCEL, Gtk.STOCK_DELETE);
     }
 
     public bool confirm_replace(Gtk.Window? parent, string filename) {
@@ -186,48 +194,48 @@ namespace DialogUtils {
             this.title = title;
             this.type = type;
         }
-        
+
         public string title;
         public Gtk.ResponseType type;
     }
-    
+
     public Gtk.ResponseType save_close_cancel(Gtk.Window? parent, string? title, string message) {
         ButtonStruct[] buttons = {
             ButtonStruct("Close _without saving", Gtk.ResponseType.CLOSE),
             ButtonStruct(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL),
             ButtonStruct(Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT)
         };
-        
+
         return run_dialog(parent, Gtk.MessageType.WARNING, title, message, buttons);
     }
-    
+
     public void show_clip_properties(Gtk.Window parent, ClipView selected_clip, 
             Fraction? frames_per_second) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
                                     Gtk.DialogFlags.MODAL, Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT);
         d.set("has-separator", false);
-        
+
         Gtk.Table t = new Gtk.Table(10, 2, false);
         int row = 0;
         int tab_padding = 25;
-        
+
         for (int i = 0; i < 10; i++)
             t.set_row_spacing(i, 10);
-            
+
         row = 1;
         add_label_to_table(t, "<b>Clip</b>", 0, row++, 5, 0);
-        
+
         add_label_to_table(t, "<i>Name:</i>", 0, row, tab_padding, 0);
         add_label_to_table(t, "%s".printf(selected_clip.clip.name), 1, row++, 5, 0);
-    
+
         add_label_to_table(t, "<i>Location:</i>", 0, row, tab_padding, 0);
         add_label_to_table(t, "%s".printf(selected_clip.clip.clipfile.filename), 1, row++, 5, 0); 
-    
+
         add_label_to_table(t, "<i>Timeline length:</i>", 0, row, tab_padding, 0);
-    
+
         string length_string = "";
         string actual_length = "";
-        
+
         if (frames_per_second != null) {
             TimeCode time = frame_to_time (time_to_frame_with_rate(selected_clip.clip.duration, 
                 frames_per_second), frames_per_second);
@@ -239,9 +247,9 @@ namespace DialogUtils {
             length_string = time_to_string(selected_clip.clip.duration);
             actual_length = time_to_string(selected_clip.clip.clipfile.length);
         }
-        
+
         add_label_to_table(t, "%s".printf(length_string), 1, row++, 5, 0);
-    
+
         if (selected_clip.clip.is_trimmed()) {
             add_label_to_table(t, "<i>Actual length:</i>", 0, row, tab_padding, 0);
             add_label_to_table(t, "%s".printf(actual_length), 1, row++, 5, 0);
@@ -259,7 +267,7 @@ namespace DialogUtils {
             Fraction r;
             if (selected_clip.clip.clipfile.get_frame_rate(out r)) {
                 add_label_to_table(t, "<i>Frame rate:</i>", 0, row, tab_padding, 0);
-                
+
                 if (r.numerator % r.denominator != 0)
                     add_label_to_table(t, 
                                "%.2f frames per second".printf(r.numerator / (float)r.denominator), 
@@ -273,7 +281,7 @@ namespace DialogUtils {
 
         if (selected_clip.clip.clipfile.has_caps_structure(Model.MediaType.AUDIO)) {
             add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0);
-           
+
             int rate;
             if (selected_clip.clip.clipfile.get_sample_rate(out rate)) {
                 add_label_to_table(t, "<i>Sample Rate:</i>", 0, row, tab_padding, 0);
@@ -285,13 +293,12 @@ namespace DialogUtils {
                 add_label_to_table(t, "<i>Number of channels:</i>", 0, row, tab_padding, 0);
                 add_label_to_table(t, "%s".printf(s), 1, row++, 5, 0);
             }
-        } 
-    
+        }
+
         d.vbox.pack_start(t, false, false, 0);
-    
+
         d.show_all();
         d.run();
         d.destroy();
     }
-    
 }

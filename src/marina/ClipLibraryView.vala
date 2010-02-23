@@ -417,7 +417,7 @@ public class ClipLibraryView : Gtk.EventBox {
         project.remove_clipfile(filename);
 
         if (Path.get_dirname(filename) == project.get_audio_path()) {
-            if (DialogUtils.delete_cancel("Delete clip from disk?  This action is not undoable.")
+            if (DialogUtils.delete_keep("Delete clip from disk?  This action is not undoable.")
                                                 == Gtk.ResponseType.YES) {
                 if (FileUtils.unlink(filename) != 0) {
                     project.error_occurred("Could not delete %s", filename);
