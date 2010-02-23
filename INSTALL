@@ -1,0 +1,50 @@
+
+    Fillmore Installation
+    ---------------------
+
+    To build and install Fillmore, type the following commands:
+
+    $ ./configure
+    $ make fillmore
+    $ make install-fillmore
+
+    * By default, Fillmore will install under /usr/local.  The configure script
+      can customize the prefix directory.  Run ./configure --help for
+      instructions and other installation options.
+  
+    * You may need to execute "make install" as root (i.e. sudo make install)
+      if installing to system directories.
+
+    * If you wish to try Fillmore before installing it, you may execute it
+      directly from its build directory.  Note that certain desktop integration
+      (such as being listed in an application menu) requires full installation.
+
+    Once installed, Fillmore will be available on your desktop Applications
+    menu under Sound & Video.
+
+
+    Lombard Installation
+    --------------------
+
+    To build and install Lombard, type the following commands:
+
+    $ ./configure
+    $ make lombard
+    $ make install-lombard
+
+    * By default, Lombard will install under /usr/local.  The configure script
+      can customize the prefix directory.  Run ./configure --help for
+      instructions and other installation options.
+  
+    * You may need to execute "make install" as root (i.e. sudo make install)
+      if installing to system directories.
+
+    * If you wish to try Lombard before installing it, you may execute it
+      directly from its build directory.  Note that certain desktop integration
+      (such as being listed in an application menu) requires full installation.
+
+    Once installed, Lombard will be available on your desktop Applications
+    menu under Sound & Video.
+
+    Copyright 2009-2010 Yorba Foundation
+

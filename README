@@ -1,0 +1,84 @@
+
+    Fillmore and Lombard Audio and Video editors
+    --------------------------------------------
+
+  * Introduction
+
+    Fillmore is an audio editor designed for the GNOME desktop environment.
+    It allows you to record audio, place audio on multiple tracks, adjust
+    the position of the track in the stereo track and export your project
+    as a single stereo file.
+
+    Visit http://www.yorba.org/fillmore to read about the current state of
+    Fillmore's development and to make sure you're running the latest version.
+
+    Lombard is a video editor designed for the GNOME desktop environment.
+    It allows you to manipulate multiple video and audio clips and export
+    your project as a single video file.
+
+  * Installation & Licensing
+    Please consult the INSTALL and COPYING files for more information.
+
+  * Quick Start
+
+Fillmore
+    When you first run Fillmore, you will be presented with a window with three
+    sections: Track Header on the left, Timeline in the middle and Library on 
+    on the left.  The first task you will want to do is adjust the project 
+    properties.
+
+    From the File menu, select Settings.  This displays the Project Properties 
+    dialog.  If you are recording music and want a metronome, select your time
+    signature and tempo.  If you do not want a metronome, deselect the checkbox 
+    "During record."
+    
+    Next, you will want to add audio.  You can add audio to your project in two 
+    different ways.
+
+    * Drag audio: Drag audio files from the file manager either to a track on
+    the timeline or into the library.  You will only hear audio for clips that
+    are on a track.
+
+    * Record audio: Before launching Fillmore, plug a device for sound input
+    into your computer.  In the Sound Preferences dialog, select this device
+    as the default input device.  Launch Fillmore.  Press the big red 
+    button to record.  To select which track is active for recording, select
+    the desired track by clicking in the track header area next to the track.
+    You can also click on the ruler to choose the time to start recording.
+
+    Next, may want to position the audio on the timeline.  You can change the
+    duration and location of the clips by dragging the clips.
+    
+    Once you have created your source material and are happy with it, you may
+    want to export your project.  From the File menu, select Export.
+
+Lombard
+    When you first run Lombard, you will be presented with a window with three
+    sections: Library window on the left, Output window on the right and timeline
+    on the bottom.
+    
+    First, you will want to get video and audio into the project.  From the file 
+    manager, drag your video or audio into the library or the timeline.
+    
+    Next, you will want to position your clips.  You can change the duration and
+    location of the clips by dragging the clips.
+    
+    Once you have arranged your material and are happy with it, you may want
+    to export your project.  From the File menu, select Export.
+
+  * Contacting Yorba
+
+    Yorba:                      http://www.yorba.org
+    Fillmore project page:      http://www.yorba.org/fillmore
+    Fillmore documentation:     http://trac.yorba.org/wiki/UsingFillmore0.1
+    Lombard project page:       http://www.yorba.org/lombard
+    Lombard documentation       http://www.yorba.org/wiki/UsingLombard0.1
+
+    We also encourage you to join the Fillmore and Lombard mailing lists.  Send an email
+    with a subject: line of "subscribe" (no quotes) to
+    fillmore-request@lists.yorba.org
+    lombard-request@lists.yorba.org
+    
+    
+    Copyright 2009-2010 Yorba Foundation
+

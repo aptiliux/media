@@ -1,0 +1,19 @@
+Fillmore 0.1.0 - 
+-----------------------------
+
+  * Initial release.  Features include:
+    - Recording from an input device.
+    - Support of source audio of a number of formats.
+    - Playback from multiple tracks.
+    - Positioning audio in stereo image.
+    - Optional metronome while playing or recording.
+    - Exporting project to OggVorbis format files.
+    - Desktop integration with Applications menu.
+
+Lombard 0.1.0 -
+-----------------------------
+
+  * Initial release.  Features include:
+    - Source video and audio of a number of formats.
+    - Exporting project to OggTheora format files.
+    - Desktop integration with Applications menu.
