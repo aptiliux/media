@@ -6,6 +6,7 @@
 
 using Logging;
 
+extern const string _PROGRAM_NAME;
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
     public TimeLine timeline;
@@ -868,10 +869,12 @@ class Recorder : Gtk.Window {
 
     static void main(string[] args) {
         Gtk.init(ref args);
-        GLib.Environment.set_application_name("fillmore");
+        GLib.Environment.set_application_name(_PROGRAM_NAME);
 
-        AppDirs.init(args[0]);
-        Gtk.rc_parse("fillmore.rc");
+        AppDirs.init(args[0], _PROGRAM_NAME);
+        string rc_file = AppDirs.get_resources_dir().get_child("fillmore.rc").get_path();
+
+        Gtk.rc_parse(rc_file);
         Gst.init(ref args);
 
         Gst.Registry registry = Gst.Registry.get_default();

@@ -52,9 +52,3 @@ clean:
 	rm -f $(BUILD_DIR)/marina.vapi
 	rm -f marina.h
 
-cleantemps:
-	rm -f $(EXPANDED_C_FILES)
-	rm -f $(EXPANDED_SAVE_TEMPS_FILES)
-	rm -f $(EXPANDED_OBJ_FILES)
-	rm -f $(VALA_STAMP)
-

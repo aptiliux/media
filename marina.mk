@@ -1,5 +1,10 @@
 VALAC = valac
 MIN_VALAC_VERSION = 0.7.9
+# defaults that may be overridden by configure.mk
+PREFIX=/usr/local
+
+INSTALL_PROGRAM = install
+INSTALL_DATA = install -m 644
 
 ifndef MARINA_VAPI
 MARINA_VAPI = ../marina/marina/marina.vapi
@@ -47,6 +52,7 @@ EXPANDED_SRC_HEADER_FILES = $(foreach header,$(SRC_HEADER_FILES),vapi/$(header))
 EXPANDED_RESOURCE_FILES = $(foreach res,$(RESOURCE_FILES),ui/$(res))
 VALA_STAMP = $(BUILD_DIR)/.stamp
 
+DEFINES = _PROGRAM_NAME='"$(PROGRAM_NAME)"' _PREFIX='"$(PREFIX)"'
 VALA_CFLAGS = `pkg-config --cflags $(EXT_PKGS)` $(foreach hdir,$(HEADER_DIRS),-I$(hdir)) \
 	$(foreach def,$(DEFINES),-D$(def))
 
@@ -68,6 +74,28 @@ $(EXPANDED_C_FILES): $(VALA_STAMP)
 
 $(EXPANDED_OBJ_FILES): %.o: %.c $(CONFIG_IN) Makefile
 	$(CC) -c $(VALA_CFLAGS) $(CFLAGS) -o $@ $<
+
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	$(INSTALL_PROGRAM) $(PROGRAM) $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/$(PROGRAM_NAME)/resources
+	$(INSTALL_DATA) ../../resources/* $(DESTDIR)$(PREFIX)/share/$(PROGRAM_NAME)/resources
+	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+	$(INSTALL_DATA) ../../resources/$(PROGRAM_NAME).svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+ifndef DISABLE_ICON_UPDATE
+	-gtk-update-icon-cache -f -t $(DESTDIR)$(PREFIX)/share/icons/hicolor || :
+endif
+	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
+	$(INSTALL_DATA) ../../misc/$(PROGRAM_NAME).desktop $(DESTDIR)$(PREFIX)/share/applications
+ifndef DISABLE_DESKTOP_UPDATE
+	-update-desktop-database || :
+endif
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/$(PROGRAM_NAME)
+	rm -fr $(DESTDIR)$(PREFIX)/share/$(PROGRAM_NAME)
+	rm -fr $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(PROGRAM_NAME).svg
+	rm -f $(DESTDIR)$(PREFIX)/share/applications/$(PROGRAM_NAME).desktop
 
 $(VALA_STAMP): $(EXPANDED_SRC_FILES) $(EXPANDED_VAPI_FILES) $(EXPANDED_SRC_HEADER_FILES) Makefile \
 	$(CONFIG_IN) $(TEMP_MARINA_VAPI)
@@ -113,5 +141,22 @@ $(PROGRAM): $(EXPANDED_OBJ_FILES) $(MARINA_DEPEND)
 ifdef GLADE_NAME
 	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -shared -o $(GLADE_NAME)
 endif
+clean:
+	rm -f $(EXPANDED_C_FILES)
+	rm -f $(EXPANDED_SAVE_TEMPS_FILES)
+	rm -f $(EXPANDED_OBJ_FILES)
+	rm -f $(VALA_STAMP)
+	rm -rf $(PROGRAM)-$(VERSION)
+	rm -f $(PROGRAM)
+ifdef GLADE_NAME
+	rm -f $(GLADE_NAME)
 endif
+endif
+
+
+cleantemps:
+	rm -f $(EXPANDED_C_FILES)
+	rm -f $(EXPANDED_SAVE_TEMPS_FILES)
+	rm -f $(EXPANDED_OBJ_FILES)
+	rm -f $(VALA_STAMP)
 

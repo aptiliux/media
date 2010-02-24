@@ -691,12 +691,13 @@ class App : Gtk.Window {
 
 // Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
 const string MIN_GNONLIN = "0.10.10.3";
+extern const string _PROGRAM_NAME;
 
 void main(string[] args) {
     Gtk.init(ref args);
-    GLib.Environment.set_application_name("lombard");
+    GLib.Environment.set_application_name(_PROGRAM_NAME);
 
-    AppDirs.init(args[0]);    
+    AppDirs.init(args[0], _PROGRAM_NAME);
     Gst.init(ref args);
 
     if (args.length > 2) {

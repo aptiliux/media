@@ -16,20 +16,44 @@ $(MARINA):
 	$(MAKE) --directory=src/marina
 
 $(FILLMORE): $(MARINA)
-	$(MAKE) --directory=src/fillmore
+	export PROGRAM_NAME=$(FILLMORE); $(MAKE) --directory=src/fillmore
+
+install: install-$(FILLMORE) install-$(LOMBARD)
+	
+
+uninstall: uninstall-$(FILLMORE) uninstall-$(LOMBARD)
+	
+
+install-$(FILLMORE): $(FILLMORE)
+	export PROGRAM_NAME=$(FILLMORE); \
+	$(MAKE) --directory=src/fillmore install; \
+
+uninstall-$(FILLMORE):
+	export PROGRAM_NAME=$(FILLMORE); \
+	$(MAKE) --directory=src/fillmore uninstall; \
 
 $(LOMBARD): $(MARINA)
-	$(MAKE) --directory=src/lombard
+	export PROGRAM_NAME=$(LOMBARD); \
+	$(MAKE) --directory=src/lombard; \
+
+install-$(LOMBARD): $(LOMBARD)
+	export PROGRAM_NAME=$(LOMBARD); \
+	$(MAKE) --directory=src/lombard install; \
+
+uninstall-$(LOMBARD):
+	export PROGRAM_NAME=$(LOMBARD); \
+	$(MAKE) --directory=src/lombard uninstall; \
 
 $(MEDIA_TEST):
-	$(MAKE) --directory=src/test
-	
+	export PROGRAM_NAME=$(MEDIA_TEST); \
+	$(MAKE) --directory=src/test;
+
 all: $(FILLMORE) $(LOMBARD) $(MEDIA_TEST)
+	
 
 clean:
 	$(MAKE) --directory=src/marina clean
-	$(MAKE) --directory=src/fillmore clean
-	$(MAKE) --directory=src/lombard clean
-	$(MAKE) --directory=src/test clean
-
+	export PROGRAM_NAME=$(FILLMORE); $(MAKE) --directory=src/fillmore clean
+	export PROGRAM_NAME=$(LOMBARD); $(MAKE) --directory=src/lombard clean
+	export PROGRAM_NAME=$(MEDIA_TEST); $(MAKE) --directory=src/test clean
 
