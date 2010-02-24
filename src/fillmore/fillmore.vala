@@ -462,6 +462,12 @@ class Recorder : Gtk.Window {
         } else {
             new_adjustment = new_adjustment - window_width / 2;
         }
+
+        int max_value = (int)(h_adjustment.upper - timeline_scrolled.allocation.width);
+        if (new_adjustment > max_value) {
+            new_adjustment = max_value;
+        }
+
         h_adjustment.set_value(new_adjustment);
     }
 
@@ -492,6 +498,9 @@ class Recorder : Gtk.Window {
 
     public override bool key_press_event(Gdk.EventKey event) {
         switch(Gdk.keyval_name(event.keyval)) {
+            case "Return":
+                on_rewind();
+                break;
             case "left":
                 project.media_engine.go(project.transport_get_position() - Gst.SECOND);
                 break;
