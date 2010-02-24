@@ -33,7 +33,7 @@ class Recorder : Gtk.Window {
     View.OggVorbisExport audio_export;
     View.AudioOutput audio_output;
 
-    public const string NAME = "fillmore";
+    public const string NAME = "Fillmore";
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
@@ -190,7 +190,7 @@ class Recorder : Gtk.Window {
         project.media_engine.connect_output(audio_output);
         click_track = new View.ClickTrack(project.media_engine, project);
         set_position(Gtk.WindowPosition.CENTER);
-        title = "fillmore";
+        title = "Fillmore";
         set_default_size(800, 400);
 
         Gtk.ActionGroup group = new Gtk.ActionGroup("main");

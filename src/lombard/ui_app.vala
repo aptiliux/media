@@ -48,7 +48,7 @@ class App : Gtk.Window {
 
     string project_filename;
 
-    public const string NAME = "lombard";
+    public const string NAME = "Lombard";
 
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
