@@ -744,11 +744,8 @@ class Recorder : Gtk.Window {
     void on_track_new() {
         UI.TrackInformation dialog = new UI.TrackInformation();
         dialog.set_track_name(get_default_track_name());
-        if (dialog.run() == Gtk.ResponseType.OK) {
-            string track_name = dialog.get_track_name();
-            if (track_name != "") {
-                project.add_track(new Model.AudioTrack(project, track_name));
-            }
+        if (track_name_dialog(dialog, null)) {
+            project.add_track(new Model.AudioTrack(project, dialog.get_track_name()));
         }
         dialog.destroy();
     }
@@ -758,23 +755,32 @@ class Recorder : Gtk.Window {
         Model.Track track = selected_track();
         dialog.set_title("Rename Track");
         dialog.set_track_name(selected_track().display_name);
+        if (track_name_dialog(dialog, track)) {
+            track.set_display_name(dialog.get_track_name());
+        }
+        dialog.destroy();
+    }
+
+    bool track_name_dialog(UI.TrackInformation dialog, Model.Track? track) {
         Gtk.ResponseType result = Gtk.ResponseType.OK;
         bool is_ok = true;
         do {
             result = (Gtk.ResponseType) dialog.run();
             string new_name = dialog.get_track_name();
 
-            if (new_name == "") {
-                is_ok = false;
-                DialogUtils.error("Invalid track name", "Name cannot be empty");
-            } else if (result == Gtk.ResponseType.OK) {
-                is_ok = project.rename_track(track, dialog.get_track_name());
-                if (!is_ok) {
-                    DialogUtils.error("Duplicate track name", null);
+            if (result == Gtk.ResponseType.OK) {
+                if (new_name == "") {
+                    is_ok = false;
+                    DialogUtils.error("Invalid track name", "Name cannot be empty");
+                } else {
+                    is_ok = !project.is_duplicate_track_name(track, new_name);
+                    if (!is_ok) {
+                        DialogUtils.error("Duplicate track name", null);
+                    }
                 }
             }
         } while (result == Gtk.ResponseType.OK && !is_ok);
-        dialog.destroy();
+        return result == Gtk.ResponseType.OK && is_ok;
     }
 
     void on_track_remove() {
