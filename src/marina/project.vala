@@ -815,6 +815,9 @@ public abstract class Project : TempoInformation, Object {
     }
 
     public bool can_export() {
+        if (media_engine.get_play_state() != PlayState.STOPPED) {
+            return false;
+        }
         foreach (Track track in tracks) {
             if (track.get_length() > 0) {
                 return true;

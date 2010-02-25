@@ -412,14 +412,6 @@ class Recorder : Gtk.Window {
             }
         }
 
-        bool any_clips = false;
-        foreach (Model.Track track in project.tracks) {
-            if (track.clips.size > 0) {
-                any_clips = true;
-                break;
-            }
-        }
-
         delete_action.set_sensitive(selected || library_selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
@@ -434,7 +426,7 @@ class Recorder : Gtk.Window {
         set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackRename", number_of_tracks > 0);
         set_sensitive_menu("/Toolbar/Record", number_of_tracks > 0);
-        set_sensitive_menu("/MenuBar/FileMenu/FileExport", any_clips);
+        set_sensitive_menu("/MenuBar/FileMenu/FileExport", project.can_export());
     }
 
     public Model.Track? selected_track() {
@@ -952,6 +944,7 @@ class Recorder : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
         if (playstate == PlayState.STOPPED) {
             play_button.set_active(false);
+            set_sensitive_menu("/MenuBar/FileMenu/FileExport", project.can_export());
         }
     }
 
