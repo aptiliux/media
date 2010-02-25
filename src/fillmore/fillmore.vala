@@ -65,7 +65,7 @@ class Recorder : Gtk.Window {
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New...", "<Control><Shift>N", 
             "Create new track", on_track_new },
-        { "Rename", null, "_Rename...", null, "Rename track", on_track_rename },
+        { "Rename", null, "_Rename...", null, "Rename Track", on_track_rename },
         { "DeleteTrack", null, "_Delete", "<Control><Shift>Delete", 
             "Delete track", on_track_remove },
         { "Help", null, "_Help", null, null, null },
@@ -756,7 +756,7 @@ class Recorder : Gtk.Window {
     void on_track_rename() {
         UI.TrackInformation dialog = new UI.TrackInformation();
         Model.Track track = selected_track();
-        dialog.set_title("Rename track");
+        dialog.set_title("Rename Track");
         dialog.set_track_name(selected_track().display_name);
         Gtk.ResponseType result = Gtk.ResponseType.OK;
         bool is_ok = true;
