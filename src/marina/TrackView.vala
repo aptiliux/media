@@ -108,14 +108,15 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         }
     }
 
+/*
     void unselect_gap() {
-/*        if (timeline.gap_view != null) {
+        if (timeline.gap_view != null) {
             TrackView parent = timeline.gap_view.parent as TrackView;
             parent.remove(timeline.gap_view);
             timeline.gap_view = null;
         }
+    }
 */
-    }  
 
     override bool button_press_event(Gdk.EventButton e) {
         if (e.type != Gdk.EventType.BUTTON_PRESS &&

@@ -627,6 +627,27 @@ public abstract class Project : TempoInformation, Object {
         return false;
     }
 
+    public bool rename_track(Track track, string new_name) {
+        assert(new_name != "");
+        foreach (Track this_track in tracks) {
+            if (track != this_track) {
+                if (this_track.get_display_name() == new_name) {
+                    return false;
+                }
+            }
+        }
+        
+        foreach (Track this_track in inactive_tracks) {
+            if (track != this_track) {
+                if (this_track.get_display_name() == new_name) {
+                    return false;
+                }
+            }
+        }
+        track.set_display_name(new_name);
+        return true;
+    }
+
     public virtual void add_track(Track track) {
         track.clip_removed += on_clip_removed;
         track.error_occurred += on_error_occurred;

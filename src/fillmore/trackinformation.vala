@@ -36,7 +36,7 @@ namespace UI {
         }
                     
         public string get_track_name() {
-            return entry.get_text();
+            return entry.get_text().strip();
         }
     }
 }

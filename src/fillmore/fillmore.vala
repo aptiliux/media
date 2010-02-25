@@ -758,12 +758,22 @@ class Recorder : Gtk.Window {
         Model.Track track = selected_track();
         dialog.set_title("Rename track");
         dialog.set_track_name(selected_track().display_name);
-        if (dialog.run() == Gtk.ResponseType.OK) {
-            string track_name = dialog.get_track_name();
-            if (track_name != "") {
-                track.set_display_name(dialog.get_track_name());
+        Gtk.ResponseType result = Gtk.ResponseType.OK;
+        bool is_ok = true;
+        do {
+            result = (Gtk.ResponseType) dialog.run();
+            string new_name = dialog.get_track_name();
+
+            if (new_name == "") {
+                is_ok = false;
+                DialogUtils.error("Invalid track name", "Name cannot be empty");
+            } else if (result == Gtk.ResponseType.OK) {
+                is_ok = project.rename_track(track, dialog.get_track_name());
+                if (!is_ok) {
+                    DialogUtils.error("Duplicate track name", null);
+                }
             }
-        }
+        } while (result == Gtk.ResponseType.OK && !is_ok);
         dialog.destroy();
     }
 

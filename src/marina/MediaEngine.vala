@@ -21,9 +21,9 @@ class MediaClip : Object {
     public Gst.Element file_source;
     weak Model.Clip clip;
     Gst.Bin composition;
-    
+
     public signal void clip_removed(MediaClip clip);
-    
+
     public MediaClip(Gst.Bin composition, Model.Clip clip) throws Error {
         this.clip = clip;
         this.composition = composition;
@@ -34,14 +34,14 @@ class MediaClip : Object {
             clip.start_changed += on_start_changed;
 
             composition.add(file_source);
-        
+
             on_start_changed(clip.start);
             on_media_start_changed(clip.media_start);
             on_duration_changed(clip.duration);
         }
         clip.removed += on_clip_removed;
     }
-    
+
     ~MediaClip() {
         clip.removed -= on_clip_removed;
         if (!clip.is_recording) {
@@ -57,24 +57,24 @@ class MediaClip : Object {
         composition.remove((Gst.Bin)file_source);
         clip_removed(this);
     }
-    
+
     void on_media_start_changed(int64 media_start) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_start_changed");
         file_source.set("media-start", media_start);
     }
-    
+
     void on_duration_changed(int64 duration) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_duration_changed");
         file_source.set("duration", duration);
         // TODO: is media-duration necessary?
         file_source.set("media-duration", duration);
     }
-    
+
     void on_start_changed(int64 start) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_start_changed");
         file_source.set("start", start);
     }
-    
+
     protected void add_single_decode_bin(string filename, string caps) throws Error {
         Gst.Element sbin = new SingleDecodeBin(Gst.Caps.from_string(caps), 
                                                "singledecoder", filename);
@@ -83,7 +83,7 @@ class MediaClip : Object {
         bool sync_result = file_source.sync_state_with_parent();
         assert(sync_result);
     }
-    
+
     public bool is_equal(Model.Clip clip) {
         return clip == this.clip;
     }
@@ -109,10 +109,10 @@ public abstract class MediaTrack : Object {
     Gee.ArrayList<MediaClip> clips;
     protected weak MediaEngine media_engine;
     protected Gst.Bin composition;
-    
+
     protected Gst.Element default_source;
-    protected Gst.Element sink;    
-    
+    protected Gst.Element sink;
+
     public signal void track_removed(MediaTrack track);
     public signal void error_occurred(string major_message, string? minor_message);
 
@@ -121,12 +121,12 @@ public abstract class MediaTrack : Object {
         this.media_engine = media_engine;
         track.clip_added += on_clip_added;
         track.track_removed += on_track_removed;
-        
+
         media_engine.pre_export += on_pre_export;
         media_engine.post_export += on_post_export;
-        
-        composition = (Gst.Bin) make_element_with_name("gnlcomposition", track.display_name);
-        
+
+        composition = (Gst.Bin) make_element("gnlcomposition");
+
         default_source = make_element_with_name("gnlsource", "track_default_source");
         Gst.Bin default_source_bin = (Gst.Bin) default_source;
         if (!default_source_bin.add(empty_element()))
@@ -140,25 +140,25 @@ public abstract class MediaTrack : Object {
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-start", 0 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
-        
+
         if (!composition.add(default_source)) {
             error("can't add default source");
         }
-  
+
         media_engine.pipeline.add(composition);
         composition.pad_added += on_pad_added;
         composition.pad_removed += on_pad_removed;
     }
-    
+
     ~MediaTrack() {
         if (composition != null && !media_engine.pipeline.remove(composition)) {
             error("couldn't remove composition");
-        }    
+        }
     }
-    
+
     protected abstract Gst.Element empty_element() throws Error;
     public abstract Gst.Element? get_element();
-    
+
     public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
     public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
 
@@ -167,7 +167,7 @@ public abstract class MediaTrack : Object {
         clip.updated += on_clip_updated;
         on_clip_updated(clip);
     }
-    
+
     void on_clip_updated(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");
         if (clip.clipfile.is_online()) {
@@ -192,18 +192,18 @@ public abstract class MediaTrack : Object {
             }
         }
     }
-    
+
     void on_media_clip_removed(MediaClip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_clip_removed");
         clip.clip_removed -= on_media_clip_removed;
         clips.remove(clip);
     }
-    
+
     void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         link_new_pad(bin, pad, get_element());
     }
-    
+
     void on_pad_removed(Gst.Bin bin, Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_removed");
         unlink_pad(bin, pad, get_element());
@@ -219,13 +219,13 @@ public abstract class MediaTrack : Object {
         default_source.set("duration", length);
         default_source.set("media-duration", length);
     }
-    
+
     void on_post_export(bool deleted) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_post_export");
         default_source.set("duration", 1000000 * Gst.SECOND);
         default_source.set("media-duration", 1000000 * Gst.SECOND);
     }
-}    
+}
 
 public class MediaVideoTrack : MediaTrack {
     weak Gst.Element converter;
@@ -235,7 +235,7 @@ public class MediaVideoTrack : MediaTrack {
         base(media_engine, track);
         this.converter = converter;
     }
-    
+
     public override Gst.Element? get_element() {
         //converter shouldn't be null.  since fillmore is currently not supporting
         //video, but this is a shared track, we can't guarantee at compile time that
@@ -256,7 +256,7 @@ public class MediaVideoTrack : MediaTrack {
             error("couldn't link pad to converter");
         }
     }
-    
+
     public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         pad.unlink(track_element.get_static_pad("sink"));
     }
@@ -269,7 +269,7 @@ public class ClickTrack : Object {
     Gst.Element audio_convert;
     Gst.Element volume;
     weak Model.Project project;
-    
+
     public ClickTrack(MediaEngine engine, Model.Project project) throws Error {
         this.project = project;
         audio_source = make_element("audiotestsrc");
@@ -287,14 +287,14 @@ public class ClickTrack : Object {
         audio_source.link_many(audio_convert, volume, engine.adder);
         engine.playstate_changed += on_playstate_changed;
     }
-    
-    void clear_controllers() {    
+
+    void clear_controllers() {
         volume_controller.unset_all("mute");
         click_controller.unset_all("freq");
         volume.set("mute", true);
         volume.set("volume", 0.0);
     }
-    
+
     void on_playstate_changed() {
         switch (project.media_engine.get_play_state()) {
             case PlayState.PRE_EXPORT:
@@ -319,16 +319,16 @@ public class ClickTrack : Object {
             break;
         }
     }
-    
+
     void setup_clicks(int bpm, Fraction time_signature) {
         clear_controllers();
         volume.set("volume", project.click_volume);
-        
+
         Gst.Value double_value = Gst.Value();
         double_value.init(Type.from_name("gdouble"));
         Gst.Value bool_value = Gst.Value();
         bool_value.init(Type.from_name("gboolean"));
-        
+
         Gst.ClockTime time = (Gst.ClockTime)(0);
         bool_value.set_boolean(true);
         volume_controller.set("volume", time, bool_value);
@@ -352,7 +352,7 @@ public class ClickTrack : Object {
             click_controller.set("freq", time, double_value);
             bool_value.set_boolean(false);
             volume_controller.set("mute", time, bool_value);
-            
+
             time = (Gst.ClockTime)(current_time + Gst.SECOND/10);
             bool_value.set_boolean(true);
             volume_controller.set("mute", time, bool_value);
@@ -370,15 +370,12 @@ public class MediaAudioTrack : MediaTrack {
 
     public MediaAudioTrack(MediaEngine media_engine, Model.AudioTrack track) throws Error {
         base(media_engine, track);
-        string display_name = track.display_name;
         track.parameter_changed += on_parameter_changed;
-        
-        audio_convert = make_element_with_name("audioconvert",
-            "audioconvert_%s".printf(display_name));
-        audio_resample = make_element_with_name("audioresample",
-            "audioresample_%s".printf(display_name));
+
+        audio_convert = make_element("audioconvert");
+        audio_resample = make_element("audioresample");
         level = make_element("level");
- 
+
         pan = make_element("audiopanorama");
         on_parameter_changed(Model.Parameter.PAN, track.get_pan());
         volume = make_element("volume");
@@ -388,31 +385,31 @@ public class MediaAudioTrack : MediaTrack {
         level.set_property("interval", the_level);
         Value true_value = true;
         level.set_property("message", true_value);
-        
+
         if (!media_engine.pipeline.add(audio_convert)) {
             error("could not add audio_convert");
         }
-        
+
         if (!media_engine.pipeline.add(audio_resample)) {
             error("could not add audio_resample");
         }
-        
+
         if (!media_engine.pipeline.add(level)) {
             error("could not add level");
         }
-        
+
         if (!media_engine.pipeline.add(pan)) {
             error("could not add pan");
         }
-        
+
         if (!media_engine.pipeline.add(volume)) {
             error("could not add volume");
         }
-        
+
         media_engine.level_changed += on_level_changed;
         level_changed += track.on_level_changed;
     }
-    
+
     ~MediaAudioTrack() {
         media_engine.level_changed -= on_level_changed;
         media_engine.pipeline.remove_many(audio_convert, audio_resample, pan, volume, level);
@@ -442,7 +439,7 @@ public class MediaAudioTrack : MediaTrack {
     protected override Gst.Element empty_element() throws Error {
         return media_engine.get_audio_silence();
     }
-    
+
     override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
         if (!bin.link_many(audio_convert, audio_resample, level, pan, volume)) {
             stderr.printf("could not link_new_pad for audio track");
@@ -470,23 +467,23 @@ public class MediaAudioTrack : MediaTrack {
 public abstract class MediaConnector : Object {
     public enum MediaTypes { Audio = 1, Video = 2 }
     MediaTypes media_types;
-    
+
     // AudioIndex and VideoIndex are the order elements are passed in to connect and disconnect
     protected int AudioIndex = 0;
     protected int VideoIndex = 1;
-    
+
     protected MediaConnector(MediaTypes media_types) {
         this.media_types = media_types;
     }
-    
+
     protected bool has_audio() {
         return (media_types & MediaTypes.Audio) == MediaTypes.Audio;
     }
-    
+
     protected bool has_video() {
         return (media_types & MediaTypes.Video) == MediaTypes.Video;
     }
-    
+
     public new abstract void connect(MediaEngine media_engine, Gst.Pipeline pipeline,
         Gst.Element[] elements);
     public abstract void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline,
@@ -516,7 +513,7 @@ public class VideoOutput : MediaConnector {
         }
         media_engine.sync_element_message();
     }
-    
+
     public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         emit(this, Facility.GRAPH, Level.INFO, "disconnecting");
@@ -524,7 +521,7 @@ public class VideoOutput : MediaConnector {
         pipeline.remove(sink);
         media_engine.prepare_window -= on_prepare_window;
     }
-    
+
     public void on_prepare_window() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_prepare_window");
         uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
@@ -540,14 +537,14 @@ public class VideoOutput : MediaConnector {
 public class AudioOutput : MediaConnector {
     Gst.Element audio_sink;
     Gst.Element capsfilter;
-    
+
     public AudioOutput(Gst.Caps caps) throws Error {
         base(MediaTypes.Audio);
         audio_sink = make_element("gconfaudiosink");
         capsfilter = make_element("capsfilter");
         capsfilter.set("caps", caps);
     }
-    
+
     public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         pipeline.add_many(capsfilter, audio_sink);
@@ -556,7 +553,7 @@ public class AudioOutput : MediaConnector {
             warning("could not link audio_sink");
         }
     }
-    
+
     public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         elements[AudioIndex].unlink_many(capsfilter, audio_sink);
@@ -566,11 +563,11 @@ public class AudioOutput : MediaConnector {
 
 public class OggVorbisExport : MediaConnector {
     Gst.Element capsfilter;
-    Gst.Element export_sink;    
+    Gst.Element export_sink;
     Gst.Element mux;
     Gst.Element file_sink;
     Gst.Element video_export_sink;
-    
+
     public OggVorbisExport(MediaConnector.MediaTypes media_types, string filename, Gst.Caps caps) 
             throws Error {
         base(media_types);
@@ -578,29 +575,29 @@ public class OggVorbisExport : MediaConnector {
         file_sink = make_element("filesink");
         file_sink.set("location", filename);
         mux = make_element("oggmux");
-        
+
         if (has_audio()) {
             capsfilter = make_element("capsfilter");
             capsfilter.set("caps", caps);
             export_sink = make_element("vorbisenc");
         }
-        
+
         if (has_video()) {
             video_export_sink = make_element("theoraenc");
         }
     }
-    
+
     public string get_filename() {
         string filename;
         file_sink.get("location", out filename);
         return filename;
     }
-    
+
     public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         pipeline.add_many(mux, file_sink);
         mux.link(file_sink);
-        
+
         if (has_audio()) {
             pipeline.add_many(capsfilter, export_sink);
             elements[AudioIndex].link_many(capsfilter, export_sink, mux);
@@ -612,35 +609,34 @@ public class OggVorbisExport : MediaConnector {
             if (!elements[VideoIndex].link(video_export_sink)) {
                 error("could not link converter to video_export_sink");
             }
-            
+
             if (!video_export_sink.link(mux)) {
                 error("could not link video_export with mux");
             }
         }
     }
-  
+
     public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         if (has_audio()) {
             elements[AudioIndex].unlink_many(capsfilter, export_sink, mux);
             pipeline.remove_many(capsfilter, export_sink);
         }
-        
+
         if (has_video()) {
             elements[VideoIndex].unlink_many(video_export_sink, mux);
             pipeline.remove(video_export_sink);
         }
-        
+
         mux.unlink(file_sink);
         pipeline.remove_many(mux, file_sink);
     }
 }
 
 public class MediaEngine : MultiFileProgressInterface, Object {
-    // TODO: When vala allows throwing from base constructor, make these private
-    public const string MIN_GNONLIN = "0.10.10.3";
-    public const string MIN_GST_PLUGINS_GOOD = "0.10.18";
-    public const string MIN_GST_PLUGINS_BASE = "0.10.26";
+    const string MIN_GNONLIN = "0.10.10.3";
+    const string MIN_GST_PLUGINS_GOOD = "0.10.18";
+    const string MIN_GST_PLUGINS_BASE = "0.10.26";
     public Gst.Pipeline pipeline;
 
     // Video playback
@@ -648,7 +644,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     // Audio playback
     public Gst.Element adder;
-    
+
     protected Gst.State gst_state;
     protected PlayState play_state = PlayState.STOPPED;
     public int64 position;  // current play position in ns
@@ -737,20 +733,20 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public void connect_output(MediaConnector connector) {
         connector.connect(this, pipeline, { adder, converter });
     }
-    
+
     public void disconnect_output(MediaConnector connector) {
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
         pipeline.set_state(Gst.State.NULL);
         connector.disconnect(this, pipeline, {adder, converter});
     }
-    
+
     public void sync_element_message() {
         // We need to wait for the prepare-xwindow-id element message, which tells us when it's
         // time to set the X window ID.  We must respond to this message synchronously.
         // If we used an asynchronous signal (enabled via gst_bus_add_signal_watch) then the
         // xvimagesink would create its own output window which would flash briefly
         // onto the display.
-        
+
         Gst.Bus bus = pipeline.get_bus();
 
         // TODO: we should be calling disable_sync_message_emission, but it seems that no matter
@@ -769,32 +765,33 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         }
         return silence;
     }
-    
+
     public int get_sample_rate() {
         return 48000;
     }
-    
+
     public int get_sample_width() {
         return 16;
     }
-    
+
     public int get_sample_depth() {
         return 16;
     }
-    
+
     public PlayState get_play_state() {
         return play_state;
     }
-    
+
     public void set_play_state(PlayState play_state) {
         this.play_state = play_state;
     }
+
     protected Gst.Caps build_audio_caps(int num_channels) {
         string caps = "audio/x-raw-int,rate=%d,channels=%d,width=%d,depth=%d";
         caps = caps.printf(get_sample_rate(), num_channels, get_sample_width(), get_sample_depth());
         return Gst.Caps.from_string(caps);
     }
-    
+
     public Gst.Caps get_project_audio_caps() {
         return build_audio_caps(2);
     }
@@ -802,7 +799,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public Gst.Caps get_project_audio_export_caps() {
         return Gst.Caps.from_string(
             "audio/x-raw-float,rate=48000,channels=2,width=32");
-    }    
+    }
 
     void on_warning(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_warning");
@@ -811,7 +808,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         message.parse_warning(out error, out text);
         warning("%s", text);
     }
-    
+
     void on_error(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error error;
@@ -835,11 +832,11 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         prepare_window();
         bus.sync_message["element"] -= on_element_message;
     }
-    
+
     void on_element(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element");
         unowned Gst.Structure structure = message.get_structure();
-        
+
         if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
             Gst.Value? rms = structure.get_value("rms");
             uint size = rms.list_get_size();
@@ -937,19 +934,19 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         play_state = PlayState.PRE_EXPORT;
         pipeline.set_state(Gst.State.PAUSED);
     }
-    
+
     void do_paused_state_export() {
         play_state = PlayState.EXPORTING;
-              
+
         if (callback_id == 0)
             callback_id = Timeout.add(50, on_callback);
-        
-        pipeline.set_state(Gst.State.PLAYING);        
+
+        pipeline.set_state(Gst.State.PLAYING);
     }
-    
+
     void end_export(bool deleted) {
         play_state = PlayState.STOPPED;
-        
+
         callback_id = 0;
         post_export(deleted);
     }
@@ -963,7 +960,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             position = 0;
         else
             position = pos;
-        
+
         // We ignore the return value of seek_simple(); sometimes it returns false even when
         // a seek succeeds.
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, position);
@@ -982,7 +979,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         if (pipeline.query_position(ref format, out time) && format == Gst.Format.TIME) {
             position = time;
             callback_pulse();
-            
+
             if (play_state == PlayState.PLAYING) {
                 if (position >= project.get_length()) {
                     go(project.get_length());
@@ -1054,7 +1051,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         play_state = PlayState.CANCEL_EXPORT;
         pipeline.set_state(Gst.State.NULL);
     }
-    
+
     public void complete() {
         pipeline.set_state(Gst.State.NULL);
     }
@@ -1064,14 +1061,14 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         play_state = PlayState.STOPPED;
         pipeline.set_state(Gst.State.PAUSED);
     }
-    
+
     public void on_callback_pulse() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
         if (record_region != null) {
             record_region.duration = position - record_region.start;
         }
     }
-    
+
     public void close() {
         if (gst_state != Gst.State.NULL) {
             play_state = PlayState.CLOSING;
@@ -1086,7 +1083,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         assert(gst_state == Gst.State.NULL);
 
         record_track._delete_clip(record_region);
-        
+
         audio_in.unlink_many(record_capsfilter, wav_encoder, record_sink);
         pipeline.remove_many(audio_in, record_capsfilter, wav_encoder, record_sink);
 
@@ -1111,10 +1108,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public void start_record(Model.Clip region) throws Error {
         if (project.transport_is_recording())
             return;
-        
+
         if (project.transport_is_playing())
             error("can't switch from playing to recording");
-            
+
         if (gst_state != Gst.State.NULL)
             error("can't record now: %s", gst_state.to_string());
 
@@ -1126,7 +1123,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_sink = make_element("filesink");
         record_sink.set("location", region.clipfile.filename);
         wav_encoder = make_element("wavenc");
-        
+
         pipeline.add_many(audio_in, record_capsfilter, wav_encoder, record_sink);
         if (!audio_in.link_many(record_capsfilter, wav_encoder, record_sink))
             error("audio_in: couldn't link");
@@ -1152,7 +1149,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             ++i;
         }
     }
-    
+
     string generate_base(string name) {
         string base_name = name.down();
         base_name.canon("abcdefghijklmnopqrstuvwxyz1234567890", '_');
@@ -1187,12 +1184,12 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         }
         return audio_track;
     }
-    
+
     void on_track_removed(MediaTrack track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         tracks.remove(track);
     }
-    
+
     void on_error_occurred(string major_message, string? minor_message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         error_occurred(major_message, minor_message);
