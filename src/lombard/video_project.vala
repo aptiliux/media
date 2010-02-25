@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -10,29 +10,32 @@ namespace Model {
 
 class VideoProject : Project {
     public TimecodeTimeSystem time_provider;
-    
+
     public override void load_complete() {
         if (find_video_track() == null) {
             add_track(new VideoTrack(this));
         }
     }
-    
-    public VideoProject(string? filename) {
+
+    public VideoProject(string? filename) throws Error {
         base(filename, true);
-        time_provider = new TimecodeTimeSystem();
+        // TODO: When vala supports throwing from base constructor remove this check
+        if (this != null) {
+            time_provider = new TimecodeTimeSystem();
+        }
     }
-    
+
     public override double get_version() {
         return 0.01;
     }
-    
+
     public override string get_app_name() {
         return App.NAME;
     }
 
     public override TimeCode get_clip_time(ClipFile f) {
         TimeCode t = {};
-        
+
         if (f.is_of_type(MediaType.VIDEO)) {
             Fraction rate;
             if (!get_framerate_fraction(out rate)) {
@@ -54,7 +57,7 @@ class VideoProject : Project {
         }
         return null;
     }
-    
+
     protected override void do_append(Track track, ClipFile clipfile, string name, int64 insert_time) {
         string description = "Append Clip";
         undo_manager.start_transaction(description);
@@ -68,14 +71,14 @@ class VideoProject : Project {
         base.do_append(track, clipfile, name, insert_time);
         undo_manager.end_transaction(description);
     }
-    
+
     public void go_previous_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {
             media_engine.go(video_track.previous_frame(transport_get_position()));
         }
     }
-    
+
     public void go_next_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {

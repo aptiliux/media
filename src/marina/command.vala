@@ -216,7 +216,11 @@ public class ClipFileDeleteCommand : Command {
     }
     
     public override void undo() {
-        project.add_clipfile(clipfile);
+        try {
+            project.add_clipfile(clipfile);
+        } catch (Error e) {
+            project.error_occurred("Could not add clipfile.", e.message);
+        }
     }
     
     public override bool merge(Command command) {

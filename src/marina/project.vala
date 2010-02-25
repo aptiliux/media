@@ -193,12 +193,15 @@ public class MediaLoaderHandler : LoaderHandler {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
         if (f.error_string != null)
             load_error("%s: %s".printf(f.clipfile.filename, f.error_string));
-
-        the_project.add_clipfile(f.clipfile);
-
-        num_clipfiles_complete++;
-        if (num_clipfiles_complete == clipfetchers.size)
-            complete();
+        try {
+            the_project.add_clipfile(f.clipfile);
+            num_clipfiles_complete++;
+            if (num_clipfiles_complete == clipfetchers.size) {
+                complete();
+            }
+        } catch (Error e) {
+            load_error("%s: %s".printf(f.clipfile.filename, e.message));
+        }
     }
 
     public override bool commit_clipfile(string[] attr_names, string[] attr_values) {
@@ -223,10 +226,14 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        ClipFetcher fetcher = new ClipFetcher(filename);
-        fetcher.ready += fetcher_ready;
-        clipfetchers.insert(id, fetcher);
-
+        try {
+            ClipFetcher fetcher = new ClipFetcher(filename);
+            fetcher.ready += fetcher_ready;
+            clipfetchers.insert(id, fetcher);
+        } catch (Error e) {
+            load_error(e.message);
+            return false;
+        }
         return true;
     }
 
@@ -348,13 +355,14 @@ public abstract class Project : TempoInformation, Object {
 
     public abstract TimeCode get_clip_time(ClipFile f);
 
-    public Project(string? filename, bool include_video) {
+    public Project(string? filename, bool include_video) throws Error {
         undo_manager = new UndoManager();
         project_file = filename;
 
         media_engine = new View.MediaEngine(this, include_video);
         track_added += media_engine.on_track_added;
         media_engine.playstate_changed += on_playstate_changed;
+        media_engine.error_occurred += on_error_occurred;
 
         set_default_framerate(INVALID_FRAME_RATE);
     }
@@ -638,7 +646,7 @@ public abstract class Project : TempoInformation, Object {
         track_removed(track);
     }
 
-    public virtual void add_clipfile(ClipFile clipfile) {
+    public virtual void add_clipfile(ClipFile clipfile) throws Error {
         clipfiles.add(clipfile);
         if (clipfile.is_online() && clipfile.is_of_type(MediaType.VIDEO)) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
@@ -942,7 +950,8 @@ public abstract class Project : TempoInformation, Object {
         }
     }
 
-    public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) {
+    public void create_clip_fetcher(FetcherCompletion fetcher_completion, string filename) 
+            throws Error {
         ClipFetcher fetcher = new ClipFetcher(filename);
         this.fetcher_completion = fetcher_completion;
         fetcher.ready += on_fetcher_ready;
@@ -957,9 +966,14 @@ public abstract class Project : TempoInformation, Object {
             emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, fetcher.error_string);
             error_occurred("Error retrieving clip", fetcher.error_string);
         } else {
-            if (get_clipfile_index(fetcher.clipfile) == -1)
-                add_clipfile(fetcher.clipfile);
-            fetcher_completion.complete(fetcher);
+            try {
+                if (get_clipfile_index(fetcher.clipfile) == -1) {
+                    add_clipfile(fetcher.clipfile);
+                }
+                fetcher_completion.complete(fetcher);
+            } catch (Error e) {
+                error_occurred("Error retrieving clip", fetcher.error_string);
+            }
         }
     }
 

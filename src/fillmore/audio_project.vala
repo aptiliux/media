@@ -30,14 +30,17 @@ class RecordFetcherCompletion : FetcherCompletion {
 class AudioProject : Project {
     bool has_been_saved;
 
-    public AudioProject(string? filename) {
+    public AudioProject(string? filename) throws Error {
         base(filename, false);
-        has_been_saved = filename != null;
-        if (!has_been_saved) {
-            project_file = generate_filename();
+        // TODO: When vala supports throwing from base, remove this check
+        if (this != null) {
+            has_been_saved = filename != null;
+            if (!has_been_saved) {
+                project_file = generate_filename();
+            }
+            media_engine.callback_pulse += media_engine.on_callback_pulse;
+            media_engine.record_completed += on_record_completed;
         }
-        media_engine.callback_pulse += media_engine.on_callback_pulse;
-        media_engine.record_completed += on_record_completed;
     }
 
     public override TimeCode get_clip_time(ClipFile f) {
@@ -90,8 +93,12 @@ class AudioProject : Project {
 
     public void on_record_completed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_completed");
-        create_clip_fetcher(new Model.RecordFetcherCompletion(this, media_engine.record_track,
-            media_engine.record_region.start), media_engine.record_region.clipfile.filename);
+        try {
+            create_clip_fetcher(new Model.RecordFetcherCompletion(this, media_engine.record_track,
+                media_engine.record_region.start), media_engine.record_region.clipfile.filename);
+        } catch (Error e) {
+            error_occurred("Could not complete recording", e.message);
+        }
     }
 
     public override void load(string? filename) {

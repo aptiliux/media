@@ -192,7 +192,7 @@ public abstract class Fetcher : Object {
 public class ClipFetcher : Fetcher {  
     public signal void clipfile_online(bool online);
 
-    public ClipFetcher(string filename) {
+    public ClipFetcher(string filename) throws Error {
         clipfile = new ClipFile(filename);
         
         clipfile_online += clipfile.set_online;
@@ -228,25 +228,28 @@ public class ClipFetcher : Fetcher {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         Gst.Pad fake_pad;
         Gst.Element fake_sink;
-        
-        if (pad.caps.to_string().has_prefix("video")) {
-            fake_sink = make_element("fakesink");
-            pipeline.add(fake_sink);
-            fake_pad = fake_sink.get_static_pad("sink");
+        try {
+            if (pad.caps.to_string().has_prefix("video")) {
+                fake_sink = make_element("fakesink");
+                pipeline.add(fake_sink);
+                fake_pad = fake_sink.get_static_pad("sink");
 
-            if (!fake_sink.sync_state_with_parent()) {
-                error("could not sync state with parent");
-            }
-        } else {
-            fake_sink = make_element("fakesink");
-            pipeline.add(fake_sink);
-            fake_pad = fake_sink.get_static_pad("sink");
+                if (!fake_sink.sync_state_with_parent()) {
+                    error("could not sync state with parent");
+                }
+            } else {
+                fake_sink = make_element("fakesink");
+                pipeline.add(fake_sink);
+                fake_pad = fake_sink.get_static_pad("sink");
 
-            if (!fake_sink.sync_state_with_parent()) {
-                error("could not sync state with parent");
+                if (!fake_sink.sync_state_with_parent()) {
+                    error("could not sync state with parent");
+                }
             }
+            pad.link(fake_pad);
         }
-        pad.link(fake_pad);
+        catch (Error e) {
+        }
     }
     
     Gst.Pad? get_pad(string prefix) {
@@ -305,7 +308,7 @@ public class ThumbnailFetcher : Fetcher {
     bool done_seek;
     bool have_thumbnail;
     
-    public ThumbnailFetcher(ClipFile f, int64 time) {
+    public ThumbnailFetcher(ClipFile f, int64 time) throws Error {
         clipfile = f;
         seek_position = time;
         

@@ -99,11 +99,11 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         pipeline.set_state(Gst.State.NULL);
     }
     
-    public void start() {
+    public void start() throws Error {
         process_curr_file();
     }
     
-    void process_curr_file() {
+    void process_curr_file() throws Error {
         if (import_state == ImportState.FETCHING) {
             if (current_file_importing == filenames.size) {
                 if (queued_fetchers.size == 0)
@@ -131,7 +131,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         all_done = true;
     }
     
-    void do_import_complete() {
+    void do_import_complete() throws Error{
         if (import_state == ImportState.IMPORTING) {
             our_fetcher.clipfile.filename = append_extension(
                                                    queued_filenames[current_file_importing], "mov");
@@ -164,49 +164,53 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
     void on_fetcher_ready(ClipFetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
-        if (f.error_string != null) {
-            error_occurred(f.error_string);
-            do_import_complete();
-            return;
-        }
-        
-        if (need_to_import(f)) {
-            string checksum;
-            if (md5_checksum_on_file(f.clipfile.filename, out checksum)) {
-                string base_filename = import_directory + isolate_filename(f.clipfile.filename);
-                
-                int index = 0;
-                string new_filename = base_filename;
-                while (true) {
-                    string existing_checksum;
-                    if (get_file_md5_checksum(new_filename, out existing_checksum)) {
-                        if (checksum == existing_checksum) {
-                            // Re-fetch this clip to get the correct caps
-                            filenames[current_file_importing] = 
-                                                            append_extension(new_filename, "mov");
-                            current_file_importing--;
-                            total_time -= f.clipfile.length;
+        try {
+            if (f.error_string != null) {
+                error_occurred(f.error_string);
+                do_import_complete();
+                return;
+            }
+            
+            if (need_to_import(f)) {
+                string checksum;
+                if (md5_checksum_on_file(f.clipfile.filename, out checksum)) {
+                    string base_filename = import_directory + isolate_filename(f.clipfile.filename);
+                    
+                    int index = 0;
+                    string new_filename = base_filename;
+                    while (true) {
+                        string existing_checksum;
+                        if (get_file_md5_checksum(new_filename, out existing_checksum)) {
+                            if (checksum == existing_checksum) {
+                                // Re-fetch this clip to get the correct caps
+                                filenames[current_file_importing] = 
+                                                                append_extension(new_filename, "mov");
+                                current_file_importing--;
+                                total_time -= f.clipfile.length;
+                                break;
+                            }
+                            index++;
+                            new_filename = base_filename + index.to_string();
+                        } else {
+                            // Truly need to import
+                            save_file_md5_checksum(new_filename, checksum);
+                            queued_filenames.add(new_filename);
+                            queued_fetchers.add(f);
                             break;
                         }
-                        index++;
-                        new_filename = base_filename + index.to_string();
-                    } else {
-                        // Truly need to import
-                        save_file_md5_checksum(new_filename, checksum);
-                        queued_filenames.add(new_filename);
-                        queued_fetchers.add(f);
-                        break;
                     }
-                }
-            } else
-                error("Cannot get md5 checksum for file %s!", f.clipfile.filename);
-        } else {
-            clip_complete(f.clipfile);
+                } else
+                    error("Cannot get md5 checksum for file %s!", f.clipfile.filename);
+            } else {
+                clip_complete(f.clipfile);
+            }
+            do_import_complete();
+        } catch (Error e) {
+            error_occurred(e.message);
         }
-        do_import_complete();
     }
     
-    void do_import(ClipFetcher f) {
+    void do_import(ClipFetcher f) throws Error {
         file_updated(f.clipfile.filename, current_file_importing);
         previous_time = 0;
         
@@ -335,7 +339,11 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                                                                                             "md5"));
             } else {
                 if (import_done) 
-                    do_import_complete();
+                    try {
+                        do_import_complete();
+                    } catch (Error e) {
+                        error_occurred(e.message);
+                    }
             }
         }
     }
@@ -381,22 +389,26 @@ public class LibraryImporter : Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_complete");
         ClipFile cf = project.find_clipfile(f.filename);
         if (cf == null) {
-            project.add_clipfile(f);
+            try {
+                project.add_clipfile(f);
+            } catch (Error e) {
+                on_error_occurred(e.message);
+            }
         }
     }
     
-    public void add_file(string filename) {
+    public void add_file(string filename) throws Error {
         ClipFile cf = project.find_clipfile(filename);
-        
+
         if (cf != null)
             append_existing_clipfile(cf);
         else
             importer.add_filename(filename);
     }
-    
-    public void start() {
+
+    public void start() throws Error {
         importer.start();
-    }        
+    }
 }
 
 public class TimelineImporter : LibraryImporter {

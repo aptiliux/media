@@ -155,12 +155,9 @@ class Recorder : Gtk.Window {
         { "Ogg Files", "ogg" }
     };
 
-    // Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
-    const string MIN_GNONLIN = "0.10.10.3";
-
     public signal void finished_closing(bool project_did_close);
 
-    public Recorder(string? project_file) {
+    public Recorder(string? project_file) throws Error {
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
         try {
             set_icon_from_file(
@@ -525,12 +522,16 @@ class Recorder : Gtk.Window {
     void on_export() {
         string filename = null;
         if (DialogUtils.save(this, "Export", false, export_filters, ref filename)) {
-            new MultiFileProgress(this, 1, "Export", project.media_engine);
-            project.media_engine.disconnect_output(audio_output);
-            audio_export = new View.OggVorbisExport(View.MediaConnector.MediaTypes.Audio, 
-                filename, project.media_engine.get_project_audio_export_caps());
-            project.media_engine.connect_output(audio_export);
-            project.media_engine.start_export(filename);
+            try {
+                new MultiFileProgress(this, 1, "Export", project.media_engine);
+                project.media_engine.disconnect_output(audio_output);
+                audio_export = new View.OggVorbisExport(View.MediaConnector.MediaTypes.Audio, 
+                    filename, project.media_engine.get_project_audio_export_caps());
+                project.media_engine.connect_output(audio_export);
+                project.media_engine.start_export(filename);
+            } catch (Error e) {
+                do_error_dialog("Could not export file", e.message);
+            }
         }
     }
 
@@ -885,40 +886,30 @@ class Recorder : Gtk.Window {
 
         Gtk.rc_parse(rc_file);
         Gst.init(ref args);
+        try {
+            string? project_file = null;
+            if (args.length > 1) {
+                project_file = args[1];
+            }
+            ClassFactory.set_class_factory(new FillmoreClassFactory());
+            View.MediaEngine.can_run();
 
-        Gst.Registry registry = Gst.Registry.get_default();
-        Gst.Plugin gnonlin = registry.find_plugin("gnonlin");
-        if (gnonlin == null) {
-            stderr.puts("This program requires Gnonlin, which is not installed.  Exiting.\n");
-            return;
+            Recorder recorder = new Recorder(project_file);
+            recorder.show_all();
+            Gtk.main();
+        } catch (Error e) {
+            // TODO: Determine if gstreamer is installed
+            do_error_dialog("Could not start application",e.message);
         }
-
-        string version = gnonlin.get_version();
-        if (!version_at_least(version, MIN_GNONLIN)) {
-            stderr.printf(
-                "You have Gnonlin version %s, but this program requires version %s.  Exiting.\n",
-                version, MIN_GNONLIN);
-            return;
-        }
-
-        string? project_file = null;
-        if (args.length > 1) {
-            project_file = args[1];
-        }
-        ClassFactory.set_class_factory(new FillmoreClassFactory());
-        Recorder recorder = new Recorder(project_file);
-        recorder.show_all();
-
-        Gtk.main();
     }
 
-    public void do_error_dialog(string message) {
-        DialogUtils.error("Error", message);
+    public static void do_error_dialog(string major_message, string? minor_message) {
+        DialogUtils.error(major_message, minor_message);
     }
 
     public void on_load_error(string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
-        do_error_dialog(message);
+        do_error_dialog("Could not load project", message);
     }
 
     public void on_load_complete() {

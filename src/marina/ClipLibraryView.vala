@@ -207,14 +207,18 @@ public class ClipLibraryView : Gtk.EventBox {
 
         project.create_clip_importer(null, false, 0);
 
-        foreach (string s in a) {
-            string filename;
-            try {
-                filename = GLib.Filename.from_uri(s);
-            } catch (GLib.ConvertError e) { continue; }
-            project.importer.add_file(filename);
+        try {
+            foreach (string s in a) {
+                string filename;
+                try {
+                    filename = GLib.Filename.from_uri(s);
+                } catch (GLib.ConvertError e) { continue; }
+                project.importer.add_file(filename);
+            }
+            project.importer.start();
+        } catch (Error e) {
+            project.error_occurred("Error importing", e.message);
         }
-        project.importer.start();
     }
 
     

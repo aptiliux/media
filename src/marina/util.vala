@@ -4,6 +4,10 @@
  * (version 2.1 or later).  See the COPYING file in this distribution. 
  */
 
+public errordomain MediaError {
+    MISSING_PLUGIN
+}
+
 // I can't find a floating point absolute value function in Vala...
 public float float_abs(float f) {
     if (f < 0.0f)
@@ -549,14 +553,17 @@ public string time_to_string(int64 time) {
     return return_value;
 }
 
-public Gst.Element make_element_with_name(string element_name, string? display_name) {
+public static Gst.Element make_element_with_name(string element_name, string? display_name) 
+        throws GLib.Error {
     Gst.Element e = Gst.ElementFactory.make(element_name, display_name);
-    if (e == null)
-        error("can't create element: %s", element_name);
+    if (e == null) {
+        throw new
+            MediaError.MISSING_PLUGIN("Could not create element %s(%s)".printf(element_name, display_name));
+    }
     return e;
 }
 
-public Gst.Element make_element(string name) {
+public static Gst.Element make_element(string name) throws Error {
     return make_element_with_name(name, null);
 }
 

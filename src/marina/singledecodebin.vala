@@ -58,7 +58,7 @@ class SingleDecodeBin : Gst.Bin {
         add_pad_template (sink_pad);
     }
         
-    public SingleDecodeBin(Gst.Caps? caps, string name, string? uri) {
+    public SingleDecodeBin(Gst.Caps? caps, string name, string? uri) throws Error {
         this.caps = caps == null ? new Gst.Caps.any() : caps;
         
         typefind = Gst.ElementFactory.make("typefind", "internal-typefind");

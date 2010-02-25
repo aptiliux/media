@@ -151,7 +151,7 @@ class App : Gtk.Window {
         { "Ogg Files", "ogg" }
     };
 
-    public App(string? project_file) {
+    public App(string? project_file) throws Error {
         try {
             set_icon_from_file(
                 AppDirs.get_resources_dir().get_child("lombard_icon.png").get_path());
@@ -332,8 +332,12 @@ class App : Gtk.Window {
     void on_drawing_realize() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drawing_realize");
         project.load(project_filename);
-        video_output = new View.VideoOutput(drawing_area);
-        project.media_engine.connect_output(video_output);
+        try {
+            video_output = new View.VideoOutput(drawing_area);
+            project.media_engine.connect_output(video_output);
+        } catch (Error e) {
+            do_error_dialog("Could not create video output", e.message);
+        }
     }
 
     void on_adjustment_changed(Gtk.Adjustment a) {
@@ -360,8 +364,7 @@ class App : Gtk.Window {
         set_title(project.get_file_display_name());
     }
 
-    public void do_error_dialog(string message, string? minor_message) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "do_error_dialog");
+    public static void do_error_dialog(string message, string? minor_message) {
         DialogUtils.error(message, minor_message);
     }
 
@@ -383,7 +386,11 @@ class App : Gtk.Window {
             get_file_extension(name) == Model.Project.FILLMORE_FILE_EXTENSION)
             load_project(name);
         else {
-            im.add_file(name);
+            try {
+                im.add_file(name);
+            } catch (Error e) {
+                do_error_dialog("Error loading file", e.message);
+            }
         }
     }
 
@@ -392,14 +399,18 @@ class App : Gtk.Window {
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
             project.create_clip_importer(null, false, 0);
             project.importer.started += on_importer_started;
-            foreach (string s in filenames) {
-                string str;
-                try {
-                    str = GLib.Filename.from_uri(s);
-                } catch (GLib.ConvertError e) { str = s; }
-                load_file(str, project.importer);
+            try {
+                foreach (string s in filenames) {
+                    string str;
+                    try {
+                        str = GLib.Filename.from_uri(s);
+                    } catch (GLib.ConvertError e) { str = s; }
+                    load_file(str, project.importer);
+                }
+                project.importer.start();
+            } catch (Error e) {
+                do_error_dialog("Could not open file", e.message);
             }
-            project.importer.start();
         }
     }
 
@@ -616,11 +627,15 @@ class App : Gtk.Window {
             new MultiFileProgress(this, 1, "Export", project.media_engine);
             project.media_engine.disconnect_output(audio_output);
             project.media_engine.disconnect_output(video_output);
-            export_connector = new View.OggVorbisExport(
-                View.MediaConnector.MediaTypes.Audio | View.MediaConnector.MediaTypes.Video,
-                filename, project.media_engine.get_project_audio_export_caps());
-            project.media_engine.connect_output(export_connector);
-            project.media_engine.start_export(filename);
+            try {
+                export_connector = new View.OggVorbisExport(
+                    View.MediaConnector.MediaTypes.Audio | View.MediaConnector.MediaTypes.Video,
+                    filename, project.media_engine.get_project_audio_export_caps());
+                project.media_engine.connect_output(export_connector);
+                project.media_engine.start_export(filename);
+            } catch (Error e) {
+                do_error_dialog("Could not export file", e.message);
+            }
         }
     }
 
@@ -689,8 +704,6 @@ class App : Gtk.Window {
     }
 }
 
-// Versions of Gnonlin before 0.10.10.3 hang when seeking near the end of a video.
-const string MIN_GNONLIN = "0.10.10.3";
 extern const string _PROGRAM_NAME;
 
 void main(string[] args) {
@@ -704,28 +717,18 @@ void main(string[] args) {
         stderr.printf("usage: %s [project-file]\n", args[0]);
         return;
     }
-    string project_file = args.length > 1 ? args[1] : null;
+    
+    try {
+        string project_file = args.length > 1 ? args[1] : null;
 
-    Gst.Registry registry = Gst.Registry.get_default();
-    Gst.Plugin gnonlin = registry.find_plugin("gnonlin");
-    if (gnonlin == null) {
-        stderr.puts("This program requires Gnonlin, which is not installed.  Exiting.\n");
-        return;
+        string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
+        debug_enabled = (str != null && (str[0] >= '1'));
+        ClassFactory.set_class_factory(new ClassFactory());
+        View.MediaEngine.can_run();
+        new App(project_file);
+        Gtk.main();
+    } catch (Error e) {
+        App.do_error_dialog("Could not launch application", "%s.".printf(e.message));
     }
-
-    string version = gnonlin.get_version();
-    if (!version_at_least(version, MIN_GNONLIN)) {
-        stderr.printf(
-            "You have Gnonlin version %s, but this program requires version %s.  Exiting.\n",
-            version, MIN_GNONLIN);
-        return;
-    }
-
-    string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
-    debug_enabled = (str != null && (str[0] >= '1'));
-
-    ClassFactory.set_class_factory(new ClassFactory());
-    new App(project_file);
-    Gtk.main();
 }
 
