@@ -33,7 +33,6 @@ class App : Gtk.Window {
     Gtk.Action paste_action;
     Gtk.Action split_at_playhead_action;
     Gtk.Action trim_to_playhead_action;
-    Gtk.Action revert_to_original_action;
     Gtk.Action clip_properties_action;
     Gtk.Action zoom_to_project_action;
     Gtk.Action join_at_playhead_action;
@@ -68,8 +67,6 @@ class App : Gtk.Window {
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
-        { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
-          "<Control>R", null, on_revert_to_original },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
 
@@ -114,7 +111,6 @@ class App : Gtk.Window {
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
-      <menuitem name="ClipRevertToOriginal" action="RevertToOriginal"/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="ViewMenu" action="View">
@@ -136,7 +132,6 @@ class App : Gtk.Window {
   <popup name="ClipContextMenu">
     <menuitem name="ClipContextCut" action="Cut"/>
     <menuitem name="ClipContextCopy" action="Copy"/>
-    <menuitem name="ClipContextRevert" action="RevertToOriginal"/>
     <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
 </ui>
@@ -179,7 +174,6 @@ class App : Gtk.Window {
         split_at_playhead_action = group.get_action("SplitAtPlayhead");
         trim_to_playhead_action = group.get_action("TrimToPlayhead");
         join_at_playhead_action = group.get_action("JoinAtPlayhead");
-        revert_to_original_action = group.get_action("RevertToOriginal");
         clip_properties_action = group.get_action("ClipProperties");
         zoom_to_project_action = group.get_action("ZoomProject");
         library_view_action = (Gtk.ToggleAction) view_library_action_group.get_action("Library");
@@ -488,15 +482,6 @@ class App : Gtk.Window {
         project.trim_to_playhead();
     }
 
-    public void on_revert_to_original() {
-        foreach (ClipView clip_view in timeline.selected_clips) {
-            Model.Track? track = project.track_from_clip(clip_view.clip);
-            if (track != null) {
-                track.revert_to_original(clip_view.clip);
-            }
-        }
-    }
-
     public void on_clip_properties() {
         Fraction? frames_per_second = null;
         project.get_framerate_fraction(out frames_per_second);
@@ -537,7 +522,6 @@ class App : Gtk.Window {
                 }
             }
         }
-        revert_to_original_action.set_sensitive(clip_is_trimmed);
         clip_properties_action.set_sensitive(clip_selected);
 
         bool playhead_on_clip = project.playhead_on_clip();

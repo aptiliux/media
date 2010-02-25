@@ -54,8 +54,6 @@ class Recorder : Gtk.Window {
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
-        { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
-          "<Control>R", null, on_revert_to_original },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
         { "View", null, "_View", null, null, null },
@@ -109,7 +107,6 @@ class Recorder : Gtk.Window {
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
       <separator />
-      <menuitem name="ClipRevertToOriginal" action="RevertToOriginal" />
       <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
     <menu name="ViewMenu" action="View">
@@ -128,7 +125,6 @@ class Recorder : Gtk.Window {
     </menu>
   </menubar>
   <popup name="ClipContextMenu">
-    <menuitem name="ClipContextRevert" action="RevertToOriginal" />
     <menuitem name="ClipContextProperties" action="ClipProperties" />
   </popup>
   <toolbar name="Toolbar">
@@ -402,27 +398,15 @@ class Recorder : Gtk.Window {
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
 
-        bool clip_is_trimmed = false;
-        if (selected) {
-            foreach (ClipView clip_view in timeline.selected_clips) {
-                clip_is_trimmed = clip_view.clip.is_trimmed();
-                if (clip_is_trimmed) {
-                    break;
-                }
-            }
-        }
-
         delete_action.set_sensitive(selected || library_selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
         set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard.clips.size != 0);
         set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipRevertToOriginal", selected && clip_is_trimmed);
         set_sensitive_menu("/MenuBar/EditMenu/ClipViewProperties", selected);
         set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
             selected && project.playhead_on_contiguous_clip());
-        set_sensitive_menu("/ClipContextMenu/ClipContextRevert", selected && clip_is_trimmed);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
         set_sensitive_menu("/MenuBar/TrackMenu/TrackRename", number_of_tracks > 0);
         set_sensitive_menu("/Toolbar/Record", number_of_tracks > 0);
@@ -730,15 +714,6 @@ class Recorder : Gtk.Window {
 
     public void on_trim_to_playhead() {
         project.trim_to_playhead();
-    }
-
-    public void on_revert_to_original() {
-        foreach (ClipView clip_view in timeline.selected_clips) {
-            Model.Track? track = project.track_from_clip(clip_view.clip);
-            if (track != null) {
-                track.revert_to_original(clip_view.clip);
-            }
-        }
     }
 
     public void on_clip_properties() {
