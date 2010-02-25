@@ -52,7 +52,7 @@ class Recorder : Gtk.Window {
         { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
         { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
-        { "TrimToPlayhead", null, "_Trim to Playhead", "<Control>T", null, on_trim_to_playhead },
+        { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "RevertToOriginal", Gtk.STOCK_REVERT_TO_SAVED, "_Revert to Original",
           "<Control>R", null, on_revert_to_original },
