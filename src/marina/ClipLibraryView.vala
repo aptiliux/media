@@ -426,6 +426,7 @@ public class ClipLibraryView : Gtk.EventBox {
                 if (FileUtils.unlink(filename) != 0) {
                     project.error_occurred("Could not delete %s", filename);
                 }
+                project.undo_manager.reset();
             }
         }
         remove_row(out it);
