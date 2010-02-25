@@ -487,7 +487,13 @@ class Recorder : Gtk.Window {
 
     public override bool key_press_event(Gdk.EventKey event) {
         switch(Gdk.keyval_name(event.keyval)) {
+            case "KP_Enter":
             case "Return":
+                if ((event.state & 
+                    (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.CONTROL_MASK
+                        | Gdk.ModifierType.MOD1_MASK)) != 0) {
+                    return base.key_press_event(event);
+                }
                 on_rewind();
                 break;
             case "left":
@@ -496,10 +502,12 @@ class Recorder : Gtk.Window {
             case "right":
                 project.media_engine.go(project.transport_get_position() + Gst.SECOND);
                 break;
+            case "KP_Add":
             case "equal":
             case "plus":
                 on_zoom_in();
                 break;
+            case "KP_Subtract":
             case "minus":
             case "underscore":
                 on_zoom_out();
