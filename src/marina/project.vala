@@ -330,11 +330,12 @@ public abstract class Project : TempoInformation, Object {
     public double click_volume = 0.8;
     public bool library_visible = true;
     public int library_width = 600;
+    
     /* TODO:
-        * This can't be const since the Vala compiler
-        * (0.7.7) crashes if we try to make it a const.
-        * I've filed a bug with the Vala bugzilla for this.
-    */    
+     * This can't be const since the Vala compiler (0.7.7) crashes if we try to make it a const.
+     * I've filed a bug with the Vala bugzilla for this:
+     * https://bugzilla.gnome.org/show_bug.cgi?id=598204
+     */    
     public static Fraction INVALID_FRAME_RATE = Fraction(-1, 1);
 
     public signal void playstate_changed(PlayState playstate);
