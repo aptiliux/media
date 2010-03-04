@@ -23,8 +23,7 @@ class Recorder : Gtk.Window {
     bool loading;
     const int scroll_speed = 8;
 
-    Gtk.Action delete_action;
-    Gtk.Action record_action;
+    Gtk.ActionGroup main_group;
 
     Gtk.ToggleToolButton play_button;
     Gtk.ToggleToolButton record_button;
@@ -186,15 +185,12 @@ class Recorder : Gtk.Window {
         title = "Fillmore";
         set_default_size(800, 400);
 
-        Gtk.ActionGroup group = new Gtk.ActionGroup("main");
-        group.add_actions(entries, this);
-        group.add_toggle_actions(toggle_entries, this);
-
-        delete_action = group.get_action("Delete");    
-        record_action = group.get_action("Record");
+        main_group = new Gtk.ActionGroup("main");
+        main_group.add_actions(entries, this);
+        main_group.add_toggle_actions(toggle_entries, this);
 
         manager = new Gtk.UIManager();
-        manager.insert_action_group(group, 0);
+        manager.insert_action_group(main_group, 0);
         try {
             manager.add_ui_from_string(ui, -1);
         } catch (Error e) { error("%s", e.message); }
@@ -217,6 +213,7 @@ class Recorder : Gtk.Window {
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
         timeline.size_allocate += on_timeline_size_allocate;
+        timeline.selection_changed += on_timeline_selection_changed;
         
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
@@ -320,12 +317,9 @@ class Recorder : Gtk.Window {
         return widget;
     }
 
-    void set_sensitive_menu(string menu_path, bool sensitive) {
-        Gtk.Widget? the_item = get_widget(manager, menu_path);
-        if (the_item == null) {
-            error("invalid path %s".printf(menu_path));
-        }
-        the_item.set_sensitive(sensitive);
+    void set_sensitive_group(Gtk.ActionGroup group, string group_path, bool sensitive) {
+        Gtk.Action action = group.get_action(group_path);
+        action.set_sensitive(sensitive);
     }
 
     void on_track_changed() {
@@ -398,19 +392,20 @@ class Recorder : Gtk.Window {
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
 
-        delete_action.set_sensitive(selected || library_selected);
-        set_sensitive_menu("/MenuBar/EditMenu/EditCopy", selected);
-        set_sensitive_menu("/MenuBar/EditMenu/EditCut", selected);
-        set_sensitive_menu("/MenuBar/EditMenu/EditPaste", timeline.clipboard.clips.size != 0);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipSplitAtPlayhead", selected && playhead_on_clip);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipTrimToPlayhead", selected && playhead_on_clip);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipViewProperties", selected);
-        set_sensitive_menu("/MenuBar/EditMenu/ClipJoinAtPlayhead",
-            selected && project.playhead_on_contiguous_clip());
-        set_sensitive_menu("/MenuBar/TrackMenu/TrackDelete", number_of_tracks > 0);
-        set_sensitive_menu("/MenuBar/TrackMenu/TrackRename", number_of_tracks > 0);
-        set_sensitive_menu("/Toolbar/Record", number_of_tracks > 0);
-        set_sensitive_menu("/MenuBar/FileMenu/FileExport", project.can_export());
+        set_sensitive_group(main_group, "DeleteTrack", number_of_tracks > 0);
+        set_sensitive_group(main_group, "Copy", selected);
+        set_sensitive_group(main_group, "Cut", selected);
+        set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0);
+        set_sensitive_group(main_group, "SplitAtPlayhead", selected && playhead_on_clip);
+        set_sensitive_group(main_group, "TrimToPlayhead", selected && playhead_on_clip);
+        set_sensitive_group(main_group, "ClipProperties", selected);
+        set_sensitive_group(main_group, "JoinAtPlayhead", 
+                selected && project.playhead_on_contiguous_clip());
+        set_sensitive_group(main_group, "Rename", number_of_tracks > 0);
+        set_sensitive_group(main_group, "Record", number_of_tracks > 0);
+        set_sensitive_group(main_group, "Export", project.can_export());
+        set_sensitive_group(main_group, "Delete", selected || library_selected);
+
     }
 
     public Model.Track? selected_track() {
@@ -866,6 +861,10 @@ class Recorder : Gtk.Window {
         }
     }
 
+    void on_timeline_selection_changed(bool selection) {
+        update_menu();
+    }
+
     // main
 
     static void main(string[] args) {
@@ -943,7 +942,7 @@ class Recorder : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
         if (playstate == PlayState.STOPPED) {
             play_button.set_active(false);
-            set_sensitive_menu("/MenuBar/FileMenu/FileExport", project.can_export());
+            set_sensitive_group(main_group, "Export", project.can_export());
         }
     }
 

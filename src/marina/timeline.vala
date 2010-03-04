@@ -443,6 +443,7 @@ public class TimeLine : Gtk.EventBox {
                     clip_view.is_selected = false;
                 }
                 selected_clips.clear();
+                selection_changed(false);
             }
         }
         queue_draw();
