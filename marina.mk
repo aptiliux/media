@@ -139,7 +139,7 @@ ifdef PROGRAM
 $(PROGRAM): $(EXPANDED_OBJ_FILES) $(MARINA_DEPEND)
 	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -o $@
 ifdef GLADE_NAME
-	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -shared -o $(GLADE_NAME)
+	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -fPIC -export-dynamic -shared -o $(GLADE_NAME)
 endif
 clean:
 	rm -f $(EXPANDED_C_FILES)
