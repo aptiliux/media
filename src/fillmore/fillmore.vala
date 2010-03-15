@@ -579,6 +579,8 @@ class Recorder : Gtk.Window {
     }
 
     void on_save_new_file_finished_closing(bool did_close) {
+        project.closed -= on_project_close;
+        finished_closing -= on_save_new_file_finished_closing;
         project.load(project.get_project_file());
     }
 
