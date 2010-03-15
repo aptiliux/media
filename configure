@@ -79,6 +79,6 @@ if [ $variables ]
 then
     echo -e -n $variables > $CONFIG_IN
 fi
-echo "CONFIG_IN=../${CONFIG_IN}" >> $CONFIG_IN
+echo "CONFIG_IN=../../${CONFIG_IN}" >> $CONFIG_IN
 
 printf "Configured.  Type 'make' to build\n"
