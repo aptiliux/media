@@ -330,7 +330,7 @@ public abstract class Project : TempoInformation, Object {
     public double click_volume = 0.8;
     public bool library_visible = true;
     public int library_width = 600;
-    
+
     /* TODO:
      * This can't be const since the Vala compiler (0.7.7) crashes if we try to make it a const.
      * I've filed a bug with the Vala bugzilla for this:
@@ -887,6 +887,7 @@ public abstract class Project : TempoInformation, Object {
     }
 
     public void on_error_occurred(string major_error, string? minor_error) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error_occurred");
         error_occurred(major_error, minor_error);
     }
 

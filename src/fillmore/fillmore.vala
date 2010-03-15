@@ -402,10 +402,11 @@ class Recorder : Gtk.Window {
         set_sensitive_group(main_group, "JoinAtPlayhead", 
                 selected && project.playhead_on_contiguous_clip());
         set_sensitive_group(main_group, "Rename", number_of_tracks > 0);
-        set_sensitive_group(main_group, "Record", number_of_tracks > 0);
+        set_sensitive_group(main_group, "Record", number_of_tracks > 0 
+                && !project.transport_is_recording());
         set_sensitive_group(main_group, "Export", project.can_export());
         set_sensitive_group(main_group, "Delete", selected || library_selected);
-
+        set_sensitive_group(main_group, "Play", true);
     }
 
     public Model.Track? selected_track() {
@@ -818,6 +819,7 @@ class Recorder : Gtk.Window {
 
     void on_play() {
         if (project.transport_is_recording()) {
+            set_sensitive_group(main_group, "Record", true);
             record_button.set_active(false);
             play_button.set_active(false);
             project.media_engine.pause();
@@ -829,9 +831,9 @@ class Recorder : Gtk.Window {
 
     void on_record() {
         if (record_button.get_active()) {
+            set_sensitive_group(main_group, "Record", false);
+            set_sensitive_group(main_group, "Play", false);
             project.record(selected_track() as Model.AudioTrack);
-        } else {
-            project.media_engine.pause();
         }
     }
 

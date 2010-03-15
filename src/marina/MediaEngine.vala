@@ -1121,7 +1121,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_capsfilter = make_element("capsfilter");
         record_capsfilter.set("caps", get_record_audio_caps());
         record_sink = make_element("filesink");
-        record_sink.set("location", region.clipfile.filename);
+        record_sink.set("location", record_region.clipfile.filename);
         wav_encoder = make_element("wavenc");
 
         pipeline.add_many(audio_in, record_capsfilter, wav_encoder, record_sink);
