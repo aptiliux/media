@@ -726,7 +726,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         if (!version_at_least(version, min_version)) {
             throw new MediaError.MISSING_PLUGIN(
                 "You have %s version %s, but this program requires at least version %s".printf(
-                package_name, version, MIN_GST_PLUGINS_GOOD));
+                package_name, version, min_version));
         }
     }
 
