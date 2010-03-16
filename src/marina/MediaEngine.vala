@@ -93,7 +93,7 @@ class MediaAudioClip : MediaClip {
     public MediaAudioClip(Gst.Bin composition, Model.Clip clip, string filename) throws Error {
         base(composition, clip);
         if (!clip.is_recording) {
-            add_single_decode_bin(filename, "audio/x-raw-int");
+            add_single_decode_bin(filename, "audio/x-raw-float;audio/x-raw-int");
         }
     }
 }
