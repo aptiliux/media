@@ -18,7 +18,7 @@ public class TrackClipPair {
 public class Clipboard {
     public Gee.ArrayList<TrackClipPair> clips = new Gee.ArrayList<TrackClipPair>();
     int64 minimum_time = -1;
-    
+
     public void select(Gee.ArrayList<ClipView> selected_clips) {
         clips.clear();
         minimum_time = -1;
@@ -31,7 +31,7 @@ public class Clipboard {
             clips.add(track_clip_pair);
         }
     }
-    
+
     public void paste(Model.Track selected_track, int64 time) {
         if (clips.size != 1) {
             foreach (TrackClipPair pair in clips) {
@@ -51,10 +51,10 @@ public class TimeLine : Gtk.EventBox {
     ClipView? drag_clip = null;
     public Gee.ArrayList<TrackView> tracks = new Gee.ArrayList<TrackView>();
     Gtk.VBox vbox;
-    
+
     public Gee.ArrayList<ClipView> selected_clips = new Gee.ArrayList<ClipView>();
     public Clipboard clipboard = new Clipboard();
-    
+
     public const int BAR_HEIGHT = 20;
     public const int BORDER = 4;
 
@@ -66,7 +66,7 @@ public class TimeLine : Gtk.EventBox {
     float pixel_div;
     float pixel_min = 0.1f;
     float pixel_max = 4505.0f;
-    
+
     public const int RULER_HEIGHT = 20;
     // GapView will re-emerge after 0.1 release
     // public GapView gap_view;
@@ -78,20 +78,20 @@ public class TimeLine : Gtk.EventBox {
         project = p;
         this.provider = provider;
         provider.geometry_changed += on_geometry_changed;
-        
+
         vbox = new Gtk.VBox(false, 0);
         ruler = new View.Ruler(provider, RULER_HEIGHT);
         ruler.position_changed += on_ruler_position_changed;
         vbox.pack_start(ruler, false, false, 0);
-        
+
         project.track_added += on_track_added;
         project.track_removed += on_track_removed;
         project.media_engine.position_changed += on_position_changed;
         add(vbox);
-        
+
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
         modify_fg(Gtk.StateType.NORMAL, parse_color("#f00"));
-        
+
         pixel_div = pixel_max / pixel_min;
         provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
@@ -103,10 +103,10 @@ public class TimeLine : Gtk.EventBox {
         double numerator = GLib.Math.log(
                     (width * Gst.SECOND) / ((double) project.get_length() * (double) pixel_min));
         double denominator = GLib.Math.log((double) pixel_div);
-        
+
         zoom((float) (numerator / denominator) - provider.get_pixel_percentage());
     }
-    
+
     public void zoom (float inc) {
         provider.calculate_pixel_step(inc, pixel_min, pixel_div);
         foreach (TrackView track in tracks) {
@@ -121,12 +121,12 @@ public class TimeLine : Gtk.EventBox {
         provider.calculate_pixel_step(0, pixel_min, pixel_div);
         ruler.queue_draw();
     }
-    
+
     void on_position_changed() {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");        
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
         queue_draw();
     }
-    
+
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         TrackView track_view = ClassFactory.get_class_factory().get_track_view(track, this);
@@ -139,7 +139,7 @@ public class TimeLine : Gtk.EventBox {
         }
         vbox.show_all();
     }
-    
+
     void on_track_removed(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_removed");
         foreach (TrackView track_view in tracks) {
@@ -151,7 +151,7 @@ public class TimeLine : Gtk.EventBox {
             }
         }
     }
-    
+
     public void on_clip_view_added(ClipView clip_view) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_clip_view_added");
         clip_view.selection_request += on_clip_view_selection_request;
@@ -161,14 +161,14 @@ public class TimeLine : Gtk.EventBox {
         clip_view.trim_begin += on_clip_view_trim_begin;
         clip_view.trim_commit += on_clip_view_trim_commit;
     }
-    
+
     public void deselect_all_clips() {
         foreach(ClipView selected_clip_view in selected_clips) {
             selected_clip_view.is_selected = false;
         }
         selected_clips.clear();
     }
-    
+
     void on_clip_view_move_begin(ClipView clip_view, bool copy) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_begin");
         foreach (ClipView selected_clip in selected_clips) {
@@ -177,6 +177,9 @@ public class TimeLine : Gtk.EventBox {
             TrackView track_view = selected_clip.get_parent() as TrackView;
             if (track_view != null) {
                 track_view.get_track().remove_clip_from_array(selected_clip.clip);
+                if (selected_clip != clip_view) {
+                    track_view.move_to_top(selected_clip);
+                }
             }
             if (copy) {
                 // TODO: When adding in linking/groups, this should be moved into track_view
@@ -184,9 +187,9 @@ public class TimeLine : Gtk.EventBox {
                 // or selected and not iterate over them in this fashion in the timeline.
                 Model.Clip clip = selected_clip.clip.copy();
                 track_view.get_track().add(clip, selected_clip.clip.start, false);
-                track_view.move_to_top(clip_view);
+                track_view.move_to_top(selected_clip);
             }
-        }    
+        }
     }
 
     void on_clip_view_trim_begin(ClipView clip, Gdk.WindowEdge edge) {
@@ -203,7 +206,7 @@ public class TimeLine : Gtk.EventBox {
                 break;
         }
     }
-    
+
     void on_clip_view_selection_request(ClipView clip_view, bool extend) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_selection_request");
 /*
@@ -222,6 +225,8 @@ public class TimeLine : Gtk.EventBox {
             if (selected_clips.size > 1) {
                 if (in_selected_clips && clip_view.is_selected) {
                     clip_view.is_selected = false;
+                    // just deselected with multiple clips, so moving is not allowed
+                    drag_clip = null;
                     selected_clips.remove(clip_view);
                 }
             }
@@ -271,10 +276,14 @@ public class TimeLine : Gtk.EventBox {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
         if (move_allowed(ref delta)) {
             move_the_clips(delta);
-        }    
+        }
     }
-    
+
     bool move_allowed(ref int move_distance) {
+        if (drag_clip == null) {
+            return false;
+        }
+
         foreach(ClipView clip_view in selected_clips) {
             int position = provider.time_to_xpos(clip_view.clip.start);
             if ((position + move_distance) < BORDER) {
@@ -289,7 +298,7 @@ public class TimeLine : Gtk.EventBox {
             do_clip_move(clip_view, move_distance);
         }
     }
-    
+
     public void do_clip_move(ClipView clip_view, int delta) {
         clip_view.clip.start += provider.xsize_to_time(delta);
     }
@@ -307,7 +316,7 @@ public class TimeLine : Gtk.EventBox {
         return false;
 //        return gap_view != null;
     }
-    
+
     public void delete_selection() {
         if (is_clip_selected()) {
             while (selected_clips.size > 0) {
@@ -331,21 +340,21 @@ public class TimeLine : Gtk.EventBox {
 */
         }
     }
-    
+
     public void do_cut() {
         clipboard.select(selected_clips);
         delete_selection();
     }
-    
+
     public void do_copy() {
         clipboard.select(selected_clips);
         selection_changed(true);
     }
-    
+
     public void paste() {
         do_paste(project.transport_get_position());
     }
-    
+
     public void do_paste(int64 pos) {
         TrackView? view = null;
         foreach (TrackView track_view in tracks) {
@@ -362,7 +371,7 @@ public class TimeLine : Gtk.EventBox {
         clipboard.paste(view.get_track(), pos);
         queue_draw();
     }
-    
+
     public override bool expose_event(Gdk.EventExpose event) {
         base.expose_event(event);
 
@@ -370,7 +379,7 @@ public class TimeLine : Gtk.EventBox {
         Gdk.draw_line(window, style.fg_gc[(int) Gtk.StateType.NORMAL],
                       xpos, 0,
                       xpos, allocation.height);
-        
+
         return true;
     }
 
@@ -380,16 +389,16 @@ public class TimeLine : Gtk.EventBox {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_received");
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
-        
+
         Model.Track? track = null;
         TrackView? track_view = find_child(x, y) as TrackView;
-        
+
         if (track_view == null) {
             return;
         }
-        
+
         track = track_view.get_track();
-        
+
         project.create_clip_importer(track, true, provider.xpos_to_time(x));
 
         try {
@@ -408,7 +417,7 @@ public class TimeLine : Gtk.EventBox {
 
     public void update_pos(int event_x) {
         int64 time = provider.xpos_to_time(event_x);
-        
+
         project.snap_coord(out time, provider.get_pixel_snap_time());
         project.media_engine.go(time);
     }
@@ -428,13 +437,13 @@ public class TimeLine : Gtk.EventBox {
 */      
         drag_clip = null;
         Gtk.Widget? child = find_child(event.x, event.y);
-        
+
         if (child is View.Ruler) {
             View.Ruler ruler = child as View.Ruler;
             ruler.button_press_event(event);
         } else if (child is TrackView) {
             TrackView track_view = child as TrackView;
-            
+
             drag_clip = track_view.find_child(event.x, event.y) as ClipView;
             if (drag_clip != null) {
                 drag_clip.button_press_event(event);
@@ -458,7 +467,7 @@ public class TimeLine : Gtk.EventBox {
         }
         return true;
     }
-    
+
     public override bool motion_notify_event(Gdk.EventMotion event) {
         if (drag_clip != null) {
             drag_clip.motion_notify_event(event);
@@ -475,24 +484,24 @@ public class TimeLine : Gtk.EventBox {
         }
         return true;
     }
-    
+
     TrackView? find_video_track_view() {
         foreach (TrackView track in tracks) {
             if (track.get_track().media_type() == Model.MediaType.VIDEO) {
                 return track;
             }
         }
-        
+
         return null;
     }
-    
+
     TrackView? find_audio_track_view() {
         foreach (TrackView track in tracks) {
             if (track.get_track().media_type() == Model.MediaType.AUDIO) {
                 return track;
             }
         }
-        
+
         return null;
     }
 }

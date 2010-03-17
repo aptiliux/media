@@ -9,29 +9,29 @@ using Logging;
 class TrackViewConcrete : TrackView, Gtk.Fixed {
     Model.Track track;
     TimeLine timeline;
-    
+
     const int clip_height = 50;
     const int TrackHeight = clip_height + TimeLine.BORDER * 2;
 
     public TrackViewConcrete(Model.Track track, TimeLine timeline) {
         this.track = track;
         this.timeline = timeline;
-        
+
         track.clip_added += on_clip_added;
         track.clip_removed += on_clip_removed;
     }
-    
+
     override void size_request(out Gtk.Requisition requisition) {
         base.size_request(out requisition);
         requisition.height = TrackHeight;
         requisition.width += TimeLine.BORDER;    // right margin
     }
-    
+
     void on_clip_moved(ClipView clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         set_clip_pos(clip);
     }
-    
+
     void on_clip_deleted(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_deleted");
         track.delete_clip(clip);
@@ -92,7 +92,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
             if (view != null) {
                 view.on_clip_moved(view.clip);
             }
-        }            
+        }
     }
 
     void on_clip_removed(Model.Clip clip) {

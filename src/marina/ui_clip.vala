@@ -9,7 +9,7 @@ using Logging;
 public class GapView : Gtk.DrawingArea {
     public Model.Gap gap;
     Gdk.Color fill_color;
-    
+
     public GapView(int64 start, int64 length, int width, int height) {
 
         gap = new Model.Gap(start, start + length);
@@ -60,6 +60,7 @@ public class ClipView : Gtk.DrawingArea {
     int drag_point;
     MotionMode motion_mode = MotionMode.NONE;
     bool button_down = false;
+    bool pending_selection;
     const int MIN_DRAG = 5;
     const int TRIM_WIDTH = 10;
 
@@ -130,7 +131,7 @@ public class ClipView : Gtk.DrawingArea {
     public void delete_clip() {
         clip_deleted(clip);
     }
-    
+
     public void draw() {
         weak Gdk.Color fill = is_selected ? color_selected : color_normal;
 
@@ -209,7 +210,12 @@ public class ClipView : Gtk.DrawingArea {
             trim_begin(this, Gdk.WindowEdge.EAST);
             motion_mode = MotionMode.RIGHT_TRIM;
         } else {
-            selection_request(this, extend_selection);
+            if (!is_selected) {
+                pending_selection = false;
+                selection_request(this, extend_selection);
+            } else {
+                pending_selection = true;
+            }
         }
         return true;
     }
@@ -224,9 +230,14 @@ public class ClipView : Gtk.DrawingArea {
         } else {
             context_menu.popdown();
         }
-
         if (event.button == 1) {
             switch (motion_mode) {
+                case MotionMode.NONE: {
+                    if (pending_selection) {
+                        selection_request(this, true);
+                    }
+                }
+                break;
                 case MotionMode.DRAGGING: {
                     int delta = (int) event.x - drag_point;
                     if (motion_mode == MotionMode.DRAGGING) {

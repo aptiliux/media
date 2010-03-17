@@ -189,7 +189,7 @@ public abstract class Track : Object {
                                     clips[end_index].name, c.end, 
                                     clips[end_index].media_start + diff,
                                     clips[end_index].duration - diff, false);
-                    add(cl, cl.start, true);
+                    add(cl, cl.start, false);
                 }
             } else {
                 clips[end_index].set_media_start_duration(
