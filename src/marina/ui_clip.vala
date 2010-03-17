@@ -12,26 +12,26 @@ public class GapView : Gtk.DrawingArea {
     
     public GapView(int64 start, int64 length, int width, int height) {
 
-        gap = new Model.Gap(start, start + length);         
-        
+        gap = new Model.Gap(start, start + length);
+
         Gdk.Color.parse("#777", out fill_color);
-        
+
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
-        
+
         set_size_request(width, height);
-    }  
-    
+    }
+
     public signal void removed(GapView gap_view);
     public signal void unselected(GapView gap_view);
-    
+
     public void remove() {
         removed(this);
     }
-    
+
     public void unselect() {
         unselected(this);
     }
-    
+
     public override bool expose_event(Gdk.EventExpose e) {
         draw_rounded_rectangle(window, fill_color, true, allocation.x, allocation.y, 
                                 allocation.width - 1, allocation.height - 1);
@@ -46,7 +46,7 @@ public class ClipView : Gtk.DrawingArea {
         LEFT_TRIM,
         RIGHT_TRIM
     }
-    
+
     public Model.Clip clip;
     public int64 initial_time;
     weak Model.TimeSystem time_provider;
@@ -54,7 +54,7 @@ public class ClipView : Gtk.DrawingArea {
     public int height; // TODO: We request size of height, but we aren't allocated this height.
                        // We should be using the allocated height, not the requested height. 
     public static Gtk.Menu context_menu;
-    Gdk.Color color_black;    
+    Gdk.Color color_black;
     Gdk.Color color_normal;
     Gdk.Color color_selected;
     int drag_point;
@@ -62,12 +62,12 @@ public class ClipView : Gtk.DrawingArea {
     bool button_down = false;
     const int MIN_DRAG = 5;
     const int TRIM_WIDTH = 10;
-    
+
     static Gdk.Cursor left_trim_cursor = new Gdk.Cursor(Gdk.CursorType.LEFT_SIDE);
     static Gdk.Cursor right_trim_cursor = new Gdk.Cursor(Gdk.CursorType.RIGHT_SIDE);
     static Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
     static Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.HAND2); // will be used for drag
-    
+
     public signal void clip_deleted(Model.Clip clip);
     public signal void clip_moved(ClipView clip);
     public signal void selection_request(ClipView clip_view, bool extend_selection);
@@ -76,13 +76,13 @@ public class ClipView : Gtk.DrawingArea {
     public signal void move_begin(ClipView clip_view, bool copy);
     public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
-    
+
     public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
         is_selected = false;
-        
+
         clip.moved += on_clip_moved;
         clip.updated += on_clip_updated;
 
@@ -90,7 +90,7 @@ public class ClipView : Gtk.DrawingArea {
         get_clip_colors();
         
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
-              
+
         adjust_size(height);
     }
 
@@ -105,7 +105,7 @@ public class ClipView : Gtk.DrawingArea {
             Gdk.Color.parse("#AA0000", out color_normal);
         }
     }
-    
+
     void on_clip_updated() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");
         get_clip_colors();
@@ -115,12 +115,12 @@ public class ClipView : Gtk.DrawingArea {
     // Note that a view's size may vary slightly (by a single pixel) depending on its
     // starting position.  This is because the clip's length may not be an integer number of
     // pixels, and may get rounded either up or down depending on the clip position.
-    public void adjust_size(int height) {       
+    public void adjust_size(int height) {
         int width = time_provider.time_to_xpos(clip.start + clip.duration) -
-                    time_provider.time_to_xpos(clip.start);                  
+                    time_provider.time_to_xpos(clip.start);
         set_size_request(width + 1, height);
     }
-    
+
     public void on_clip_moved(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         adjust_size(height);
@@ -133,24 +133,24 @@ public class ClipView : Gtk.DrawingArea {
     
     public void draw() {
         weak Gdk.Color fill = is_selected ? color_selected : color_normal;
-                                                                         
+
         bool left_trimmed = clip.media_start != 0 && !clip.is_recording;
-        
+
         bool right_trimmed = clip.clipfile.is_online() ? 
                               (clip.media_start + clip.duration != clip.clipfile.length) : false;
-            
+
         if (!left_trimmed && !right_trimmed) {
             draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
                                    allocation.width - 2, allocation.height - 2);
             draw_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
                                    allocation.width - 1, allocation.height - 1);
-                                   
+
         } else if (!left_trimmed && right_trimmed) {
             draw_left_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
                                         allocation.width - 2, allocation.height - 2);
             draw_left_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
                                    allocation.width - 1, allocation.height - 1);
-                                   
+
         } else if (left_trimmed && !right_trimmed) {
             draw_right_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
                                          allocation.width - 2, allocation.height - 2);
@@ -163,7 +163,7 @@ public class ClipView : Gtk.DrawingArea {
             draw_square_rectangle(window, color_black, false, allocation.x, allocation.y,
                                   allocation.width - 1, allocation.height - 1);
         }
-           
+
         Gdk.GC gc = new Gdk.GC(window);
         Gdk.Rectangle r = { 0, 0, 0, 0 };
 
@@ -172,7 +172,7 @@ public class ClipView : Gtk.DrawingArea {
         r.y = allocation.y;
         r.width = allocation.width;
         r.height = allocation.height;
-        
+
         gc.set_clip_rectangle(r);
 
         Pango.Layout layout;
@@ -186,12 +186,12 @@ public class ClipView : Gtk.DrawingArea {
         }
         Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
     }
-    
+
     public override bool expose_event(Gdk.EventExpose event) {
         draw();
         return true;
     }
-    
+
     public override bool button_press_event(Gdk.EventButton event) {
         event.x -= allocation.x;
         button_down = true;
@@ -213,18 +213,18 @@ public class ClipView : Gtk.DrawingArea {
         }
         return true;
     }
-    
+
     public override bool button_release_event(Gdk.EventButton event) {
         event.x -= allocation.x;
         button_down = false;
-        
+
         if (event.button == 3) {
             context_menu.select_first(true);
             context_menu.popup(null, null, null, 0, 0);
         } else {
             context_menu.popdown();
         }
-        
+
         if (event.button == 1) {
             switch (motion_mode) {
                 case MotionMode.DRAGGING: {
@@ -245,11 +245,11 @@ public class ClipView : Gtk.DrawingArea {
         motion_mode = MotionMode.NONE;
         return true;
     }
-    
+
     public override bool motion_notify_event(Gdk.EventMotion event) {
         event.x -= allocation.x;
         int delta = (int) event.x - drag_point;
-        
+
         switch (motion_mode) {
             case MotionMode.NONE:
                 if (is_left_trim(event.x, event.y)) {
@@ -262,7 +262,7 @@ public class ClipView : Gtk.DrawingArea {
                         if (do_copy) {
                             window.set_cursor(plus_cursor);
                         } else {
-                            window.set_cursor(hand_cursor);                        
+                            window.set_cursor(hand_cursor);
                         }
                         motion_mode = MotionMode.DRAGGING;
                         move_begin(this, do_copy);
@@ -306,9 +306,9 @@ public class ClipView : Gtk.DrawingArea {
     bool is_left_trim(double x, double y) {
         return is_trim_height(y) && x > 0 && x < TRIM_WIDTH;
     }
-    
+
     bool is_right_trim(double x, double y) {
         return is_trim_height(y) && x > allocation.width - TRIM_WIDTH && 
             x < allocation.width;
-    }    
+    }
 }
