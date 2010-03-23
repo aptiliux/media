@@ -8,7 +8,7 @@ VALA_LDFLAGS += `pkg-config --libs $(EXT_PKGS)`
 MARINA_DEPEND = ../marina/libmarina.a
 
 SRC_FILES = \
-	ui_app.vala \
+	lombard.vala \
 	video_project.vala
 
 ifndef BUILD_DIR
