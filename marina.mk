@@ -31,7 +31,7 @@ EXT_PKGS = \
 	gtk+-2.0
 
 EXT_PKG_VERSIONS = \
-	gtk+-2.0 >= 2.14.4 \
+	gtk+-2.0 >= 2.18.0 \
 	gee-1.0 >= 0.5.0 \
 	gdk-x11-2.0 >= 2.18.3 \
 	gstreamer-0.10 >= 0.10.26 \

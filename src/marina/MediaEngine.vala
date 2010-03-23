@@ -504,26 +504,7 @@ public class VideoOutput : MediaConnector {
     public override void connect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         emit(this, Facility.GRAPH, Level.INFO, "connecting");
-        media_engine.prepare_window += on_prepare_window;
-        if (!pipeline.add(sink)) {
-            error("could not add sink");
-        }
-        if (!elements[VideoIndex].link(sink)) {
-            error("can't link converter with video sink!");
-        }
-        media_engine.sync_element_message();
-    }
 
-    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
-            Gst.Element[] elements) {
-        emit(this, Facility.GRAPH, Level.INFO, "disconnecting");
-        elements[VideoIndex].unlink(sink);
-        pipeline.remove(sink);
-        media_engine.prepare_window -= on_prepare_window;
-    }
-
-    public void on_prepare_window() {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_prepare_window");
         uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
         Gst.XOverlay overlay = (Gst.XOverlay) sink;
         overlay.set_xwindow_id(xid);
@@ -531,6 +512,20 @@ public class VideoOutput : MediaConnector {
         // Once we've connected our video sink to a widget, it's best to turn off GTK
         // double buffering for the widget; otherwise the video image flickers as it's resized.
         output_widget.unset_flags(Gtk.WidgetFlags.DOUBLE_BUFFERED);
+
+        if (!pipeline.add(sink)) {
+            error("could not add sink");
+        }
+        if (!elements[VideoIndex].link(sink)) {
+            error("can't link converter with video sink!");
+        }
+    }
+
+    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+            Gst.Element[] elements) {
+        emit(this, Facility.GRAPH, Level.INFO, "disconnecting");
+        elements[VideoIndex].unlink(sink);
+        pipeline.remove(sink);
     }
 }
 
@@ -740,22 +735,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         connector.disconnect(this, pipeline, {adder, converter});
     }
 
-    public void sync_element_message() {
-        // We need to wait for the prepare-xwindow-id element message, which tells us when it's
-        // time to set the X window ID.  We must respond to this message synchronously.
-        // If we used an asynchronous signal (enabled via gst_bus_add_signal_watch) then the
-        // xvimagesink would create its own output window which would flash briefly
-        // onto the display.
-
-        Gst.Bus bus = pipeline.get_bus();
-
-        // TODO: we should be calling disable_sync_message_emission, but it seems that no matter
-        // where or when we call it, we get a 'CRITICAL error number of watchers == 0' assert
-
-        bus.enable_sync_message_emission();
-        bus.sync_message["element"] += on_element_message;
-    }
-
     public Gst.Element get_audio_silence() throws Error {
         Gst.Element silence = make_element("audiotestsrc");
         silence.set("wave", 4);     // 4 is silence
@@ -821,16 +800,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_eos");
         if (play_state == PlayState.EXPORTING)
             pipeline.set_state(Gst.State.NULL);
-    }
-
-    void on_element_message(Gst.Bus bus, Gst.Message message) {
-        emit(this, Facility.GRAPH, Level.VERBOSE, message.structure.name.to_string());
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element_message");
-        if (!message.structure.has_name("prepare-xwindow-id"))
-            return;
-
-        prepare_window();
-        bus.sync_message["element"] -= on_element_message;
     }
 
     void on_element(Gst.Bus bus, Gst.Message message) {
