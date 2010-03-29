@@ -103,14 +103,16 @@ class App : Gtk.Window {
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
-      <menuitem name="EditDelete" action="Delete"/>
+      <separator/>
       <menuitem name="EditCut" action="Cut"/>
       <menuitem name="EditCopy" action="Copy"/>
       <menuitem name="EditPaste" action="Paste"/>
+      <menuitem name="EditDelete" action="Delete"/>
       <separator/>
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
+      <separator/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="ViewMenu" action="View">
