@@ -85,7 +85,7 @@ class App : Gtk.Window {
     };
 
     const Gtk.ToggleActionEntry[] check_actions = { 
-        { "Library", null, "Library", "F9", null, on_view_library, true }
+        { "Library", null, "_Library", "F9", null, on_view_library, true }
     };
 
     const string ui = """
