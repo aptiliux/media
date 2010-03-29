@@ -116,9 +116,10 @@ class App : Gtk.Window {
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="ViewMenu" action="View">
+        <menuitem name="ViewLibrary" action="Library"/>
+        <separator />
         <menuitem name="ViewZoomIn" action="ZoomIn"/>
         <menuitem name="ViewZoomOut" action="ZoomOut"/>
-        <separator />
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
     </menu>
     <menu name="GoMenu" action="Go">
@@ -187,10 +188,6 @@ class App : Gtk.Window {
         } catch (Error e) { error("%s", e.message); }
 
         manager.insert_action_group(view_library_action_group, 1);
-
-        uint view_merge_id = manager.new_merge_id();
-        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/ViewZoomProject",
-                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, false);
 
         menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
 
