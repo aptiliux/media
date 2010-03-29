@@ -71,8 +71,8 @@ class App : Gtk.Window {
             null, on_clip_properties },
 
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _in", "equal", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _out", "minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "equal", null, on_zoom_in },
+        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "minus", null, on_zoom_out },
         { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Go", null, "_Go", null, null, null },
