@@ -34,11 +34,11 @@ EXT_PKG_VERSIONS = \
 	gtk+-2.0 >= 2.18.0 \
 	gee-1.0 >= 0.5.0 \
 	gdk-x11-2.0 >= 2.18.3 \
-	gstreamer-0.10 >= 0.10.26 \
-	gstreamer-base-0.10 >= 0.10.25 \
-	gstreamer-controller-0.10 >= 0.10.25 \
-	gstreamer-interfaces-0.10 >= 0.10.25 \
-	gstreamer-pbutils-0.10 >= 0.10.25
+	gstreamer-0.10 >= 0.10.28 \
+	gstreamer-base-0.10 >= 0.10.28 \
+	gstreamer-controller-0.10 >= 0.10.28 \
+	gstreamer-interfaces-0.10 >= 0.10.28 \
+	gstreamer-pbutils-0.10 >= 0.10.28
 
 PKGS = $(EXT_PKGS) $(LOCAL_PKGS)
 

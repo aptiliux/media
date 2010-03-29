@@ -629,9 +629,9 @@ public class OggVorbisExport : MediaConnector {
 }
 
 public class MediaEngine : MultiFileProgressInterface, Object {
-    const string MIN_GNONLIN = "0.10.10.3";
-    const string MIN_GST_PLUGINS_GOOD = "0.10.18";
-    const string MIN_GST_PLUGINS_BASE = "0.10.26";
+    const string MIN_GNONLIN = "0.10.15";
+    const string MIN_GST_PLUGINS_GOOD = "0.10.21";
+    const string MIN_GST_PLUGINS_BASE = "0.10.28";
     public Gst.Pipeline pipeline;
 
     // Video playback
