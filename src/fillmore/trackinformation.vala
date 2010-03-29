@@ -6,9 +6,9 @@
 
 namespace UI {
     class TrackInformation : Gtk.Dialog {
- 
+
         Gtk.Entry entry;
-            
+
         construct {
             set_title("New Track");
             set_modal(true);
@@ -18,7 +18,8 @@ namespace UI {
             Gtk.Label label = new Gtk.Label("Track Name:");
             entry = new Gtk.Entry();
             entry.set_activates_default(true);
-    
+            entry.changed += on_entry_changed;
+
             Gtk.Table table = new Gtk.Table(1, 2, false);
             table.attach_defaults(label, 0, 1, 0, 1);
             table.attach_defaults(entry, 1, 2, 0, 1);
@@ -34,9 +35,14 @@ namespace UI {
             entry.set_text(new_name);
             entry.select_region(0, -1);
         }
-                    
+
         public string get_track_name() {
             return entry.get_text().strip();
+        }
+
+        private void on_entry_changed() {
+            bool is_valid = get_track_name().length > 0;
+            set_response_sensitive(Gtk.ResponseType.OK, is_valid);
         }
     }
 }
