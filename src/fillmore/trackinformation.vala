@@ -15,7 +15,7 @@ namespace UI {
             add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                         Gtk.STOCK_OK, Gtk.ResponseType.OK,
                         null);
-            Gtk.Label label = new Gtk.Label("Track Name:");
+            Gtk.Label label = new Gtk.Label("Track name:");
             entry = new Gtk.Entry();
             entry.set_activates_default(true);
             entry.changed += on_entry_changed;

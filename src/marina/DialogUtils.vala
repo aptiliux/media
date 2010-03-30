@@ -284,7 +284,7 @@ namespace DialogUtils {
 
             int rate;
             if (selected_clip.clip.clipfile.get_sample_rate(out rate)) {
-                add_label_to_table(t, "<i>Sample Rate:</i>", 0, row, tab_padding, 0);
+                add_label_to_table(t, "<i>Sample rate:</i>", 0, row, tab_padding, 0);
                 add_label_to_table(t, "%d Hz".printf(rate), 1, row++, 5, 0);
             }
 
