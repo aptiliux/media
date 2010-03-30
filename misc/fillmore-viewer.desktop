@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Name=Fillmore Multi-track Recorder
+GenericName=Multi-track Recorder
+Exec=fillmore %f
+Icon=fillmore
+Terminal=false
+NoDisplay=true
+Type=Application
+MimeType=image/jpeg;
+Categories=Audio;GNOME;GTK;
+X-GIO-NoFuse=true

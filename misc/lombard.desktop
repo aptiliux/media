@@ -1,0 +1,13 @@
+
+[Desktop Entry]
+Version=1.0
+Name=Lombard Video Editor
+GenericName=Video Editor
+Comment=Create great videos
+Exec=lombard %U
+Icon=lombard
+Terminal=false
+Type=Application
+Categories=AudioVideo;GNOME;GTK;
+X-GIO-NoFuse=true
+Name[en_US]=Lombard
