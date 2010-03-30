@@ -228,7 +228,7 @@ class Recorder : Gtk.Window {
         hbox.pack_start(header_area, false, false, 0);
 
         timeline_scrolled = new Gtk.ScrolledWindow(null, null);
-        timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
+        timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
         timeline_scrolled.add_with_viewport(timeline);
         hbox.pack_start(timeline_scrolled, true, true, 0);
         h_adjustment = timeline_scrolled.get_hadjustment();
