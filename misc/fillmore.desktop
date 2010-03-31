@@ -1,13 +1,13 @@
 
 [Desktop Entry]
 Version=1.0
-Name=Fillmore Multi-track Recorder
-GenericName=Multi-track Recorder
-Comment=Record yourself
+Name=Fillmore Audio Editor
+GenericName=Audio Editor
+Comment=Record and edit multitrack audio
 Exec=fillmore %U
 Icon=fillmore
 Terminal=false
 Type=Application
 Categories=AudioVideo;GNOME;GTK;
 X-GIO-NoFuse=true
-Name[en_US]=Fillmore
+
