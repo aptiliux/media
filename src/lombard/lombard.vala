@@ -47,6 +47,7 @@ class App : Gtk.Window {
     Gtk.UIManager manager;
 
     string project_filename;
+    Gee.ArrayList<string> load_errors;
 
     public const string NAME = "Lombard";
 
@@ -160,6 +161,7 @@ class App : Gtk.Window {
         set_default_size(600, 500);
         project_filename = project_file;
 
+        load_errors = new Gee.ArrayList<string>();
         drawing_area = new Gtk.DrawingArea();
         drawing_area.realize += on_drawing_realize;
         drawing_area.modify_bg(Gtk.StateType.NORMAL, parse_color("#000"));
@@ -364,13 +366,20 @@ class App : Gtk.Window {
 
     public void on_load_error(string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
-        DialogUtils.error("Load error", message);
+        load_errors.add(message);
     }
 
     public void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         on_zoom_to_project();
         queue_draw();
+        if (load_errors.size > 0) {
+            string message = "";
+            foreach (string s in load_errors) {
+                message = message + s + "\n";
+            }
+            do_error_dialog("An error occurred loading the project.", message);
+        }
     }
 
     // Loader code
@@ -389,6 +398,7 @@ class App : Gtk.Window {
     }
 
     void on_open() {
+        load_errors.clear();
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
             project.create_clip_importer(null, false, 0);

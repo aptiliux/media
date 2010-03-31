@@ -191,8 +191,10 @@ public class MediaLoaderHandler : LoaderHandler {
 
     void fetcher_ready(ClipFetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
-        if (f.error_string != null)
-            load_error("%s: %s".printf(f.clipfile.filename, f.error_string));
+        if (f.error_string != null) {
+            load_error("Could not load %s.".printf(f.clipfile.filename));
+            warning("Could not load %s: %s", f.clipfile.filename, f.error_string);
+        }
         try {
             the_project.add_clipfile(f.clipfile);
             num_clipfiles_complete++;
@@ -200,7 +202,8 @@ public class MediaLoaderHandler : LoaderHandler {
                 complete();
             }
         } catch (Error e) {
-            load_error("%s: %s".printf(f.clipfile.filename, e.message));
+            load_error("Error loading %s.".printf(f.clipfile.filename));
+            warning("Error loading %s: %s", f.clipfile.filename, f.error_string);
         }
     }
 

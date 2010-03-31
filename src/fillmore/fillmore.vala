@@ -32,6 +32,7 @@ class Recorder : Gtk.Window {
     // TODO: Have a MediaExportConnector that extends MediaConnector rather than concrete type.
     View.OggVorbisExport audio_export;
     View.AudioOutput audio_output;
+    Gee.ArrayList<string> load_errors;
 
     public const string NAME = "Fillmore";
     const string LibraryToggle = "Library";
@@ -160,6 +161,7 @@ class Recorder : Gtk.Window {
 
     public Recorder(string? project_file) throws Error {
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
+        load_errors = new Gee.ArrayList<string>();
         try {
             set_icon_from_file(
                 AppDirs.get_resources_dir().get_child("fillmore_icon.png").get_path());
@@ -555,6 +557,7 @@ class Recorder : Gtk.Window {
     }
 
     void on_project_new() {
+        load_errors.clear();
         project.closed += on_project_close;
         finished_closing += on_project_new_finished_closing;
         project.close();
@@ -573,6 +576,7 @@ class Recorder : Gtk.Window {
     }
 
     void on_project_open() {
+        load_errors.clear();
         project.closed += on_project_close;
         finished_closing += on_project_open_finished_closing;
         project.close();
@@ -923,7 +927,7 @@ class Recorder : Gtk.Window {
 
     public void on_load_error(string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
-        do_error_dialog("Could not load project", message);
+        load_errors.add(message);
     }
 
     public void on_load_complete() {
@@ -944,6 +948,14 @@ class Recorder : Gtk.Window {
             if (timeline_library_pane.child2 == library_scrolled) {
                 timeline_library_pane.remove(library_scrolled);
             }
+        }
+
+        if (load_errors.size > 0) {
+            string message = "";
+            foreach (string s in load_errors) {
+                message = message + s + "\n";
+            }
+            do_error_dialog("An error occurred loading the project.", message);
         }
 
         loading = false;
