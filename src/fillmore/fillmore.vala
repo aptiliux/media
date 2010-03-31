@@ -34,6 +34,7 @@ class Recorder : Gtk.Window {
     View.AudioOutput audio_output;
 
     public const string NAME = "Fillmore";
+    const string LibraryToggle = "Library";
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
@@ -80,7 +81,7 @@ class Recorder : Gtk.Window {
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
-        { "Library", null, "_Library", "F9", null, on_view_library, true }
+        { LibraryToggle, null, "_Library", "F9", null, on_view_library, true }
     };
 
     const string ui = """
@@ -202,7 +203,7 @@ class Recorder : Gtk.Window {
 
         uint view_merge_id = manager.new_merge_id();
         manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
-                    "Library", "Library", Gtk.UIManagerItemType.MENUITEM, true);
+                    LibraryToggle, LibraryToggle, Gtk.UIManagerItemType.MENUITEM, true);
 
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
@@ -268,6 +269,7 @@ class Recorder : Gtk.Window {
         project.load(project_file);
         if (project_file == null) {
             default_track_set();
+            loading = false;
         }
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
     }
@@ -802,6 +804,7 @@ class Recorder : Gtk.Window {
             project.library_visible = false;
         } else {
             timeline_library_pane.add2(library_scrolled);
+            timeline_library_pane.show_all();
             project.library_visible = true;
         }
     }
@@ -929,6 +932,12 @@ class Recorder : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
         timeline_library_pane.set_position(project.library_width);
+
+        Gtk.ToggleAction action = main_group.get_action(LibraryToggle) as Gtk.ToggleAction;
+        if (action.get_active() != project.library_visible) {
+            action.set_active(project.library_visible);
+        }
+
         if (project.library_visible) {
             if (timeline_library_pane.child2 != library_scrolled) {
                 timeline_library_pane.add2(library_scrolled);
@@ -938,6 +947,7 @@ class Recorder : Gtk.Window {
                 timeline_library_pane.remove(library_scrolled);
             }
         }
+
         loading = false;
     }
 
