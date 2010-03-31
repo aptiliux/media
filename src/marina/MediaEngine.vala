@@ -486,7 +486,7 @@ public abstract class MediaConnector : Object {
 
     public new abstract void connect(MediaEngine media_engine, Gst.Pipeline pipeline,
         Gst.Element[] elements);
-    public abstract void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline,
+    public abstract void do_disconnect(MediaEngine media_engine, Gst.Pipeline pipeline,
         Gst.Element[] elements);
 }
 
@@ -505,7 +505,7 @@ public class VideoOutput : MediaConnector {
             Gst.Element[] elements) {
         emit(this, Facility.GRAPH, Level.INFO, "connecting");
 
-        uint32 xid = Gdk.x11_drawable_get_xid(output_widget.window);
+        X.ID xid = Gdk.x11_drawable_get_xid(output_widget.window);
         Gst.XOverlay overlay = (Gst.XOverlay) sink;
         overlay.set_xwindow_id(xid);
 
@@ -521,7 +521,7 @@ public class VideoOutput : MediaConnector {
         }
     }
 
-    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+    public override void do_disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         emit(this, Facility.GRAPH, Level.INFO, "disconnecting");
         elements[VideoIndex].unlink(sink);
@@ -549,7 +549,7 @@ public class AudioOutput : MediaConnector {
         }
     }
 
-    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+    public override void do_disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         elements[AudioIndex].unlink_many(capsfilter, audio_sink);
         pipeline.remove_many(capsfilter, audio_sink);
@@ -611,7 +611,7 @@ public class OggVorbisExport : MediaConnector {
         }
     }
 
-    public override void disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
+    public override void do_disconnect(MediaEngine media_engine, Gst.Pipeline pipeline, 
             Gst.Element[] elements) {
         if (has_audio()) {
             elements[AudioIndex].unlink_many(capsfilter, export_sink, mux);
@@ -732,7 +732,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public void disconnect_output(MediaConnector connector) {
         pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, 0);
         pipeline.set_state(Gst.State.NULL);
-        connector.disconnect(this, pipeline, {adder, converter});
+        connector.do_disconnect(this, pipeline, {adder, converter});
     }
 
     public Gst.Element get_audio_silence() throws Error {
@@ -875,7 +875,12 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                 return true;
             case PlayState.PRE_RECORD_NULL:
                 if (gst_state == Gst.State.NULL) {
-                    start_record(record_region);
+                    try {
+                        start_record(record_region);
+                    } catch (GLib.Error error) {
+                        error_occurred("An error occurred starting the recording.", null);
+                        warning("An error occurred starting the recording: %s", error.message);
+                    }
                     return true;
                 }
             break;
@@ -1128,13 +1133,19 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         MediaTrack? media_track = null;
-        switch (track.media_type()) {
-            case Model.MediaType.AUDIO:
-                media_track = create_audio_track(track);
-                break;
-            case Model.MediaType.VIDEO:
-                media_track = new MediaVideoTrack(this, track, converter);
-                break;
+        try {
+            switch (track.media_type()) {
+                case Model.MediaType.AUDIO:
+                    media_track = create_audio_track(track);
+                    break;
+                case Model.MediaType.VIDEO:
+                    media_track = new MediaVideoTrack(this, track, converter);
+                    break;
+            }
+        } catch(GLib.Error error) {
+            error_occurred("An error occurred adding the track.", null);
+            warning("An error occurred adding the track: %s", error.message);
+            return;
         }
 
         media_track.track_removed += on_track_removed;
