@@ -556,6 +556,12 @@ class App : Gtk.Window {
     // since GTK does not allow them to be used as accelerators.
     public override bool key_press_event(Gdk.EventKey event) {
         switch (event.keyval) {
+            case KeySyms.KP_Enter:
+            case KeySyms.Return:
+                if ((event.state & GDK_SHIFT_ALT_CONTROL_MASK) != 0)
+                    return base.key_press_event(event);
+                on_go_start();
+                break;
             case KeySyms.Up:
                 project.go_previous();
                 break;

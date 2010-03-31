@@ -204,7 +204,7 @@ public bool md5_checksum_on_file(string filename, out string checksum) {
     return true;
 }
 
-// GTK utility functions
+// GDK/GTK utility functions
 
 // constants from gdkkeysyms.h https://bugzilla.gnome.org/show_bug.cgi?id=551184
 [CCode (cprefix = "GDK_", has_type_id = "0", cheader_filename = "gdk/gdkkeysyms.h")]
@@ -228,6 +228,9 @@ public enum KeySyms {
     Up
 }
 
+public Gdk.ModifierType GDK_SHIFT_ALT_CONTROL_MASK = Gdk.ModifierType.SHIFT_MASK |
+                                                     Gdk.ModifierType.MOD1_MASK |
+                                                     Gdk.ModifierType.CONTROL_MASK;
 
 public const Gtk.TargetEntry[] drag_target_entries = {
     { "text/uri-list", 0, 0 } 
