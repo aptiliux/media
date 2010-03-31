@@ -68,7 +68,7 @@ public class SliderBase : Gtk.HScrollbar {
         event.window.draw_rectangle(gc, false,
             allocation.x + radius, height - 2, allocation.width - 2 * radius, 1);
 
-        event.window.draw_pixbuf(gc, slider_image, 0, 0, center - radius, allocation.y + 1, 
+        event.window.draw_pixbuf(gc, slider_image, 0, 0, center - radius, allocation.y + 2, 
             slider_image.get_width(), slider_image.get_height(), Gdk.RgbDither.NORMAL, 0, 0);
         return true;
     }
