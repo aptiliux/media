@@ -896,15 +896,15 @@ class Recorder : Gtk.Window {
     // main
 
     static void main(string[] args) {
-        Gtk.init(ref args);
-        GLib.Environment.set_application_name(_PROGRAM_NAME);
-
-        AppDirs.init(args[0], _PROGRAM_NAME);
-        string rc_file = AppDirs.get_resources_dir().get_child("fillmore.rc").get_path();
-
-        Gtk.rc_parse(rc_file);
-        Gst.init(ref args);
         try {
+            Gtk.init_with_args(ref args, "[project file]", null, null);
+            GLib.Environment.set_application_name(_PROGRAM_NAME);
+
+            AppDirs.init(args[0], _PROGRAM_NAME);
+            string rc_file = AppDirs.get_resources_dir().get_child("fillmore.rc").get_path();
+
+            Gtk.rc_parse(rc_file);
+            Gst.init(ref args);
             string? project_file = null;
             if (args.length > 1) {
                 project_file = args[1];
@@ -916,7 +916,6 @@ class Recorder : Gtk.Window {
             recorder.show_all();
             Gtk.main();
         } catch (Error e) {
-            // TODO: Determine if gstreamer is installed
             do_error_dialog("Could not start application",e.message);
         }
     }

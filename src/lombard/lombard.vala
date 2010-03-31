@@ -718,18 +718,18 @@ class App : Gtk.Window {
 extern const string _PROGRAM_NAME;
 
 void main(string[] args) {
-    Gtk.init(ref args);
-    GLib.Environment.set_application_name(_PROGRAM_NAME);
-
-    AppDirs.init(args[0], _PROGRAM_NAME);
-    Gst.init(ref args);
-
-    if (args.length > 2) {
-        stderr.printf("usage: %s [project-file]\n", args[0]);
-        return;
-    }
-    
     try {
+        Gtk.init_with_args(ref args, "[project file]", null, null);
+        GLib.Environment.set_application_name(_PROGRAM_NAME);
+
+        AppDirs.init(args[0], _PROGRAM_NAME);
+        Gst.init(ref args);
+
+        if (args.length > 2) {
+            stderr.printf("usage: %s [project-file]\n", args[0]);
+            return;
+        }
+
         string project_file = args.length > 1 ? args[1] : null;
 
         string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
