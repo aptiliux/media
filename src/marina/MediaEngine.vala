@@ -322,7 +322,7 @@ public class ClickTrack : Object {
 
     void setup_clicks(int bpm, Fraction time_signature) {
         clear_controllers();
-        volume.set("volume", project.click_volume);
+        volume.set("volume", project.click_volume / 10);
 
         Gst.Value double_value = Gst.Value();
         double_value.init(Type.from_name("gdouble"));
