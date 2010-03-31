@@ -7,6 +7,7 @@
 using Logging;
 
 extern const string _PROGRAM_NAME;
+
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
     public TimeLine timeline;
@@ -466,9 +467,9 @@ class Recorder : Gtk.Window {
     }
 
     public override bool key_press_event(Gdk.EventKey event) {
-        switch(Gdk.keyval_name(event.keyval)) {
-            case "KP_Enter":
-            case "Return":
+        switch (event.keyval) {
+            case KeySyms.KP_Enter:
+            case KeySyms.Return:
                 if ((event.state & 
                     (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.CONTROL_MASK
                         | Gdk.ModifierType.MOD1_MASK)) != 0) {
@@ -476,20 +477,20 @@ class Recorder : Gtk.Window {
                 }
                 on_rewind();
                 break;
-            case "left":
+            case KeySyms.Left:
                 project.media_engine.go(project.transport_get_position() - Gst.SECOND);
                 break;
-            case "right":
+            case KeySyms.Right:
                 project.media_engine.go(project.transport_get_position() + Gst.SECOND);
                 break;
-            case "KP_Add":
-            case "equal":
-            case "plus":
+            case KeySyms.KP_Add:
+            case KeySyms.equal:
+            case KeySyms.plus:
                 on_zoom_in();
                 break;
-            case "KP_Subtract":
-            case "minus":
-            case "underscore":
+            case KeySyms.KP_Subtract:
+            case KeySyms.minus:
+            case KeySyms.underscore:
                 on_zoom_out();
                 break;
             default:

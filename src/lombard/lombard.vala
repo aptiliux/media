@@ -5,6 +5,7 @@
  */
 
 using Logging;
+
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
 
@@ -71,8 +72,8 @@ class App : Gtk.Window {
             null, on_clip_properties },
 
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "equal", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
+        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
         { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Go", null, "_Go", null, null, null },
@@ -555,20 +556,32 @@ class App : Gtk.Window {
     // since GTK does not allow them to be used as accelerators.
     public override bool key_press_event(Gdk.EventKey event) {
         switch (event.keyval) {
-            case KeySyms.UP:
+            case KeySyms.Up:
                 project.go_previous();
-                return true;
-            case KeySyms.DOWN:
+                break;
+            case KeySyms.Down:
                 project.go_next();
-                return true;
-            case KeySyms.LEFT:
+                break;
+            case KeySyms.Left:
                 project.go_previous_frame();
-                return true;
-            case KeySyms.RIGHT:
+                break;
+            case KeySyms.Right:
                 project.go_next_frame();
-                return true;
+                break;
+            case KeySyms.KP_Add:
+            case KeySyms.equal:
+            case KeySyms.plus:
+                on_zoom_in();
+                break;
+            case KeySyms.KP_Subtract:
+            case KeySyms.minus:
+            case KeySyms.underscore:
+                on_zoom_out();
+                break;
+            default:
+                return base.key_press_event(event);
         }
-        return base.key_press_event(event);
+        return true;
     }
 
     void on_view_library() {

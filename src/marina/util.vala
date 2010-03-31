@@ -207,18 +207,25 @@ public bool md5_checksum_on_file(string filename, out string checksum) {
 // GTK utility functions
 
 // constants from gdkkeysyms.h https://bugzilla.gnome.org/show_bug.cgi?id=551184
+[CCode (cprefix = "GDK_", has_type_id = "0", cheader_filename = "gdk/gdkkeysyms.h")]
 public enum KeySyms {
-    LEFT = 0xff51,
-    UP = 0xff52,
-    RIGHT = 0xff53,
-    DOWN = 0xff54,
-    MINUS = 0x002d,
-    PLUS = 0x003d,
-    SHIFT_LEFT = 0xffe1,
-    SHIFT_RIGHT = 0xffe2,
-    ESCAPE = 0xff1b,
-    CONTROL_LEFT = 0xffe3,
-    CONTROL_RIGHT = 0xffe4
+    Control_L,
+    Control_R,
+    Down,
+    equal,
+    Escape,
+    KP_Add,
+    KP_Enter,
+    KP_Subtract,
+    Left,
+    minus,
+    plus,
+    Return,
+    Right,
+    Shift_L,
+    Shift_R,
+    underscore,
+    Up
 }
 
 
