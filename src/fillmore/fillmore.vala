@@ -904,7 +904,8 @@ const OptionEntry[] options = {
         try {
             Gtk.init_with_args(ref args, "[project file]", options, null);
         } catch (GLib.Error arg_error) {
-            stderr.printf("%s\n", arg_error.message);
+            stderr.printf("%s\nRun 'fillmore --help' for a full list of available command line options.", 
+                arg_error.message);
             return;
         }
         try {

@@ -721,7 +721,8 @@ void main(string[] args) {
     try {
         Gtk.init_with_args(ref args, "[project file]", null, null);
     } catch (Error arg_error) {
-        stderr.printf("%s\n", arg_error.message);
+        stderr.printf("%s\nRun 'lombard --help' for a full list of available command line options.", 
+            arg_error.message);
         return;
     }
 
