@@ -583,13 +583,7 @@ class Recorder : Gtk.Window {
     }
 
     void on_project_save() {
-        bool saving_new_file = project.get_project_file() == null;
         do_save();
-        if (saving_new_file && project.get_project_file() != null) {
-            project.closed += on_project_close;
-            finished_closing += on_save_new_file_finished_closing;
-            project.close();
-        }
     }
 
     void on_save_new_file_finished_closing(bool did_close) {
@@ -609,10 +603,17 @@ class Recorder : Gtk.Window {
     }
 
     bool save_dialog() {
+        bool saving_new_file = project.get_project_file() == null;
+
         string filename = project.get_project_file();
         bool create_directory = project.get_project_file() == null;
         if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
+            if (saving_new_file && project.get_project_file() != null) {
+                project.closed += on_project_close;
+                finished_closing += on_save_new_file_finished_closing;
+                project.close();
+            }
             return true;
         }
         return false;
