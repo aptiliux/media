@@ -56,9 +56,11 @@ class Recorder : Gtk.Window {
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
+            
         { "View", null, "_View", null, null, null },
         { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
         { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
+        { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Track", null, "_Track", null, null, null },
         { "NewTrack", Gtk.STOCK_ADD, "_New...", "<Control><Shift>N", 
@@ -66,6 +68,7 @@ class Recorder : Gtk.Window {
         { "Rename", null, "_Rename...", null, "Rename Track", on_track_rename },
         { "DeleteTrack", null, "_Delete", "<Control><Shift>Delete", 
             "Delete track", on_track_remove },
+            
         { "Help", null, "_Help", null, null, null },
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
@@ -113,6 +116,7 @@ class Recorder : Gtk.Window {
         <separator name="AfterZoom" />
         <menuitem name="ViewZoomIn" action="ZoomIn" />
         <menuitem name="ViewZoomOut" action="ZoomOut" />
+        <menuitem name="ViewZoomProject" action="ZoomProject"/>
     </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack" />
@@ -393,21 +397,31 @@ class Recorder : Gtk.Window {
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
 
-        set_sensitive_group(main_group, "DeleteTrack", number_of_tracks > 0);
+        // File menu
+        set_sensitive_group(main_group, "Export", project.can_export());
+
+        // Edit menu
         set_sensitive_group(main_group, "Copy", selected);
         set_sensitive_group(main_group, "Cut", selected);
         set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0);
+        set_sensitive_group(main_group, "Delete", selected || library_selected);
         set_sensitive_group(main_group, "SplitAtPlayhead", selected && playhead_on_clip);
         set_sensitive_group(main_group, "TrimToPlayhead", selected && playhead_on_clip);
-        set_sensitive_group(main_group, "ClipProperties", selected);
         set_sensitive_group(main_group, "JoinAtPlayhead", 
                 selected && project.playhead_on_contiguous_clip());
+        set_sensitive_group(main_group, "ClipProperties", selected);
+        
+        // View menu
+        set_sensitive_group(main_group, "ZoomProject", project.get_length() != 0);
+        
+        // Track menu
         set_sensitive_group(main_group, "Rename", number_of_tracks > 0);
+        set_sensitive_group(main_group, "DeleteTrack", number_of_tracks > 0);
+        
+        // toolbar
+        set_sensitive_group(main_group, "Play", true);
         set_sensitive_group(main_group, "Record", number_of_tracks > 0 
                 && !project.transport_is_recording());
-        set_sensitive_group(main_group, "Export", project.can_export());
-        set_sensitive_group(main_group, "Delete", selected || library_selected);
-        set_sensitive_group(main_group, "Play", true);
     }
 
     public Model.Track? selected_track() {
@@ -776,6 +790,10 @@ class Recorder : Gtk.Window {
 
     void on_zoom_out() {
         do_zoom(-0.1f);
+    }
+
+    void on_zoom_to_project() {
+        timeline.zoom_to_project(h_adjustment.page_size);
     }
 
     void on_view_library() {

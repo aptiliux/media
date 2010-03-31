@@ -100,6 +100,10 @@ public class TimeLine : Gtk.EventBox {
     public void zoom_to_project(double width) {
         if (project.get_length() == 0)
             return;
+            
+        // The 12.0 is just a magic number to completely get rid of the scrollbar on this operation
+        width -= 12.0;
+            
         double numerator = GLib.Math.log(
                     (width * Gst.SECOND) / ((double) project.get_length() * (double) pixel_min));
         double denominator = GLib.Math.log((double) pixel_div);
@@ -107,7 +111,7 @@ public class TimeLine : Gtk.EventBox {
         zoom((float) (numerator / denominator) - provider.get_pixel_percentage());
     }
 
-    public void zoom (float inc) {
+    public void zoom(float inc) {
         provider.calculate_pixel_step(inc, pixel_min, pixel_div);
         foreach (TrackView track in tracks) {
             track.resize();

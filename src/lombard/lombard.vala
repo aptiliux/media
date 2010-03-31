@@ -599,8 +599,7 @@ class App : Gtk.Window {
     }
 
     void on_zoom_to_project() {
-        //The 12.0 is just a magic number to completely get rid of the scrollbar on this operation
-        timeline.zoom_to_project(h_adjustment.page_size - 12.0);
+        timeline.zoom_to_project(h_adjustment.page_size);
     }
 
     // File commands
