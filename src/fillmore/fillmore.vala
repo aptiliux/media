@@ -7,6 +7,7 @@
 using Logging;
 
 extern const string _PROGRAM_NAME;
+bool do_print_graph = false;
 
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
@@ -258,9 +259,7 @@ class Recorder : Gtk.Window {
         Gtk.MenuItem? save_graph = (Gtk.MenuItem?) 
             get_widget(manager, "/MenuBar/HelpMenu/SaveGraph");
 
-        // TODO: only destroy it if --debug is not specified on the command line
-        // or conversely, only add it if --debug is specified on the command line
-        if (save_graph != null) {
+        if (!do_print_graph && save_graph != null) {
             save_graph.destroy();
         }
 
@@ -895,9 +894,20 @@ class Recorder : Gtk.Window {
 
     // main
 
+const OptionEntry[] options = {
+    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
+        "Show Print Graph in help menu", null },
+    { null }
+};
+
     static void main(string[] args) {
         try {
-            Gtk.init_with_args(ref args, "[project file]", null, null);
+            Gtk.init_with_args(ref args, "[project file]", options, null);
+        } catch (GLib.Error arg_error) {
+            stderr.printf("%s\n", arg_error.message);
+            return;
+        }
+        try {
             GLib.Environment.set_application_name(_PROGRAM_NAME);
 
             AppDirs.init(args[0], _PROGRAM_NAME);
@@ -916,7 +926,7 @@ class Recorder : Gtk.Window {
             recorder.show_all();
             Gtk.main();
         } catch (Error e) {
-            do_error_dialog("Could not start application",e.message);
+            do_error_dialog("Could not start application.",e.message);
         }
     }
 

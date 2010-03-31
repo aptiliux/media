@@ -720,6 +720,12 @@ extern const string _PROGRAM_NAME;
 void main(string[] args) {
     try {
         Gtk.init_with_args(ref args, "[project file]", null, null);
+    } catch (Error arg_error) {
+        stderr.printf("%s\n", arg_error.message);
+        return;
+    }
+
+    try {
         GLib.Environment.set_application_name(_PROGRAM_NAME);
 
         AppDirs.init(args[0], _PROGRAM_NAME);
