@@ -257,6 +257,7 @@ public class TimeLine : Gtk.EventBox {
 
     void on_clip_view_trim_commit(ClipView clip_view, Gdk.WindowEdge edge) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_commit");
+        window.set_cursor(null);
         TrackView track_view = clip_view.get_parent() as TrackView;
         int64 delta = 0;
         switch (edge) {
@@ -484,6 +485,8 @@ public class TimeLine : Gtk.EventBox {
                 } else {
                     window.set_cursor(null);
                 }
+            } else {
+                window.set_cursor(null);
             }
         }
         return true;
