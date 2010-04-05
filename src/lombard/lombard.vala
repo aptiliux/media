@@ -6,6 +6,14 @@
 
 using Logging;
 
+int debug_level;
+const OptionEntry[] options = {
+    { "debug-level", 0, 0, OptionArg.INT, &debug_level,
+        "Control amount of diagnostic information",
+        "[0 (minimal),5 (maximum)]" },
+    { null }
+};
+
 class App : Gtk.Window {
     Gtk.DrawingArea drawing_area;
 
@@ -137,6 +145,7 @@ class App : Gtk.Window {
   <popup name="ClipContextMenu">
     <menuitem name="ClipContextCut" action="Cut"/>
     <menuitem name="ClipContextCopy" action="Copy"/>
+    <separator />
     <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
 </ui>
@@ -158,6 +167,11 @@ class App : Gtk.Window {
         } catch (GLib.Error e) {
             warning("Could not load application icon: %s", e.message);
         }
+        
+        if (debug_level > -1) {
+            set_logging_level((Logging.Level)debug_level);
+        }
+
         set_default_size(600, 500);
         project_filename = project_file;
 
@@ -211,6 +225,7 @@ class App : Gtk.Window {
         timeline.drag_data_received += on_drag_data_received;
         project.media_engine.position_changed += on_position_changed;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
 
         library = new ClipLibraryView(project, project.time_provider, "Drag clips here.");
         library.selection_changed += on_library_selection_changed;
@@ -495,8 +510,15 @@ class App : Gtk.Window {
     public void on_clip_properties() {
         Fraction? frames_per_second = null;
         project.get_framerate_fraction(out frames_per_second);
-        foreach (ClipView clip_view in timeline.selected_clips) {
-            DialogUtils.show_clip_properties(this, clip_view, frames_per_second);
+        if (library.has_selection()) {
+            foreach (string file_name in library.get_selected_files()) {
+                Model.ClipFile? clip_file = project.find_clipfile(file_name);
+                DialogUtils.show_clip_properties(this, null, clip_file, frames_per_second);
+            }
+        } else {
+            foreach (ClipView clip_view in timeline.selected_clips) {
+                DialogUtils.show_clip_properties(this, clip_view, null, frames_per_second);
+            }
         }
     }
 
@@ -532,7 +554,7 @@ class App : Gtk.Window {
                 }
             }
         }
-        clip_properties_action.set_sensitive(clip_selected);
+        clip_properties_action.set_sensitive(clip_selected || library.has_selection());
 
         bool playhead_on_clip = project.playhead_on_clip();
         split_at_playhead_action.set_sensitive(playhead_on_clip);
@@ -718,13 +740,20 @@ class App : Gtk.Window {
 extern const string _PROGRAM_NAME;
 
 void main(string[] args) {
+    debug_level = -1;
+    OptionContext context = new OptionContext(
+        " [project file] - Create and edit movies");
+    context.add_main_entries(options, null);
+    context.add_group(Gst.init_get_option_group());
+
     try {
-        Gtk.init_with_args(ref args, "[project file]", null, null);
-    } catch (Error arg_error) {
+        context.parse(ref args);
+    } catch (GLib.Error arg_error) {
         stderr.printf("%s\nRun 'lombard --help' for a full list of available command line options.", 
             arg_error.message);
         return;
     }
+    Gtk.init(ref args);
 
     try {
         GLib.Environment.set_application_name(_PROGRAM_NAME);

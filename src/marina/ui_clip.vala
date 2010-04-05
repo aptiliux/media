@@ -89,7 +89,7 @@ public class ClipView : Gtk.DrawingArea {
 
         Gdk.Color.parse("000", out color_black);
         get_clip_colors();
-        
+
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
 
         adjust_size(height);
@@ -195,20 +195,28 @@ public class ClipView : Gtk.DrawingArea {
 
     public override bool button_press_event(Gdk.EventButton event) {
         event.x -= allocation.x;
-        button_down = true;
-        drag_point = (int)event.x;
+        bool primary_press = event.button == 1;
+        if (primary_press) {
+            button_down = true;
+            drag_point = (int)event.x;
+        }
+
         bool extend_selection = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
         // The clip is not responsible for changing the selection state.
         // It may depend upon knowledge of multiple clips.  Let anyone who is interested
         // update our state.
         if (is_left_trim(event.x, event.y)) {
             selection_request(this, false);
-            trim_begin(this, Gdk.WindowEdge.WEST);
-            motion_mode = MotionMode.LEFT_TRIM;
+            if (primary_press) {
+                trim_begin(this, Gdk.WindowEdge.WEST);
+                motion_mode = MotionMode.LEFT_TRIM;
+            }
         } else if (is_right_trim(event.x, event.y)){
             selection_request(this, false);
-            trim_begin(this, Gdk.WindowEdge.EAST);
-            motion_mode = MotionMode.RIGHT_TRIM;
+            if (primary_press) {
+                trim_begin(this, Gdk.WindowEdge.EAST);
+                motion_mode = MotionMode.RIGHT_TRIM;
+            }
         } else {
             if (!is_selected) {
                 pending_selection = false;
@@ -217,19 +225,20 @@ public class ClipView : Gtk.DrawingArea {
                 pending_selection = true;
             }
         }
+
+        if (event.button == 3) {
+            context_menu.select_first(true);
+            context_menu.popup(null, null, null, event.button, 0);
+        } else {
+            context_menu.popdown();
+        }
+
         return true;
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
         event.x -= allocation.x;
         button_down = false;
-
-        if (event.button == 3) {
-            context_menu.select_first(true);
-            context_menu.popup(null, null, null, 0, 0);
-        } else {
-            context_menu.popdown();
-        }
         if (event.button == 1) {
             switch (motion_mode) {
                 case MotionMode.NONE: {
@@ -260,7 +269,6 @@ public class ClipView : Gtk.DrawingArea {
     public override bool motion_notify_event(Gdk.EventMotion event) {
         event.x -= allocation.x;
         int delta = (int) event.x - drag_point;
-
         switch (motion_mode) {
             case MotionMode.NONE:
                 if (is_left_trim(event.x, event.y)) {

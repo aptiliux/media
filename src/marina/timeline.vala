@@ -323,6 +323,7 @@ public class TimeLine : Gtk.EventBox {
     }
 
     public void delete_selection() {
+        drag_clip = null;
         if (is_clip_selected()) {
             while (selected_clips.size > 0) {
                 selected_clips[0].delete_clip();

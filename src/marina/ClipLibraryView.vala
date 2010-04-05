@@ -7,6 +7,7 @@
 using Logging;
 
 public class ClipLibraryView : Gtk.EventBox {
+    public static Gtk.Menu context_menu;
     Model.Project project;
     Gtk.TreeView tree_view;
     Gtk.TreeSelection selection;
@@ -118,6 +119,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
     bool on_button_pressed(Gdk.EventButton b) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_button_pressed");
+
         Gtk.TreePath path;
         int cell_x;
         int cell_y;
@@ -145,6 +147,14 @@ public class ClipLibraryView : Gtk.EventBox {
             }
         }
         selection.select_path(path);
+
+        if (b.button == 3) {
+            selection_changed(true);
+            context_menu.select_first(true);
+            context_menu.popup(null, null, null, 0, 0);
+        } else {
+            context_menu.popdown();
+        }
 
         return true;
     }
@@ -242,29 +252,28 @@ public class ClipLibraryView : Gtk.EventBox {
         Gtk.drag_set_icon_default(context);
     }
 
-    int get_selected_rows(out Gtk.TreeModel model, out GLib.List<Gtk.TreePath> paths) {
-        paths = selection.get_selected_rows(out model);
+    int get_selected_rows(out GLib.List<Gtk.TreePath> paths) {
+        paths = selection.get_selected_rows(null);
         return (int) paths.length();
     }
 
     void on_drag_begin(Gdk.DragContext c) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_begin");
-        Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
-        if (get_selected_rows(out model, out paths) > 0) {
+        if (get_selected_rows(out paths) > 0) {
             bool set_pixbuf = false;
             files_dragging.clear();
             foreach (Gtk.TreePath t in paths) {
                 Gtk.TreeIter iter;
-                model.get_iter(out iter, t);
+                list_store.get_iter(out iter, t);
 
                 string filename;
-                model.get(iter, ColumnType.FILENAME, out filename, -1);
+                list_store.get(iter, ColumnType.FILENAME, out filename, -1);
                 files_dragging.add(filename);
 
                 if (!set_pixbuf) {
                     Gdk.Pixbuf pixbuf;
-                    model.get(iter, ColumnType.THUMBNAIL, out pixbuf, -1);
+                    list_store.get(iter, ColumnType.THUMBNAIL, out pixbuf, -1);
 
                     Gtk.drag_set_icon_pixbuf(c, pixbuf, 0, 0);
                     set_pixbuf = true;
@@ -433,18 +442,32 @@ public class ClipLibraryView : Gtk.EventBox {
     }
 
     public bool has_selection() {
-        Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
-        return get_selected_rows(out model, out paths) != 0;
+        return get_selected_rows(out paths) != 0;
+    }
+
+    public Gee.ArrayList<string> get_selected_files() {
+        GLib.List<Gtk.TreePath> paths;
+        Gee.ArrayList<string> return_value = new Gee.ArrayList<string>();
+        if (get_selected_rows(out paths) != 0) {
+            foreach (Gtk.TreePath path in paths) {
+                Gtk.TreeIter iter;
+                if (list_store.get_iter(out iter, path)) {
+                    string name;
+                    list_store.get(iter, ColumnType.FILENAME, out name, -1);
+                    return_value.add(name);
+                }
+            }
+        }
+        return return_value;
     }
 
     public void delete_selection() {
-        Gtk.TreeModel model;
         GLib.List<Gtk.TreePath> paths;
 
-        if (get_selected_rows(out model, out paths) > 0) {
+        if (get_selected_rows(out paths) > 0) {
             for (int i = (int) paths.length() - 1; i >= 0; i--)
-                delete_row(model, paths.nth_data(i));
+                delete_row(list_store, paths.nth_data(i));
         }
     }
 }

@@ -37,6 +37,12 @@ const string facility_names[] = {
 
 Level current_level = Level.HIGH;
 
+public void set_logging_level(Level new_level) {
+    if (new_level <= Level.VERBOSE && new_level >= Level.CRITICAL) {
+        current_level = new_level;
+    }
+}
+
 public void emit(Object object, Facility facility, Level level, string message) {
     if (level <= current_level || level <= active_facility[facility]) {
         stderr.printf("%s(%s): %s\n", object.get_type().name(), facility_names[facility], message);

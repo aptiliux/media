@@ -8,6 +8,16 @@ using Logging;
 
 extern const string _PROGRAM_NAME;
 bool do_print_graph = false;
+int debug_level;
+
+const OptionEntry[] options = {
+    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
+        "Show Print Graph in help menu", null },
+    { "debug-level", 0, 0, OptionArg.INT, &debug_level,
+        "Control amount of diagnostic information",
+        "[0 (minimal),5 (maximum)]" },
+    { null }
+};
 
 class Recorder : Gtk.Window {
     public Model.AudioProject project;
@@ -132,6 +142,9 @@ class Recorder : Gtk.Window {
     </menu>
   </menubar>
   <popup name="ClipContextMenu">
+    <menuitem name="Cut" action="Cut" />
+    <menuitem name="Copy" action="Copy" />
+    <separator />
     <menuitem name="ClipContextProperties" action="ClipProperties" />
   </popup>
   <toolbar name="Toolbar">
@@ -225,7 +238,7 @@ class Recorder : Gtk.Window {
         timeline.selection_changed += on_timeline_selection_changed;
         
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
-
+        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         update_menu();
 
         library_scrolled = new Gtk.ScrolledWindow(null, null);
@@ -380,15 +393,6 @@ class Recorder : Gtk.Window {
         update_menu();
     }
 
-    public void on_library_selection_changed(bool selected) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
-        if (selected) {
-            timeline.deselect_all_clips();
-            timeline.queue_draw();
-        }
-        update_menu();
-    }
-
     void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
                                 Gtk.SelectionData selection_data, uint drag_info, uint time) {
         present();
@@ -412,7 +416,7 @@ class Recorder : Gtk.Window {
         set_sensitive_group(main_group, "TrimToPlayhead", selected && playhead_on_clip);
         set_sensitive_group(main_group, "JoinAtPlayhead", 
                 selected && project.playhead_on_contiguous_clip());
-        set_sensitive_group(main_group, "ClipProperties", selected);
+        set_sensitive_group(main_group, "ClipProperties", selected || library_selected);
         
         // View menu
         set_sensitive_group(main_group, "ZoomProject", project.get_length() != 0);
@@ -733,8 +737,15 @@ class Recorder : Gtk.Window {
     }
 
     public void on_clip_properties() {
-        foreach (ClipView clip_view in timeline.selected_clips) {
-            DialogUtils.show_clip_properties(this, clip_view, null);
+        if (library.has_selection()) {
+            foreach (string file_name in library.get_selected_files()) {
+                Model.ClipFile? clip_file = project.find_clipfile(file_name);
+                DialogUtils.show_clip_properties(this, null, clip_file, null);
+            }
+        } else {
+            foreach (ClipView clip_view in timeline.selected_clips) {
+                DialogUtils.show_clip_properties(this, clip_view, null, null);
+            }
         }
     }
 
@@ -888,28 +899,45 @@ class Recorder : Gtk.Window {
         }
     }
 
-    void on_timeline_selection_changed(bool selection) {
+    void on_timeline_selection_changed(bool selected) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_timeline_selection_changed");
+        if (selected) {
+            library.unselect_all();
+        }
+        update_menu();
+    }
+
+    public void on_library_selection_changed(bool selected) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_library_selection_changed");
+        if (selected) {
+            timeline.deselect_all_clips();
+            timeline.queue_draw();
+        }
         update_menu();
     }
 
     // main
 
-const OptionEntry[] options = {
-    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
-        "Show Print Graph in help menu", null },
-    { null }
-};
-
     static void main(string[] args) {
+        debug_level = -1;
+        OptionContext context = new OptionContext(
+            " [project file] - Record and edit multitrack audio");
+        context.add_main_entries(options, null);
+        context.add_group(Gst.init_get_option_group());
+
         try {
-            Gtk.init_with_args(ref args, "[project file]", options, null);
+            context.parse(ref args);
         } catch (GLib.Error arg_error) {
             stderr.printf("%s\nRun 'fillmore --help' for a full list of available command line options.", 
                 arg_error.message);
             return;
         }
+        Gtk.init(ref args);
         try {
             GLib.Environment.set_application_name(_PROGRAM_NAME);
+            if (debug_level > -1) {
+                set_logging_level((Logging.Level)debug_level);
+            }
 
             AppDirs.init(args[0], _PROGRAM_NAME);
             string rc_file = AppDirs.get_resources_dir().get_child("fillmore.rc").get_path();
