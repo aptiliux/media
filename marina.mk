@@ -59,9 +59,9 @@ VALA_CFLAGS = `pkg-config --cflags $(EXT_PKGS)` $(foreach hdir,$(HEADER_DIRS),-I
 # setting CFLAGS in configure.mk overrides build type
 ifndef CFLAGS
 ifdef BUILD_DEBUG
-CFLAGS = -O0 -g -pipe
+CFLAGS = -O0 -g -pipe -fPIC
 else
-CFLAGS = -O2 -g -pipe
+CFLAGS = -O2 -g -pipe -fPIC
 endif
 endif
 
@@ -139,7 +139,7 @@ ifdef PROGRAM
 $(PROGRAM): $(EXPANDED_OBJ_FILES) $(MARINA_DEPEND)
 	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -o $@
 ifdef GLADE_NAME
-	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -fPIC -export-dynamic -shared -o $(GLADE_NAME)
+	$(CC) $(EXPANDED_OBJ_FILES) $(CFLAGS) $(VALA_LDFLAGS) -export-dynamic -shared -o $(GLADE_NAME)
 endif
 clean:
 	rm -f $(EXPANDED_C_FILES)
