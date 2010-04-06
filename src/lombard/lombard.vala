@@ -56,6 +56,7 @@ class App : Gtk.Window {
 
     string project_filename;
     Gee.ArrayList<string> load_errors;
+    bool loading;
 
     public const string NAME = "Lombard";
 
@@ -256,6 +257,7 @@ class App : Gtk.Window {
 
         if (project_filename == null) {
             default_track_set();
+            on_load_complete();
         }
 
         update_menu();
@@ -302,6 +304,8 @@ class App : Gtk.Window {
 
             h_pane = new Gtk.HPaned();
             h_pane.set_position(300);
+            h_pane.child2_resize = 1;
+            h_pane.child1_resize = 0;
 
             if (showing) {
                 h_pane.add1(library_scrolled);
@@ -309,6 +313,7 @@ class App : Gtk.Window {
             } else {
                 h_pane.add2(drawing_area);
             }
+            h_pane.child2.size_allocate += on_library_size_allocate;
 
             Gtk.VPaned v_pane = new Gtk.VPaned();
             v_pane.set_position(300);
@@ -331,6 +336,7 @@ class App : Gtk.Window {
 
             add(vbox);
         } else {
+            project.library_visible = showing;
             if (showing) {
                 h_pane.add1(library_scrolled);
             } else {
@@ -342,6 +348,7 @@ class App : Gtk.Window {
 
     void on_drawing_realize() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drawing_realize");
+        loading = true;
         project.load(project_filename);
         try {
             video_output = new View.VideoOutput(drawing_area);
@@ -388,12 +395,35 @@ class App : Gtk.Window {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         on_zoom_to_project();
         queue_draw();
+
+        project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+        h_pane.set_position(h_pane.allocation.width - project.library_width);
+        if (library_view_action.get_active() != project.library_visible) {
+            library_view_action.set_active(project.library_visible);
+        }
+        if (project.library_visible) {
+            if (h_pane.child1 != library_scrolled) {
+                h_pane.add1(library_scrolled);
+            }
+        } else {
+            if (h_pane.child1 == library_scrolled) {
+                h_pane.remove(library_scrolled);
+            }
+        }
+
         if (load_errors.size > 0) {
             string message = "";
             foreach (string s in load_errors) {
                 message = message + s + "\n";
             }
             do_error_dialog("An error occurred loading the project.", message);
+        }
+        loading = false;
+    }
+
+    void on_library_size_allocate(Gdk.Rectangle rectangle) {
+        if (!loading && h_pane.child1 == library_scrolled) {
+            project.library_width = rectangle.width;
         }
     }
 
@@ -465,6 +495,7 @@ class App : Gtk.Window {
     }
 
     public void load_project(string filename) {
+        loading = true;
         project.load(filename);
     }
 
