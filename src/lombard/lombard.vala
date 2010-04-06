@@ -316,7 +316,7 @@ class App : Gtk.Window {
             h_pane.child2.size_allocate += on_library_size_allocate;
 
             Gtk.VPaned v_pane = new Gtk.VPaned();
-            v_pane.set_position(300);
+            v_pane.set_position(290);
 
             timeline_scrolled = new Gtk.ScrolledWindow(null, null);
             timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
@@ -506,10 +506,24 @@ class App : Gtk.Window {
         float margin = project.transport_is_playing() ? 0.0f : SCROLL_MARGIN;
         int page_size = (int) h_adjustment.page_size;
 
-        if (xpos < h_adjustment.value + page_size * margin)  // too far left
-            h_adjustment.set_value(xpos - h_adjustment.page_size / 3);
-        else if (xpos > h_adjustment.value + page_size * (1 - margin))   // too far right
-            h_adjustment.set_value(xpos - h_adjustment.page_size * 2 / 3);
+        int x = -1;
+        if (xpos < h_adjustment.value + page_size * margin) {  // too far left
+            x =  (int) (xpos - h_adjustment.page_size / 3);
+            h_adjustment.set_value(x);
+        } else if (xpos > h_adjustment.value + page_size * (1 - margin)) {  // too far right
+            x = (int) (xpos - h_adjustment.page_size * 2 / 3);
+            int scroll_width = 0;
+            Gtk.Widget scroll = timeline_scrolled.get_vscrollbar();
+            if (scroll.visible) {
+                scroll_width = scroll.allocation.width + 2;
+            }
+            int max_value = (int) (h_adjustment.upper - timeline_scrolled.allocation.width + 
+                scroll_width);
+            if (x > max_value) {
+                x = max_value;
+            }
+            h_adjustment.set_value(x);
+        }
     }
 
     void scroll_toward_center(int xpos) {
@@ -523,7 +537,14 @@ class App : Gtk.Window {
         int d = sign(diff) * (int) Math.sqrt(diff.abs());
         cursor_pos += d;
 
-        h_adjustment.set_value(xpos - cursor_pos);
+        int x = int.max(0, xpos - cursor_pos);
+        int max_value = (int)(h_adjustment.upper - timeline_scrolled.allocation.width);
+        if (x > max_value) {
+            x = max_value;
+        }
+        h_adjustment.set_value(x);
+
+        h_adjustment.set_value(x);
     }
 
     public void on_split_at_playhead() {
