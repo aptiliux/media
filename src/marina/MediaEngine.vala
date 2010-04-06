@@ -794,6 +794,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         string text;
         message.parse_error(out error, out text);
         warning("%s", text);
+        project.print_graph(pipeline, "bus_error");
     }
 
     void on_eos(Gst.Bus bus, Gst.Message message) {
