@@ -139,6 +139,9 @@ class App : Gtk.Window, TransportDelegate {
     <separator />
     <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
+  <popup name="LibraryContextMenu">
+    <menuitem name="ClipContextProperties" action="ClipProperties"/>
+  </popup>
 </ui>
 """;
 
@@ -200,7 +203,7 @@ class App : Gtk.Window, TransportDelegate {
         timeline.drag_data_received += on_drag_data_received;
         project.media_engine.position_changed += on_position_changed;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
-        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
 
         library = new ClipLibraryView(project, project.time_provider, "Drag clips here.");
         library.selection_changed += on_library_selection_changed;

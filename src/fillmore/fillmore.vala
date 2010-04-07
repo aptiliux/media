@@ -147,6 +147,9 @@ class Recorder : Gtk.Window, TransportDelegate {
     <separator />
     <menuitem name="ClipContextProperties" action="ClipProperties" />
   </popup>
+  <popup name="LibraryContextMenu">
+    <menuitem name="ClipContextProperties" action="ClipProperties" />
+  </popup>
   <toolbar name="Toolbar">
     <toolitem name="New" action="NewTrack" />
     <separator/>
@@ -239,7 +242,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         timeline.selection_changed += on_timeline_selection_changed;
         
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
-        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
+        ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
         update_menu();
 
         library_scrolled = new Gtk.ScrolledWindow(null, null);
