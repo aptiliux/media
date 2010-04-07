@@ -436,6 +436,14 @@ public class TimeLine : Gtk.EventBox {
         return null;
     }
 
+    void deselect_all() {
+        foreach (ClipView clip_view in selected_clips) {
+            clip_view.is_selected = false;
+        }
+        selected_clips.clear();
+        selection_changed(false);
+    }
+
     public override bool button_press_event(Gdk.EventButton event) {
 /*
         if (gap_view != null)
@@ -454,12 +462,10 @@ public class TimeLine : Gtk.EventBox {
             if (drag_clip != null) {
                 drag_clip.button_press_event(event);
             } else {
-                foreach (ClipView clip_view in selected_clips) {
-                    clip_view.is_selected = false;
-                }
-                selected_clips.clear();
-                selection_changed(false);
+                deselect_all();
             }
+        } else {
+            deselect_all();
         }
         queue_draw();
 
