@@ -9,13 +9,16 @@ using Logging;
 class TrackViewConcrete : TrackView, Gtk.Fixed {
     Model.Track track;
     TimeLine timeline;
+    TransportDelegate transport_delegate;
 
     const int clip_height = 50;
     const int TrackHeight = clip_height + TimeLine.BORDER * 2;
 
-    public TrackViewConcrete(Model.Track track, TimeLine timeline) {
+    public TrackViewConcrete(TransportDelegate transport_delegate, 
+            Model.Track track, TimeLine timeline) {
         this.track = track;
         this.timeline = timeline;
+        this.transport_delegate = transport_delegate;
 
         track.clip_added += on_clip_added;
         track.clip_removed += on_clip_removed;
@@ -40,7 +43,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
 
     void on_clip_added(Model.Track t, Model.Clip clip, bool select) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
-        ClipView view = new ClipView(clip, timeline.provider, clip_height);
+        ClipView view = new ClipView(transport_delegate, clip, timeline.provider, clip_height);
         view.clip_moved += on_clip_moved;
         view.clip_deleted += on_clip_deleted;
         view.move_begin += on_move_begin;

@@ -28,6 +28,7 @@ SRC_FILES = \
 	TimeSystem.vala \
 	track.vala \
 	TrackView.vala \
+	TransportDelegate.vala \
 	ui_clip.vala \
 	UndoManager.vala \
 	util.vala \

@@ -19,7 +19,7 @@ const OptionEntry[] options = {
     { null }
 };
 
-class Recorder : Gtk.Window {
+class Recorder : Gtk.Window, TransportDelegate {
     public Model.AudioProject project;
     public TimeLine timeline;
     View.ClickTrack click_track;
@@ -174,6 +174,7 @@ class Recorder : Gtk.Window {
     public signal void finished_closing(bool project_did_close);
 
     public Recorder(string? project_file) throws Error {
+        ClassFactory.set_transport_delegate(this);
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
         load_errors = new Gee.ArrayList<string>();
         try {
@@ -403,28 +404,39 @@ class Recorder : Gtk.Window {
         bool selected = timeline.is_clip_selected();
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
+        bool is_stopped = is_stopped();
 
         // File menu
+        set_sensitive_group(main_group, "NewProject", is_stopped);
+        set_sensitive_group(main_group, "Open", is_stopped);
+        set_sensitive_group(main_group, "Save", is_stopped);
+        set_sensitive_group(main_group, "SaveAs", is_stopped);
+        set_sensitive_group(main_group, "Settings", is_stopped);
         set_sensitive_group(main_group, "Export", project.can_export());
+        set_sensitive_group(main_group, "Quit", is_stopped);
 
         // Edit menu
-        set_sensitive_group(main_group, "Copy", selected);
-        set_sensitive_group(main_group, "Cut", selected);
-        set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0);
-        set_sensitive_group(main_group, "Delete", selected || library_selected);
-        set_sensitive_group(main_group, "SplitAtPlayhead", selected && playhead_on_clip);
-        set_sensitive_group(main_group, "TrimToPlayhead", selected && playhead_on_clip);
+        set_sensitive_group(main_group, "Undo", is_stopped);
+        set_sensitive_group(main_group, "Copy", is_stopped && selected);
+        set_sensitive_group(main_group, "Cut", is_stopped && selected);
+        set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0 && is_stopped);
+        set_sensitive_group(main_group, "Delete", (selected || library_selected) && is_stopped);
+        set_sensitive_group(main_group, "SplitAtPlayhead",
+            selected && playhead_on_clip && is_stopped);
+        set_sensitive_group(main_group, "TrimToPlayhead",
+            selected && playhead_on_clip && is_stopped);
         set_sensitive_group(main_group, "JoinAtPlayhead", 
-                selected && project.playhead_on_contiguous_clip());
+                is_stopped && selected && project.playhead_on_contiguous_clip());
         set_sensitive_group(main_group, "ClipProperties", selected || library_selected);
-        
+
         // View menu
         set_sensitive_group(main_group, "ZoomProject", project.get_length() != 0);
-        
+
         // Track menu
-        set_sensitive_group(main_group, "Rename", number_of_tracks > 0);
-        set_sensitive_group(main_group, "DeleteTrack", number_of_tracks > 0);
-        
+        set_sensitive_group(main_group, "Rename", number_of_tracks > 0 && is_stopped);
+        set_sensitive_group(main_group, "DeleteTrack", number_of_tracks > 0 && is_stopped);
+        set_sensitive_group(main_group, "NewTrack", is_stopped);
+
         // toolbar
         set_sensitive_group(main_group, "Play", true);
         set_sensitive_group(main_group, "Record", number_of_tracks > 0 
@@ -660,9 +672,11 @@ class Recorder : Gtk.Window {
     }
 
     void on_quit() {
-        project.closed += on_project_close;
-        finished_closing += on_quit_finished_closing;
-        project.close();
+        if (is_stopped()) {
+            project.closed += on_project_close;
+            finished_closing += on_quit_finished_closing;
+            project.close();
+        }
     }
 
     bool on_delete_event() {
@@ -1024,6 +1038,7 @@ class Recorder : Gtk.Window {
         if (playstate == PlayState.STOPPED) {
             play_button.set_active(false);
             set_sensitive_group(main_group, "Export", project.can_export());
+            update_menu();
         }
     }
 
@@ -1034,6 +1049,19 @@ class Recorder : Gtk.Window {
 
     string get_fillmore_directory() {
         return Path.build_filename(GLib.Environment.get_home_dir(), ".fillmore");
+    }
+
+    // TransportDelegate methods
+    bool is_playing() {
+        return project.transport_is_playing();
+    }
+
+    bool is_recording() {
+        return project.transport_is_recording();
+    }
+
+    bool is_stopped() {
+        return !(is_playing() || is_recording());
     }
 }
 

@@ -1,4 +1,4 @@
-/* Copyright 2009 Yorba Foundation
+/* Copyright 2009-2010 Yorba Foundation
  *
  * This software is licensed under the GNU Lesser General Public License
  * (version 2.1 or later).  See the COPYING file in this distribution. 
@@ -54,6 +54,7 @@ public class ClipView : Gtk.DrawingArea {
     public int height; // TODO: We request size of height, but we aren't allocated this height.
                        // We should be using the allocated height, not the requested height. 
     public static Gtk.Menu context_menu;
+    TransportDelegate transport_delegate;
     Gdk.Color color_black;
     Gdk.Color color_normal;
     Gdk.Color color_selected;
@@ -78,7 +79,9 @@ public class ClipView : Gtk.DrawingArea {
     public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
 
-    public ClipView(Model.Clip clip, Model.TimeSystem time_provider, int height) {
+    public ClipView(TransportDelegate transport_delegate, Model.Clip clip, 
+            Model.TimeSystem time_provider, int height) {
+        this.transport_delegate = transport_delegate;
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
@@ -194,6 +197,10 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     public override bool button_press_event(Gdk.EventButton event) {
+        if (!transport_delegate.is_stopped()) {
+            return true;
+        }
+
         event.x -= allocation.x;
         bool primary_press = event.button == 1;
         if (primary_press) {
@@ -237,6 +244,10 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
+        if (!transport_delegate.is_stopped()) {
+            return true;
+        }
+
         event.x -= allocation.x;
         button_down = false;
         if (event.button == 1) {
@@ -267,6 +278,10 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {
+        if (!transport_delegate.is_stopped()) {
+            return true;
+        }
+
         event.x -= allocation.x;
         int delta = (int) event.x - drag_point;
         switch (motion_mode) {

@@ -15,16 +15,22 @@ public interface TrackView : Gtk.Widget {
 
 public class ClassFactory {
     static ClassFactory class_factory = null;
+    static TransportDelegate transport_delegate = null;
 
     public static ClassFactory get_class_factory() {
         return class_factory;
     }
 
     public virtual TrackView get_track_view(Model.Track track, TimeLine timeline) {
-        return new TrackViewConcrete(track, timeline);
+        assert(transport_delegate != null);
+        return new TrackViewConcrete(transport_delegate, track, timeline);
     }
     
     public static void set_class_factory(ClassFactory class_factory) {
         ClassFactory.class_factory = class_factory;
+    }
+
+    public static void set_transport_delegate(TransportDelegate transport_delegate) {
+        ClassFactory.transport_delegate = transport_delegate;
     }
 }

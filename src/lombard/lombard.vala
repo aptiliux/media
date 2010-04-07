@@ -14,7 +14,7 @@ const OptionEntry[] options = {
     { null }
 };
 
-class App : Gtk.Window {
+class App : Gtk.Window, TransportDelegate {
     Gtk.DrawingArea drawing_area;
 
     Model.VideoProject project;
@@ -35,18 +35,7 @@ class App : Gtk.Window {
     double prev_adjustment_lower;
     double prev_adjustment_upper;
 
-    Gtk.Action export_action;
-    Gtk.Action delete_action;
-    Gtk.Action cut_action;
-    Gtk.Action copy_action;
-    Gtk.Action paste_action;
-    Gtk.Action split_at_playhead_action;
-    Gtk.Action trim_to_playhead_action;
-    Gtk.Action clip_properties_action;
-    Gtk.Action zoom_to_project_action;
-    Gtk.Action join_at_playhead_action;
-
-    Gtk.ToggleAction library_view_action;
+    Gtk.ActionGroup main_group;
 
     bool done_zoom = false;
 
@@ -59,6 +48,7 @@ class App : Gtk.Window {
     bool loading;
 
     public const string NAME = "Lombard";
+    const string LibraryToggle = "Library";
 
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
@@ -96,7 +86,7 @@ class App : Gtk.Window {
     };
 
     const Gtk.ToggleActionEntry[] check_actions = { 
-        { "Library", null, "_Library", "F9", null, on_view_library, true }
+        { LibraryToggle, null, "_Library", "F9", null, on_view_library, true }
     };
 
     const string ui = """
@@ -172,7 +162,7 @@ class App : Gtk.Window {
         if (debug_level > -1) {
             set_logging_level((Logging.Level)debug_level);
         }
-
+        ClassFactory.set_transport_delegate(this);
         set_default_size(600, 500);
         project_filename = project_file;
 
@@ -181,31 +171,15 @@ class App : Gtk.Window {
         drawing_area.realize += on_drawing_realize;
         drawing_area.modify_bg(Gtk.StateType.NORMAL, parse_color("#000"));
 
-        Gtk.ActionGroup group = new Gtk.ActionGroup("main");
-        group.add_actions(entries, this);
-
-        Gtk.ActionGroup view_library_action_group = new Gtk.ActionGroup("viewlibrary");
-        view_library_action_group.add_toggle_actions(check_actions, this);
-
-        export_action = group.get_action("Export");
-        delete_action = group.get_action("Delete");
-        cut_action = group.get_action("Cut");
-        copy_action = group.get_action("Copy");
-        paste_action = group.get_action("Paste");
-        split_at_playhead_action = group.get_action("SplitAtPlayhead");
-        trim_to_playhead_action = group.get_action("TrimToPlayhead");
-        join_at_playhead_action = group.get_action("JoinAtPlayhead");
-        clip_properties_action = group.get_action("ClipProperties");
-        zoom_to_project_action = group.get_action("ZoomProject");
-        library_view_action = (Gtk.ToggleAction) view_library_action_group.get_action("Library");
+        main_group = new Gtk.ActionGroup("main");
+        main_group.add_actions(entries, this);
+        main_group.add_toggle_actions(check_actions, this);
 
         manager = new Gtk.UIManager();
-        manager.insert_action_group(group, 0);
+        manager.insert_action_group(main_group, 0);
         try {
             manager.add_ui_from_string(ui, -1);
         } catch (Error e) { error("%s", e.message); }
-
-        manager.insert_action_group(view_library_action_group, 1);
 
         menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
 
@@ -276,6 +250,10 @@ class App : Gtk.Window {
     }
 
     void on_quit() {
+        if (!is_stopped()) {
+            return;
+        }
+
         if (project.undo_manager.is_dirty) {
             switch (DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
                 case Gtk.ResponseType.ACCEPT:
@@ -397,8 +375,9 @@ class App : Gtk.Window {
 
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
         h_pane.set_position(h_pane.allocation.width - project.library_width);
-        if (library_view_action.get_active() != project.library_visible) {
-            library_view_action.set_active(project.library_visible);
+        Gtk.ToggleAction action = main_group.get_action(LibraryToggle) as Gtk.ToggleAction;
+        if (action.get_active() != project.library_visible) {
+            action.set_active(project.library_visible);
         }
         if (project.library_visible) {
             if (h_pane.child1 != library_scrolled) {
@@ -588,15 +567,15 @@ class App : Gtk.Window {
     }
 
     void update_menu() {
+        bool library_selected = library.has_selection();
         bool clip_selected = timeline.is_clip_selected();
-
-        delete_action.set_sensitive(clip_selected || timeline.gap_selected() || 
-            library.has_selection());
-        cut_action.set_sensitive(clip_selected);
-        copy_action.set_sensitive(clip_selected);
-        paste_action.set_sensitive(timeline.clipboard.clips.size > 0);
-
+        bool stopped = is_stopped();
         bool clip_is_trimmed = false;
+        bool playhead_on_clip = project.playhead_on_clip();
+        bool on_contiguous = project.playhead_on_contiguous_clip();
+        bool dir;
+        bool can_trim = project.can_trim(out dir);
+        
         if (clip_selected) {
             foreach (ClipView clip_view in timeline.selected_clips) {
                 clip_is_trimmed = clip_view.clip.is_trimmed();
@@ -605,18 +584,28 @@ class App : Gtk.Window {
                 }
             }
         }
-        clip_properties_action.set_sensitive(clip_selected || library.has_selection());
+        // File menu
+        set_sensitive_group(main_group, "Open", stopped);
+        set_sensitive_group(main_group, "Save", stopped);
+        set_sensitive_group(main_group, "SaveAs", stopped);
+        set_sensitive_group(main_group, "Export", project.can_export());
+        set_sensitive_group(main_group, "Quit", stopped);
+        
+        // Edit Menu
+        set_sensitive_group(main_group, "Undo", stopped);
+        set_sensitive_group(main_group, "Delete", stopped && (clip_selected || library_selected));
+        set_sensitive_group(main_group, "Cut", stopped && clip_selected);
+        set_sensitive_group(main_group, "Copy", stopped && clip_selected);
+        set_sensitive_group(main_group, "Paste", stopped && timeline.clipboard.clips.size > 0);
+        set_sensitive_group(main_group, "ClipProperties", clip_selected || library_selected);
 
-        bool playhead_on_clip = project.playhead_on_clip();
-        split_at_playhead_action.set_sensitive(playhead_on_clip);
-        join_at_playhead_action.set_sensitive(project.playhead_on_contiguous_clip());
+        set_sensitive_group(main_group, "SplitAtPlayhead", stopped && playhead_on_clip);
+        set_sensitive_group(main_group, "JoinAtPlayhead", stopped && on_contiguous);
+        set_sensitive_group(main_group, "TrimToPlayhead", stopped && can_trim);
+        
+        // View Menu
+        set_sensitive_group(main_group, "ZoomProject", project.get_length() != 0);
 
-        bool dir;
-        trim_to_playhead_action.set_sensitive(project.can_trim(out dir));
-
-        zoom_to_project_action.set_sensitive(project.get_length() != 0);
-
-        export_action.set_sensitive(project.can_export());
     }
 
     public void on_timeline_selection_changed(bool selected) { 
@@ -674,7 +663,8 @@ class App : Gtk.Window {
     }
 
     void on_view_library() {
-        toggle_library(library_view_action.get_active());
+        Gtk.ToggleAction action = main_group.get_action(LibraryToggle) as Gtk.ToggleAction;
+        toggle_library(action.get_active());
     }
 
     void on_zoom_in() {
@@ -689,6 +679,11 @@ class App : Gtk.Window {
 
     void on_zoom_to_project() {
         timeline.zoom_to_project(h_adjustment.page_size);
+    }
+
+    void set_sensitive_group(Gtk.ActionGroup group, string group_path, bool sensitive) {
+        Gtk.Action action = group.get_action(group_path);
+        action.set_sensitive(sensitive);
     }
 
     // File commands
@@ -785,6 +780,19 @@ class App : Gtk.Window {
 
     void on_save_graph() {
         project.print_graph(project.media_engine.pipeline, "save_graph");
+    }
+
+    // Transport Delegate methods
+    bool is_recording() {
+        return project.transport_is_recording();
+    }
+
+    bool is_playing() {
+        return project.transport_is_playing();
+    }
+
+    bool is_stopped() {
+        return !(is_playing() || is_recording());
     }
 }
 
