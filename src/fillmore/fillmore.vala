@@ -83,6 +83,8 @@ class Recorder : Gtk.Window, TransportDelegate {
             "Delete track", on_track_remove },
             
         { "Help", null, "_Help", null, null, null },
+        { "Contents", Gtk.STOCK_HELP, "_Contents", null, 
+            "More information on Fillmore", on_help_contents},
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
 
@@ -137,6 +139,8 @@ class Recorder : Gtk.Window, TransportDelegate {
       <menuitem name="TrackDelete" action="DeleteTrack" />
     </menu>
     <menu name="HelpMenu" action="Help">
+      <menuitem name="HelpContents" action="Contents" />
+      <separator />
       <menuitem name="HelpAbout" action="About" />
       <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
@@ -845,6 +849,13 @@ class Recorder : Gtk.Window, TransportDelegate {
     }
 
     // Help menu
+
+    void on_help_contents() {
+        try {
+            Gtk.show_uri(null, "http://trac.yorba.org/wiki/UsingFillmore0.1", 0);
+        } catch (GLib.Error e) {
+        }
+    }
 
     void on_about() {
         Gtk.show_about_dialog(this,

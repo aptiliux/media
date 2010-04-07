@@ -81,6 +81,8 @@ class App : Gtk.Window, TransportDelegate {
         { "End", Gtk.STOCK_GOTO_LAST, "_End", "End", null, on_go_end },
 
         { "Help", null, "_Help", null, null, null },
+        { "Contents", Gtk.STOCK_HELP, "_Contents", null, 
+            "More information on Fillmore", on_help_contents},
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph }
     };
@@ -128,6 +130,8 @@ class App : Gtk.Window, TransportDelegate {
       <menuitem name="GoEnd" action="End"/>
     </menu>
     <menu name="HelpMenu" action="Help">
+      <menuitem name="HelpContents" action="Contents" />
+      <separator />
       <menuitem name="HelpAbout" action="About"/>
       <menuitem name="SaveGraph" action="SaveGraph" />
     </menu>
@@ -772,6 +776,13 @@ class App : Gtk.Window, TransportDelegate {
     void on_go_end() { project.go_end(); }
 
     // Help commands
+
+    void on_help_contents() {
+        try {
+            Gtk.show_uri(null, "http://trac.yorba.org/wiki/UsingLombard0.1", 0);
+        } catch (GLib.Error e) {
+        }
+    }
 
     void on_about() {
         Gtk.show_about_dialog(this,
