@@ -75,6 +75,12 @@ public class AudioMeter : Gtk.DrawingArea {
 
         int bar_height = stereo ? (allocation.height / 2) - 1 : allocation.height - 2;
 
+        if (stereo) {
+            context.set_source_rgb(1, 1, 1);
+            context.rectangle(0, bar_height + 1, allocation.width, 0.3);
+            context.fill();
+        }
+
         context.set_source_surface(meter, 0, 0);
         int width = (int) (Math.pow10(current_level_left / 40) * allocation.width);
         context.rectangle(0, 1, width, bar_height);
@@ -90,7 +96,6 @@ public class AudioMeter : Gtk.DrawingArea {
         context.set_source_surface(silkscreen, 0, 0);
         context.paint_with_alpha(1);
 
-
         return true;
     }
 
@@ -105,6 +110,7 @@ public class AudioMeter : Gtk.DrawingArea {
     public void on_channel_count_changed(int number_of_channels) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_channel_count_changed");
         stereo = number_of_channels > 1;
+        window.invalidate_rect(null, false);
     }
 }
 }
