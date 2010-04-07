@@ -48,7 +48,7 @@ public class TimeLine : Gtk.EventBox {
     public Model.Project project;
     public weak Model.TimeSystem provider;
     public View.Ruler ruler;
-    ClipView? drag_clip = null;
+    Gtk.Widget drag_widget = null;
     public Gee.ArrayList<TrackView> tracks = new Gee.ArrayList<TrackView>();
     Gtk.VBox vbox;
 
@@ -73,7 +73,7 @@ public class TimeLine : Gtk.EventBox {
 
     public TimeLine(Model.Project p, Model.TimeSystem provider) {
         add_events(Gdk.EventMask.POINTER_MOTION_MASK);
-        drag_clip = null;
+        drag_widget = null;
         can_focus = true;
         project = p;
         this.provider = provider;
@@ -230,7 +230,7 @@ public class TimeLine : Gtk.EventBox {
                 if (in_selected_clips && clip_view.is_selected) {
                     clip_view.is_selected = false;
                     // just deselected with multiple clips, so moving is not allowed
-                    drag_clip = null;
+                    drag_widget = null;
                     selected_clips.remove(clip_view);
                 }
             }
@@ -285,7 +285,7 @@ public class TimeLine : Gtk.EventBox {
     }
 
     bool move_allowed(ref int move_distance) {
-        if (drag_clip == null) {
+        if (drag_widget == null) {
             return false;
         }
 
@@ -323,7 +323,7 @@ public class TimeLine : Gtk.EventBox {
     }
 
     public void delete_selection() {
-        drag_clip = null;
+        drag_widget = null;
         if (is_clip_selected()) {
             while (selected_clips.size > 0) {
                 selected_clips[0].delete_clip();
@@ -449,18 +449,19 @@ public class TimeLine : Gtk.EventBox {
         if (gap_view != null)
             gap_view.unselect();
 */      
-        drag_clip = null;
+        drag_widget = null;
         Gtk.Widget? child = find_child(event.x, event.y);
 
         if (child is View.Ruler) {
             View.Ruler ruler = child as View.Ruler;
             ruler.button_press_event(event);
+            drag_widget = child;
         } else if (child is TrackView) {
             TrackView track_view = child as TrackView;
 
-            drag_clip = track_view.find_child(event.x, event.y) as ClipView;
-            if (drag_clip != null) {
-                drag_clip.button_press_event(event);
+            drag_widget = track_view.find_child(event.x, event.y);
+            if (drag_widget != null) {
+                drag_widget.button_press_event(event);
             } else {
                 deselect_all();
             }
@@ -473,25 +474,30 @@ public class TimeLine : Gtk.EventBox {
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
-        if (drag_clip != null) {
-            drag_clip.button_release_event(event);
-            drag_clip = null;
+        if (drag_widget != null) {
+            drag_widget.button_release_event(event);
+            drag_widget = null;
         }
         return true;
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {
-        if (drag_clip != null) {
-            drag_clip.motion_notify_event(event);
+        if (drag_widget != null) {
+            drag_widget.motion_notify_event(event);
         } else {
-            TrackView? track_view = find_child(event.x, event.y) as TrackView;
-            if (track_view != null) {
-                ClipView? clip_view = track_view.find_child(event.x, event.y) as ClipView;
-                if (clip_view != null) {
-                    clip_view.motion_notify_event(event);
-                } else {
-                    window.set_cursor(null);
+            Gtk.Widget widget = find_child(event.x, event.y);
+            if (widget is TrackView) {
+                TrackView? track_view = widget as TrackView;
+                if (track_view != null) {
+                    ClipView? clip_view = track_view.find_child(event.x, event.y) as ClipView;
+                    if (clip_view != null) {
+                        clip_view.motion_notify_event(event);
+                    } else {
+                        window.set_cursor(null);
+                    }
                 }
+            } else if (widget is View.Ruler) {
+                widget.motion_notify_event(event);
             } else {
                 window.set_cursor(null);
             }

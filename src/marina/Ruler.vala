@@ -61,7 +61,6 @@ public class Ruler : Gtk.DrawingArea {
         context.set_antialias(old_antialias);
         context.set_line_width(1.0);
         context.stroke();
-
         return true;
     }
     
@@ -71,7 +70,10 @@ public class Ruler : Gtk.DrawingArea {
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {
-        position_changed((int) event.x);
+        if ((event.state & Gdk.ModifierType.BUTTON1_MASK) != 0) {
+            queue_draw();
+            position_changed((int) event.x);
+        }
         return false;
     }
 }
