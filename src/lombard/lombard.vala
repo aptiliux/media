@@ -393,7 +393,6 @@ class App : Gtk.Window {
 
     public void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
-        on_zoom_to_project();
         queue_draw();
 
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
