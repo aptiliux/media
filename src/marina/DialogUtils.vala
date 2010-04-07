@@ -86,8 +86,12 @@ namespace DialogUtils {
         while (d.run() == Gtk.ResponseType.ACCEPT) {
             string local_filename = d.get_filename();
             if (create_directory) {
-                GLib.DirUtils.create(local_filename, 0777);
-                local_filename = Path.build_filename(local_filename, 
+                if (GLib.DirUtils.create(local_filename, 0777) != 0) {
+                    error("Could not create directory", GLib.strerror(GLib.errno));;
+                    d.present();
+                    continue;
+                }
+                local_filename = Path.build_filename(local_filename,
                     Path.get_basename(local_filename));
             }
 
