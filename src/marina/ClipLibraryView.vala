@@ -151,7 +151,7 @@ public class ClipLibraryView : Gtk.EventBox {
         if (b.button == 3) {
             selection_changed(true);
             context_menu.select_first(true);
-            context_menu.popup(null, null, null, 0, 0);
+            context_menu.popup(null, null, null, 0, b.time);
         } else {
             context_menu.popdown();
         }

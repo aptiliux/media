@@ -228,7 +228,7 @@ public class ClipView : Gtk.DrawingArea {
 
         if (event.button == 3) {
             context_menu.select_first(true);
-            context_menu.popup(null, null, null, event.button, 0);
+            context_menu.popup(null, null, null, event.button, event.time);
         } else {
             context_menu.popdown();
         }
