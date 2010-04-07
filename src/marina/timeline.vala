@@ -329,6 +329,7 @@ public class TimeLine : Gtk.EventBox {
                 selected_clips[0].delete_clip();
                 selected_clips.remove_at(0);
             }
+            track_changed();
         } else {
 /*
             if (gap_view != null) {
