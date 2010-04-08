@@ -310,12 +310,6 @@ public class ClipView : Gtk.DrawingArea {
                 if (button_down) {
                     int64 time_delta = time_provider.xsize_to_time(delta);
                     if (motion_mode == MotionMode.LEFT_TRIM) {
-                        if (clip.media_start + time_delta < 0) {
-                            return true;
-                        }
-                        if (clip.duration - time_delta < 0) {
-                            return true;
-                        }
                         clip.trim(time_delta, Gdk.WindowEdge.WEST);
                     } else {
                         int64 duration = clip.duration;

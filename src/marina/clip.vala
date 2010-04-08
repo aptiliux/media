@@ -34,9 +34,9 @@ public class Gap {
 public class ClipFile : Object {
     public string filename;
     public int64 length;
-    
+
     bool online;
-    
+
     public Gst.Caps video_caps;    // or null if no video
     public Gst.Caps audio_caps;    // or null if no audio
     public Gdk.Pixbuf thumbnail = null;
@@ -48,11 +48,11 @@ public class ClipFile : Object {
         this.length = length;
         online = false;
     }
-    
+
     public bool is_online() {
         return online;
     }
-    
+
     public void set_online(bool o) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_online");
         online = o;
@@ -63,10 +63,10 @@ public class ClipFile : Object {
         // TODO: Investigate this
         // 56x56 - 62x62 icon size does not work for some reason when
         // we display the thumbnail while dragging the clip.
-        
+
         thumbnail = b.scale_simple(64, 44, Gdk.InterpType.BILINEAR);
     }
-    
+
     public bool has_caps_structure(MediaType m) {
         if (m == MediaType.AUDIO) {
             if (audio_caps == null || audio_caps.get_size() < 1)
@@ -94,54 +94,54 @@ public class ClipFile : Object {
         }
         return true;
     }
-    
+
     public bool get_frame_rate(out Fraction rate) {
         Gst.Structure structure;
         if (!get_caps_structure(MediaType.VIDEO, out structure))
             return false;
         return structure.get_fraction("framerate", out rate.numerator, out rate.denominator);
     }
-    
+
     public bool get_dimensions(out int w, out int h) {
         Gst.Structure s;
-        
+
         if (!get_caps_structure(MediaType.VIDEO, out s))
             return false;
-        
+
         return s.get_int("width", out w) && s.get_int("height", out h);
     }
-    
+
     public bool get_sample_rate(out int rate) {
         Gst.Structure s;
         if (!get_caps_structure(MediaType.AUDIO, out s))
             return false;
-        
+
         return s.get_int("rate", out rate);
     }
-    
+
     public bool get_video_format(out uint32 fourcc) {
         Gst.Structure s;
-        
+
         if (!get_caps_structure(MediaType.VIDEO, out s))
             return false;
-       
+
         return s.get_fourcc("format", out fourcc);
     }
-    
+
     public bool get_num_channels(out int channels) {
         Gst.Structure s;
         if (!get_caps_structure(MediaType.AUDIO, out s)) {
             return false;
         }
-        
-        return s.get_int("channels", out channels);        
-    }    
-    
+
+        return s.get_int("channels", out channels);
+    }
+
     public bool get_num_channels_string(out string s) {
         int i;
         if (!get_num_channels(out i))
             return false;
-        
+
         if (i == 1)
             s = "Mono";
         else if (i == 2)
@@ -158,10 +158,10 @@ public abstract class Fetcher : Object {
     protected Gst.Element filesrc;
     protected Gst.Element decodebin;
     protected Gst.Pipeline pipeline;
-    
+
     public ClipFile clipfile;
     public string error_string;
-    
+
     protected abstract void on_pad_added(Gst.Pad pad);
     protected abstract void on_state_change(Gst.Bus bus, Gst.Message message);
 
@@ -179,7 +179,7 @@ public abstract class Fetcher : Object {
         message.parse_warning(out error, out text);
         warning("%s", text);
     }
-    
+
     protected void on_error(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error error;
@@ -194,12 +194,12 @@ public class ClipFetcher : Fetcher {
 
     public ClipFetcher(string filename) throws Error {
         clipfile = new ClipFile(filename);
-        
+
         clipfile_online += clipfile.set_online;
-        
+
         filesrc = make_element("filesrc");
         filesrc.set("location", filename);
-        
+
         decodebin = (Gst.Bin) make_element("decodebin");
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
@@ -210,21 +210,21 @@ public class ClipFetcher : Fetcher {
         if (!filesrc.link(decodebin))
             error("can't link filesrc");
         decodebin.pad_added += on_pad_added;
-        
+
         Gst.Bus bus = pipeline.get_bus();
 
         bus.add_signal_watch();
         bus.message["state-changed"] += on_state_change;
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-               
+
         error_string = null;
         pipeline.set_state(Gst.State.PLAYING);
     }
-    
+
     public string get_filename() { return clipfile.filename; }
-    
-    protected override void on_pad_added(Gst.Pad pad) {  
+
+    protected override void on_pad_added(Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         Gst.Pad fake_pad;
         Gst.Element fake_sink;
@@ -251,7 +251,7 @@ public class ClipFetcher : Fetcher {
         catch (Error e) {
         }
     }
-    
+
     Gst.Pad? get_pad(string prefix) {
         foreach(Gst.Pad pad in decodebin.pads) {
             string caps = pad.caps.to_string();
@@ -261,7 +261,7 @@ public class ClipFetcher : Fetcher {
         }
         return null;
     }
-    
+
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
         if (message.src != pipeline)
@@ -270,7 +270,7 @@ public class ClipFetcher : Fetcher {
         Gst.State old_state;
         Gst.State new_state;
         Gst.State pending;
-        
+
         message.parse_state_changed(out old_state, out new_state, out pending);
         if (new_state == old_state) 
             return;
@@ -280,21 +280,21 @@ public class ClipFetcher : Fetcher {
             if (pad != null) {
                 clipfile.video_caps = pad.caps;
             }
-            
+
             pad = get_pad("audio");
             if (pad != null) {
-                clipfile.audio_caps = pad.caps;            
+                clipfile.audio_caps = pad.caps;
             }
-  
+
             Gst.Format format = Gst.Format.TIME;
             if (!pipeline.query_duration(ref format, out clipfile.length) ||
                     format != Gst.Format.TIME) {
                 do_error("Can't fetch length");
                 return;
             }
-            
+
             clipfile_online(true);
-            pipeline.set_state(Gst.State.NULL);                                  
+            pipeline.set_state(Gst.State.NULL);
         } else if (new_state == Gst.State.NULL) {
             ready();
         }
@@ -307,31 +307,31 @@ public class ThumbnailFetcher : Fetcher {
     int64 seek_position;
     bool done_seek;
     bool have_thumbnail;
-    
+
     public ThumbnailFetcher(ClipFile f, int64 time) throws Error {
         clipfile = f;
         seek_position = time;
-        
+
         SingleDecodeBin single_bin = new SingleDecodeBin (
-                                        Gst.Caps.from_string ("video/x-raw-rgb; video/x-raw-yuv"), 
+                                        Gst.Caps.from_string ("video/x-raw-rgb; video/x-raw-yuv"),
                                         "singledecoder", f.filename);
-        
+
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
         thumbnail_sink = new ThumbnailSink();
         thumbnail_sink.have_thumbnail += on_have_thumbnail;
-        
+
         colorspace = make_element("ffmpegcolorspace");
-    
+
         pipeline.add_many(single_bin, thumbnail_sink, colorspace);
-        
+
         single_bin.pad_added += on_pad_added;
-        
+
         colorspace.link(thumbnail_sink);
-        
+
         Gst.Bus bus = pipeline.get_bus();
-        
+
         bus.add_signal_watch();
         bus.message["state-changed"] += on_state_change;
         bus.message["error"] += on_error;
@@ -341,38 +341,38 @@ public class ThumbnailFetcher : Fetcher {
         done_seek = false;
         pipeline.set_state(Gst.State.PAUSED);
     }
-    
+
     void on_have_thumbnail(Gdk.Pixbuf buf) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_have_thumbnail");
         if (done_seek) {
             have_thumbnail = true;
             clipfile.set_thumbnail(buf);
-        }     
+        }
     }
-    
+
     protected override void on_pad_added(Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
         Gst.Caps c = pad.get_caps();
-        
+
         if (c.to_string().has_prefix("video")) {
             pad.link(colorspace.get_static_pad("sink"));
         }
     }
-    
+
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
         if (message.src != pipeline)
             return;
-            
+
         Gst.State new_state;
         Gst.State old_state;
         Gst.State pending_state;
-        
+
         message.parse_state_changed (out old_state, out new_state, out pending_state);
         if (new_state == old_state &&
             new_state != Gst.State.PAUSED)
             return;
-            
+
         if (new_state == Gst.State.PAUSED) {
             if (!done_seek) {
                 done_seek = true;
@@ -398,8 +398,8 @@ public class Clip : Object {
     public int64 start { 
         get {
             return _start;
-        } 
-        
+        }
+
         set {
             _start = value;
             if (connected) {
@@ -408,12 +408,12 @@ public class Clip : Object {
             moved(this);
         }
     }
-    
+
     int64 _media_start;
     public int64 media_start { 
         get {
             return _media_start;
-        } 
+        }
     }
 
     int64 _duration;
@@ -448,14 +448,14 @@ public class Clip : Object {
     public int64 end {
         get { return start + duration; }
     }
-    
+
     public signal void moved(Clip clip);
     public signal void updated(Clip clip);
     public signal void media_start_changed(int64 media_start);
     public signal void duration_changed(int64 duration);
     public signal void start_changed(int64 start);
     public signal void removed(Clip clip);
-    
+
     public Clip(ClipFile clipfile, MediaType t, string name,
                 int64 start, int64 media_start, int64 duration, bool is_recording) {
         this.is_recording = is_recording;
@@ -465,13 +465,13 @@ public class Clip : Object {
         this.connected = clipfile.is_online();
         this.set_media_start_duration(media_start, duration);
         this.start = start;
-        
+
         clipfile.updated += on_clipfile_updated;
     }
 
     public void gnonlin_connect() { connected = true; }
     public void gnonlin_disconnect() { connected = false; }
-    
+
     void on_clipfile_updated(ClipFile f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clipfile_updated");
         if (f.is_online()) {
@@ -490,12 +490,12 @@ public class Clip : Object {
         }
         updated(this);
     }
-    
+
     public bool overlap_pos(int64 start, int64 length) {
         return start < this.start + this.duration &&
                 this.start < start + length;
     }
-    
+
     public int64 snap(Clip other, int64 pad) {
         if (time_in_range(start, other.start, pad)) {
             return other.start;
@@ -508,7 +508,7 @@ public class Clip : Object {
         }
         return start;
     }
-    
+
     public bool snap_coord(out int64 s, int64 span) {
         if (time_in_range(s, start, span)) {
             s = start;
@@ -519,7 +519,7 @@ public class Clip : Object {
         }
         return false;
     }
-    
+
     public Clip copy() {
         return new Clip(clipfile, type, name, start, media_start, duration, false);
     }
@@ -533,8 +533,16 @@ public class Clip : Object {
     public void trim(int64 delta, Gdk.WindowEdge edge) {
         switch (edge) {
             case Gdk.WindowEdge.WEST:
+                if (media_start + delta < 0) {
+                    delta = -media_start;
+                }
+
+                if (duration - delta < 0) {
+                    delta = duration;
+                }
+
                 start += delta;
-                set_media_start_duration(media_start + delta, duration - delta);    
+                set_media_start_duration(media_start + delta, duration - delta);
                 break;
             case Gdk.WindowEdge.EAST:
                 duration += delta;
@@ -546,7 +554,7 @@ public class Clip : Object {
         if (media_start < 0) {
             media_start = 0;
         }
-        
+
         if (duration < 0) {
             duration = 0;
         }
@@ -555,14 +563,15 @@ public class Clip : Object {
             // We are saturating the value
             media_start = clipfile.length - duration;
         }
-        
+
         _media_start = media_start;
         _duration = duration;
-        
+
         if (connected) {
             media_start_changed(_media_start);
             duration_changed(_duration);
         }
+
         moved(this);
     }
 
@@ -577,7 +586,7 @@ public class Clip : Object {
 public class FetcherCompletion {
     public FetcherCompletion() {
     }
-    
+
     public virtual void complete(ClipFetcher fetcher) {
     }
 }
