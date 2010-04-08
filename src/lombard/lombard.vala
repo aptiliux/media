@@ -548,12 +548,16 @@ class App : Gtk.Window, TransportDelegate {
         Fraction? frames_per_second = null;
         project.get_framerate_fraction(out frames_per_second);
         if (library.has_selection()) {
-            foreach (string file_name in library.get_selected_files()) {
+            Gee.ArrayList<string> files = library.get_selected_files();
+            if (files.size == 1) {
+                string file_name = files.get(0);
                 Model.ClipFile? clip_file = project.find_clipfile(file_name);
                 DialogUtils.show_clip_properties(this, null, clip_file, frames_per_second);
             }
         } else {
-            foreach (ClipView clip_view in timeline.selected_clips) {
+            Gee.ArrayList<ClipView> clips = timeline.selected_clips;
+            if (clips.size == 1) {
+                ClipView clip_view = clips.get(0);
                 DialogUtils.show_clip_properties(this, clip_view, null, frames_per_second);
             }
         }
@@ -582,7 +586,13 @@ class App : Gtk.Window, TransportDelegate {
         bool on_contiguous = project.playhead_on_contiguous_clip();
         bool dir;
         bool can_trim = project.can_trim(out dir);
-        
+        bool one_selected = false;
+        if (library_selected) {
+            one_selected = library.get_selected_files().size == 1;
+        } else if (clip_selected) {
+            one_selected = timeline.selected_clips.size == 1;
+        }
+
         if (clip_selected) {
             foreach (ClipView clip_view in timeline.selected_clips) {
                 clip_is_trimmed = clip_view.clip.is_trimmed();
@@ -604,7 +614,7 @@ class App : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "Cut", stopped && clip_selected);
         set_sensitive_group(main_group, "Copy", stopped && clip_selected);
         set_sensitive_group(main_group, "Paste", stopped && timeline.clipboard.clips.size > 0);
-        set_sensitive_group(main_group, "ClipProperties", clip_selected || library_selected);
+        set_sensitive_group(main_group, "ClipProperties", one_selected);
 
         set_sensitive_group(main_group, "SplitAtPlayhead", stopped && playhead_on_clip);
         set_sensitive_group(main_group, "JoinAtPlayhead", stopped && on_contiguous);

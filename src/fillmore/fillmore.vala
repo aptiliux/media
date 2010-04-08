@@ -412,6 +412,12 @@ class Recorder : Gtk.Window, TransportDelegate {
         bool playhead_on_clip = project.playhead_on_clip();
         int number_of_tracks = project.tracks.size;
         bool is_stopped = is_stopped();
+        bool one_selected = false;
+        if (library_selected) {
+            one_selected = library.get_selected_files().size == 1;
+        } else if (selected) {
+            one_selected = timeline.selected_clips.size == 1;
+        }
 
         // File menu
         set_sensitive_group(main_group, "NewProject", is_stopped);
@@ -434,7 +440,7 @@ class Recorder : Gtk.Window, TransportDelegate {
             selected && playhead_on_clip && is_stopped);
         set_sensitive_group(main_group, "JoinAtPlayhead", 
                 is_stopped && selected && project.playhead_on_contiguous_clip());
-        set_sensitive_group(main_group, "ClipProperties", selected || library_selected);
+        set_sensitive_group(main_group, "ClipProperties", one_selected);
 
         // View menu
         set_sensitive_group(main_group, "ZoomProject", project.get_length() != 0);
@@ -759,12 +765,16 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     public void on_clip_properties() {
         if (library.has_selection()) {
-            foreach (string file_name in library.get_selected_files()) {
+            Gee.ArrayList<string> files = library.get_selected_files();
+            if (files.size == 1) {
+                string file_name = files.get(0);
                 Model.ClipFile? clip_file = project.find_clipfile(file_name);
                 DialogUtils.show_clip_properties(this, null, clip_file, null);
             }
         } else {
-            foreach (ClipView clip_view in timeline.selected_clips) {
+            Gee.ArrayList<ClipView> clips = timeline.selected_clips;
+            if (clips.size == 1) {
+                ClipView clip_view = clips.get(0);
                 DialogUtils.show_clip_properties(this, clip_view, null, null);
             }
         }
