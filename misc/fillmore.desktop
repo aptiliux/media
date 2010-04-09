@@ -6,8 +6,8 @@ GenericName=Audio Editor
 Comment=Record and edit multitrack audio
 Exec=fillmore %U
 Icon=fillmore
+MimeType=application/fillmore;text/yorba-media
 Terminal=false
 Type=Application
 Categories=AudioVideo;GNOME;GTK;
 X-GIO-NoFuse=true
-

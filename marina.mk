@@ -90,12 +90,15 @@ endif
 ifndef DISABLE_DESKTOP_UPDATE
 	-update-desktop-database || :
 endif
+	$(INSTALL_DATA) ../../misc/$(PROGRAM_NAME).xml $(DESTDIR)$(PREFIX)/share/mime/packages
+	-update-mime-database $(DESTDIR)$(PREFIX)/share/mime
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/$(PROGRAM_NAME)
 	rm -fr $(DESTDIR)$(PREFIX)/share/$(PROGRAM_NAME)
 	rm -fr $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(PROGRAM_NAME).svg
 	rm -f $(DESTDIR)$(PREFIX)/share/applications/$(PROGRAM_NAME).desktop
+	rm -f $(DESTDIR)$(PREFIX)/share/mime/packages/$(PROGRAM_NAME).xml
 
 $(VALA_STAMP): $(EXPANDED_SRC_FILES) $(EXPANDED_VAPI_FILES) $(EXPANDED_SRC_HEADER_FILES) Makefile \
 	$(CONFIG_IN) $(TEMP_MARINA_VAPI)

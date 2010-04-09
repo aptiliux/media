@@ -855,6 +855,13 @@ void main(string[] args) {
         debug_enabled = (str != null && (str[0] >= '1'));
         ClassFactory.set_class_factory(new ClassFactory());
         View.MediaEngine.can_run();
+
+        try {
+            string filename = GLib.Filename.from_uri(project_file);
+            project_file = filename;
+        } catch (GLib.Error e) {
+        }
+
         new App(project_file);
         Gtk.main();
     } catch (Error e) {
