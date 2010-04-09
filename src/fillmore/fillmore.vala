@@ -83,7 +83,7 @@ class Recorder : Gtk.Window, TransportDelegate {
             "Delete track", on_track_remove },
             
         { "Help", null, "_Help", null, null, null },
-        { "Contents", Gtk.STOCK_HELP, "_Contents", null, 
+        { "Contents", Gtk.STOCK_HELP, "_Contents", "F1", 
             "More information on Fillmore", on_help_contents},
         { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
