@@ -849,18 +849,18 @@ void main(string[] args) {
             return;
         }
 
-        string project_file = args.length > 1 ? args[1] : null;
+        string? project_file = null;
+        if (args.length > 1) {
+            project_file = args[1];
+            try {
+                project_file = GLib.Filename.from_uri(project_file);
+            } catch (GLib.Error e) { }
+        }
 
         string str = GLib.Environment.get_variable("LOMBARD_DEBUG");
         debug_enabled = (str != null && (str[0] >= '1'));
         ClassFactory.set_class_factory(new ClassFactory());
         View.MediaEngine.can_run();
-
-        try {
-            string filename = GLib.Filename.from_uri(project_file);
-            project_file = filename;
-        } catch (GLib.Error e) {
-        }
 
         new App(project_file);
         Gtk.main();

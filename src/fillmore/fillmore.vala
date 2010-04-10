@@ -982,18 +982,17 @@ class Recorder : Gtk.Window, TransportDelegate {
 
             Gtk.rc_parse(rc_file);
             Gst.init(ref args);
+
             string? project_file = null;
             if (args.length > 1) {
                 project_file = args[1];
+                try {
+                    project_file = GLib.Filename.from_uri(project_file);
+                } catch (GLib.Error e) { }
             }
+
             ClassFactory.set_class_factory(new FillmoreClassFactory());
             View.MediaEngine.can_run();
-
-            try {
-                string filename = GLib.Filename.from_uri(project_file);
-                project_file = filename;
-            } catch (GLib.Error e) {
-            }
 
             Recorder recorder = new Recorder(project_file);
             recorder.show_all();
