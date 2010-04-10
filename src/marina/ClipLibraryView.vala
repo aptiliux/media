@@ -232,7 +232,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
 
     
-    void on_drag_data_get(Gtk.Widget w, Gdk.DragContext context, Gtk.SelectionData data, 
+    void on_drag_data_get(Gtk.TreeView tree_view, Gdk.DragContext context, Gtk.SelectionData data, 
                             uint info, uint time) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_get");
         string uri;
