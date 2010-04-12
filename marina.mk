@@ -99,6 +99,7 @@ uninstall:
 	rm -fr $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/$(PROGRAM_NAME).svg
 	rm -f $(DESTDIR)$(PREFIX)/share/applications/$(PROGRAM_NAME).desktop
 	rm -f $(DESTDIR)$(PREFIX)/share/mime/packages/$(PROGRAM_NAME).xml
+	-update-mime-database $(DESTDIR)$(PREFIX)/share/mime
 
 $(VALA_STAMP): $(EXPANDED_SRC_FILES) $(EXPANDED_VAPI_FILES) $(EXPANDED_SRC_HEADER_FILES) Makefile \
 	$(CONFIG_IN) $(TEMP_MARINA_VAPI)
