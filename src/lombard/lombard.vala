@@ -68,7 +68,6 @@ class App : Gtk.Window, TransportDelegate {
         { "SelectAll", Gtk.STOCK_SELECT_ALL, null, "<Control>A", null, on_select_all },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
-        { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
 
@@ -117,7 +116,6 @@ class App : Gtk.Window, TransportDelegate {
       <separator />
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
-      <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
       <separator/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
@@ -539,10 +537,6 @@ class App : Gtk.Window, TransportDelegate {
         project.split_at_playhead();
     }
 
-    public void on_join_at_playhead() {
-        project.join_at_playhead();
-    }
-
     public void on_trim_to_playhead() {
         project.trim_to_playhead();
     }
@@ -620,7 +614,6 @@ class App : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "ClipProperties", one_selected);
 
         set_sensitive_group(main_group, "SplitAtPlayhead", stopped && playhead_on_clip);
-        set_sensitive_group(main_group, "JoinAtPlayhead", stopped && on_contiguous);
         set_sensitive_group(main_group, "TrimToPlayhead", stopped && can_trim);
         
         // View Menu

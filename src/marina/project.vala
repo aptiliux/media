@@ -522,15 +522,6 @@ public abstract class Project : TempoInformation, Object {
         undo_manager.end_transaction(description);
     }
 
-    public void join_at_playhead() {
-        string description = "Join At Playhead";
-        undo_manager.start_transaction(description);
-        foreach (Track track in tracks) {
-            track.join(transport_get_position());
-        }
-        undo_manager.end_transaction(description);
-    }
-
     public bool can_trim(out bool left) {
         Clip first_clip = null;
 

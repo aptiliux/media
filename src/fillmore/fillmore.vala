@@ -67,7 +67,6 @@ class Recorder : Gtk.Window, TransportDelegate {
         { "SelectAll", Gtk.STOCK_SELECT_ALL, null, "<Control>A", null, on_select_all },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
-        { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
         { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
             
@@ -126,7 +125,6 @@ class Recorder : Gtk.Window, TransportDelegate {
       <separator />
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
-      <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
       <separator />
       <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
@@ -441,8 +439,6 @@ class Recorder : Gtk.Window, TransportDelegate {
             selected && playhead_on_clip && is_stopped);
         set_sensitive_group(main_group, "TrimToPlayhead",
             selected && playhead_on_clip && is_stopped);
-        set_sensitive_group(main_group, "JoinAtPlayhead", 
-                is_stopped && selected && project.playhead_on_contiguous_clip());
         set_sensitive_group(main_group, "ClipProperties", one_selected);
 
         // View menu
@@ -764,10 +760,6 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     public void on_split_at_playhead() {
         project.split_at_playhead();
-    }
-
-    public void on_join_at_playhead() {
-        project.join_at_playhead();
     }
 
     public void on_trim_to_playhead() {
