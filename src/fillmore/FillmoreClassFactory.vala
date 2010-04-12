@@ -42,6 +42,10 @@ class FillmoreTrackView : Gtk.VBox, TrackView {
     Gtk.Widget? find_child(double x, double y) {
         return track_view.find_child(x, y);
     }
+
+    void select_all() {
+        track_view.select_all();
+    }
 }
 
 public class FillmoreClassFactory : ClassFactory {

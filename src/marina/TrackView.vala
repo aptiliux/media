@@ -183,4 +183,13 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         }
         return null;
     }
+    
+    public void select_all() {
+        foreach (Gtk.Widget child in get_children()) {
+            ClipView? clip_view = child as ClipView;
+            if (clip_view != null) {
+                clip_view.select();
+            }
+        }
+    }
 }

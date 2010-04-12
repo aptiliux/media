@@ -470,4 +470,8 @@ public class ClipLibraryView : Gtk.EventBox {
                 delete_row(list_store, paths.nth_data(i));
         }
     }
+
+    public void select_all() {
+        selection.select_all();
+    }
 }

@@ -339,4 +339,10 @@ public class ClipView : Gtk.DrawingArea {
         return is_trim_height(y) && x > allocation.width - TRIM_WIDTH && 
             x < allocation.width;
     }
+
+    public void select() {
+        if (!is_selected) {
+            selection_request(this, true);
+        }
+    }
 }

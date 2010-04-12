@@ -11,6 +11,7 @@ public interface TrackView : Gtk.Widget {
     public abstract Model.Track get_track();
     public abstract int get_track_height();
     public abstract Gtk.Widget? find_child(double x, double y);
+    public abstract void select_all();
 }
 
 public class ClassFactory {

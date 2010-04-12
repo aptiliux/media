@@ -379,6 +379,12 @@ public class TimeLine : Gtk.EventBox {
         queue_draw();
     }
 
+    public void select_all() {
+        foreach (TrackView track in tracks) {
+            track.select_all();
+        }
+    }
+
     public override bool expose_event(Gdk.EventExpose event) {
         base.expose_event(event);
 

@@ -64,6 +64,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
         { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
         { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
+        { "SelectAll", Gtk.STOCK_SELECT_ALL, null, "<Control>A", null, on_select_all },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
         { "JoinAtPlayhead", null, "_Join at Playhead", "<Control>J", null, on_join_at_playhead },
@@ -121,6 +122,8 @@ class Recorder : Gtk.Window, TransportDelegate {
       <menuitem name="EditPaste" action="Paste" />
       <menuitem name="EditDelete" action="Delete" />
       <separator/>
+      <menuitem name="EditSelectAll" action="SelectAll" />
+      <separator />
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
       <menuitem name="ClipJoinAtPlayhead" action="JoinAtPlayhead" />
@@ -748,6 +751,14 @@ class Recorder : Gtk.Window, TransportDelegate {
             library.delete_selection();
         } else {
             timeline.delete_selection();
+        }
+    }
+
+    void on_select_all() {
+        if (library.has_selection()) {
+            library.select_all();
+        } else {
+            timeline.select_all();
         }
     }
 
