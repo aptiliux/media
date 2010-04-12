@@ -310,7 +310,9 @@ public class TimeLine : Gtk.EventBox {
 
     public void on_ruler_position_changed(int x) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_ruler_position_changed");
-        update_pos(x);
+        if (!project.transport_is_recording()) {
+            update_pos(x);
+        }
     }
 
     public bool is_clip_selected() {
