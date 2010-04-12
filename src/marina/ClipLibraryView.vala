@@ -48,12 +48,14 @@ public class ClipLibraryView : Gtk.EventBox {
 
         list_store = new Gtk.ListStore(4, typeof (Gdk.Pixbuf), typeof (string),
                                        typeof (string), typeof (string), -1);
-                                       
+
         tree_view = new Gtk.TreeView.with_model(list_store);
 
         add_column(ColumnType.THUMBNAIL);
-        add_column(ColumnType.NAME);
+        Gtk.TreeViewColumn name_column = add_column(ColumnType.NAME);
         add_column(ColumnType.DURATION);
+        list_store.set_default_sort_func(name_sort);
+        list_store.set_sort_column_id(name_column.get_sort_column_id(), Gtk.SortType.ASCENDING);
 
         num_clipfiles = 0;
         if (drag_message != null) {
@@ -282,7 +284,7 @@ public class ClipLibraryView : Gtk.EventBox {
         }
     }
 
-    void add_column(ColumnType c) {
+    Gtk.TreeViewColumn add_column(ColumnType c) {
         Gtk.TreeViewColumn column = new Gtk.TreeViewColumn();
         Gtk.CellRenderer renderer;
 
@@ -297,10 +299,12 @@ public class ClipLibraryView : Gtk.EventBox {
         column.pack_start(renderer, true);
         column.set_resizable(true);
 
-        if (c == ColumnType.THUMBNAIL)
+        if (c == ColumnType.THUMBNAIL) {
             column.add_attribute(renderer, "pixbuf", tree_view.append_column(column) - 1);
-        else
+        } else {
             column.add_attribute(renderer, "text", tree_view.append_column(column) - 1);
+        }
+        return column;
     }
 
     void update_iter(Gtk.TreeIter it, Model.ClipFile clip_file) {
@@ -323,20 +327,6 @@ public class ClipLibraryView : Gtk.EventBox {
                             ColumnType.FILENAME, clip_file.filename, -1);
     }
 
-    int get_clipfile_position(Model.ClipFile f) {
-        if (sort_mode == SortMode.ABC) {
-            Model.ClipFile compare;
-            int i = 0;
-
-            while ((compare = project.get_clipfile(i)) != null) {
-                if (stricmp(f.filename, compare.filename) <= 0)
-                    return i;
-                i++;
-            }
-        }
-        return -1;
-    }
-
     void on_clipfile_added(Model.ClipFile f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_added");
         Gtk.TreeIter it;
@@ -354,12 +344,7 @@ public class ClipLibraryView : Gtk.EventBox {
             num_clipfiles++;
         }
 
-        int pos = get_clipfile_position(f);
-        if (pos == -1)
-            list_store.append(out it);
-        else
-            list_store.insert(out it, pos);
-
+        list_store.append(out it);
         update_iter(it, f);
     }
 
@@ -474,4 +459,12 @@ public class ClipLibraryView : Gtk.EventBox {
     public void select_all() {
         selection.select_all();
     }
+
+     int name_sort(Gtk.TreeModel model, Gtk.TreeIter a, Gtk.TreeIter b) {
+        string left;
+        string right;
+        model.get(a, ColumnType.FILENAME, out left);
+        model.get(b, ColumnType.FILENAME, out right);
+        return stricmp(left, right);
+     }
 }

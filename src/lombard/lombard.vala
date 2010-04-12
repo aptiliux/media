@@ -580,7 +580,6 @@ class App : Gtk.Window, TransportDelegate {
         bool stopped = is_stopped();
         bool clip_is_trimmed = false;
         bool playhead_on_clip = project.playhead_on_clip();
-        bool on_contiguous = project.playhead_on_contiguous_clip();
         bool dir;
         bool can_trim = project.can_trim(out dir);
         bool one_selected = false;
