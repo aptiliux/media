@@ -286,9 +286,9 @@ public class ClipView : Gtk.DrawingArea {
         int delta = (int) event.x - drag_point;
         switch (motion_mode) {
             case MotionMode.NONE:
-                if (is_left_trim(event.x, event.y)) {
+                if (!button_down && is_left_trim(event.x, event.y)) {
                     window.set_cursor(left_trim_cursor);
-                } else if (is_right_trim(event.x, event.y)) {
+                } else if (!button_down && is_right_trim(event.x, event.y)) {
                     window.set_cursor(right_trim_cursor);
                 } else if (is_selected && button_down) {
                     if (delta.abs() > MIN_DRAG) {
@@ -328,7 +328,7 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     bool is_trim_height(double y) {
-        return y > allocation.height / 2;
+        return y - allocation.y > allocation.height / 2;
     }
 
     bool is_left_trim(double x, double y) {
