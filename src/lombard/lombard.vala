@@ -605,7 +605,7 @@ class App : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "Quit", stopped);
         
         // Edit Menu
-        set_sensitive_group(main_group, "Undo", stopped);
+        set_sensitive_group(main_group, "Undo", stopped && project.undo_manager.can_undo);
         set_sensitive_group(main_group, "Delete", stopped && (clip_selected || library_selected));
         set_sensitive_group(main_group, "Cut", stopped && clip_selected);
         set_sensitive_group(main_group, "Copy", stopped && clip_selected);

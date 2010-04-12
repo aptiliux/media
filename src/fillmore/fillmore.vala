@@ -430,7 +430,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "Quit", is_stopped);
 
         // Edit menu
-        set_sensitive_group(main_group, "Undo", is_stopped);
+        set_sensitive_group(main_group, "Undo", is_stopped && project.undo_manager.can_undo);
         set_sensitive_group(main_group, "Copy", is_stopped && selected);
         set_sensitive_group(main_group, "Cut", is_stopped && selected);
         set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0 && is_stopped);
