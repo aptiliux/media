@@ -277,8 +277,24 @@ public class TimeLine : Gtk.EventBox {
         track_view.get_track().trim(clip_view.clip, delta, edge);
     }
 
+    void constrain_move(ClipView clip_view, ref int delta) {
+        int min_delta = 5;
+        TrackView track_view = (TrackView) clip_view.parent as TrackView;
+        Model.Track track = track_view.get_track();
+        if (delta.abs() < min_delta) {
+            int64 range = provider.xsize_to_time(min_delta);
+            int64 adjustment;
+            if (track.clip_is_near(clip_view.clip, range, out adjustment)) {
+                delta = provider.time_to_xsize(adjustment);
+            }
+        }
+    }
+
     void on_clip_view_move_request(ClipView clip_view, int delta) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        if (project.snap_to_clip) {
+            constrain_move(clip_view, ref delta);
+        }
         if (move_allowed(ref delta)) {
             move_the_clips(delta);
         }

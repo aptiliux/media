@@ -333,6 +333,7 @@ public abstract class Project : TempoInformation, Object {
     public double click_volume = 0.8;
     public bool library_visible = true;
     public int library_width = 600;
+    public bool snap_to_clip;
 
     /* TODO:
      * This can't be const since the Vala compiler (0.7.7) crashes if we try to make it a const.

@@ -46,7 +46,6 @@ class Recorder : Gtk.Window, TransportDelegate {
     Gee.ArrayList<string> load_errors;
 
     public const string NAME = "Fillmore";
-    const string LibraryToggle = "Library";
     const Gtk.ActionEntry[] entries = {
         { "File", null, "_File", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
@@ -95,7 +94,8 @@ class Recorder : Gtk.Window, TransportDelegate {
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
-        { LibraryToggle, null, "_Library", "F9", null, on_view_library, true }
+        { "Library", null, "_Library", "F9", null, on_view_library, true },
+        { "Snap", null, "_Snap", null, null, on_snap, false }
     };
 
     const string ui = """
@@ -125,11 +125,13 @@ class Recorder : Gtk.Window, TransportDelegate {
       <separator />
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
+      <menuitem name="Snap" action="Snap" />
       <separator />
       <menuitem name="ClipViewProperties" action="ClipProperties" />
     </menu>
     <menu name="ViewMenu" action="View">
-        <separator name="AfterZoom" />
+        <menuitem name="ViewLibrary" action="Library" />
+        <separator />
         <menuitem name="ViewZoomIn" action="ZoomIn" />
         <menuitem name="ViewZoomOut" action="ZoomOut" />
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
@@ -192,8 +194,9 @@ class Recorder : Gtk.Window, TransportDelegate {
             warning("Could not load application icon: %s", e.message);
         }
         project = new Model.AudioProject(project_file);
+        project.snap_to_clip = false;
         provider = new Model.BarBeatTimeSystem(project);
-        
+
         project.media_engine.callback_pulse += on_callback_pulse;
         project.media_engine.post_export += on_post_export;
         project.media_engine.position_changed += on_position_changed;
@@ -225,10 +228,6 @@ class Recorder : Gtk.Window, TransportDelegate {
         try {
             manager.add_ui_from_string(ui, -1);
         } catch (Error e) { error("%s", e.message); }
-
-        uint view_merge_id = manager.new_merge_id();
-        manager.add_ui(view_merge_id, "/MenuBar/ViewMenu/AfterZoom",
-                    LibraryToggle, LibraryToggle, Gtk.UIManagerItemType.MENUITEM, true);
 
         Gtk.MenuBar menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
         Gtk.Toolbar toolbar = (Gtk.Toolbar) get_widget(manager, "/Toolbar");
@@ -844,6 +843,10 @@ class Recorder : Gtk.Window, TransportDelegate {
         timeline.zoom_to_project(h_adjustment.page_size);
     }
 
+    void on_snap() {
+        project.snap_to_clip = !project.snap_to_clip;
+    }
+
     void on_view_library() {
         if (timeline_library_pane.child2 == library_scrolled) {
             timeline_library_pane.remove(library_scrolled);
@@ -1019,9 +1022,14 @@ class Recorder : Gtk.Window, TransportDelegate {
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
         timeline_library_pane.set_position(project.library_width);
 
-        Gtk.ToggleAction action = main_group.get_action(LibraryToggle) as Gtk.ToggleAction;
+        Gtk.ToggleAction action = main_group.get_action("Library") as Gtk.ToggleAction;
         if (action.get_active() != project.library_visible) {
             action.set_active(project.library_visible);
+        }
+
+        action = main_group.get_action("Snap") as Gtk.ToggleAction;
+        if (action.get_active() != project.snap_to_clip) {
+            action.set_active(project.snap_to_clip);
         }
 
         if (project.library_visible) {

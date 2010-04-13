@@ -88,7 +88,8 @@ class App : Gtk.Window, TransportDelegate {
     };
 
     const Gtk.ToggleActionEntry[] check_actions = { 
-        { LibraryToggle, null, "_Library", "F9", null, on_view_library, true }
+        { LibraryToggle, null, "_Library", "F9", null, on_view_library, true },
+        { "Snap", null, "_Snap", null, null, on_snap, true }
     };
 
     const string ui = """
@@ -116,6 +117,7 @@ class App : Gtk.Window, TransportDelegate {
       <separator />
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
+      <menuitem name="Snap" action="Snap" />
       <separator/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
@@ -192,6 +194,7 @@ class App : Gtk.Window, TransportDelegate {
         menubar = (Gtk.MenuBar) get_widget(manager, "/MenuBar");
 
         project = new Model.VideoProject(project_filename);
+        project.snap_to_clip = true;
         project.name_changed += set_project_name;
         project.load_error += on_load_error;
         project.load_complete += on_load_complete;
@@ -387,6 +390,12 @@ class App : Gtk.Window, TransportDelegate {
         if (action.get_active() != project.library_visible) {
             action.set_active(project.library_visible);
         }
+
+        action = main_group.get_action("Snap") as Gtk.ToggleAction;
+        if (action.get_active() != project.snap_to_clip) {
+            action.set_active(project.snap_to_clip);
+        }
+
         if (project.library_visible) {
             if (h_pane.child1 != library_scrolled) {
                 h_pane.add1(library_scrolled);
@@ -672,6 +681,10 @@ class App : Gtk.Window, TransportDelegate {
                 return base.key_press_event(event);
         }
         return true;
+    }
+
+    void on_snap() {
+        project.snap_to_clip = !project.snap_to_clip;
     }
 
     void on_view_library() {

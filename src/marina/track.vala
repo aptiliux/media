@@ -13,7 +13,7 @@ public abstract class Track : Object {
     public Gee.ArrayList<Clip> clips = new Gee.ArrayList<Clip>();  // all clips, sorted by time
     public string display_name;
     bool is_selected;
-    
+
     public signal void clip_added(Clip clip, bool select);
     public signal void clip_removed(Clip clip);
 
@@ -27,7 +27,7 @@ public abstract class Track : Object {
         this.project = project;
         this.display_name = display_name;
     }
-    
+
     protected abstract string name();
     public abstract MediaType media_type();
 
@@ -44,7 +44,7 @@ public abstract class Track : Object {
     }
 
     protected abstract bool check(Clip clip);
-  
+
     public int64 get_time_from_pos(Clip clip, bool after) {
         if (after)
             return clip.start + clip.duration;
@@ -60,7 +60,7 @@ public abstract class Track : Object {
         }
         return -1;
     }
-    
+
     public int64 snap_clip(Clip c, int64 span) {
         foreach (Clip cl in clips) {
             int64 new_start = c.snap(cl, span);
@@ -70,7 +70,7 @@ public abstract class Track : Object {
         }
         return c.start;
     }
-    
+
     public bool snap_coord(out int64 coord, int64 span) {
         foreach (Clip c in clips) {
             if (c.snap_coord(out coord, span))
@@ -78,12 +78,31 @@ public abstract class Track : Object {
         }
         return false;
     }
-    
+
+    public bool clip_is_near(Model.Clip clip, int64 range, out int64 adjustment) {
+        foreach (Clip potential_clip in clips) {
+            if (potential_clip != clip) {
+                int64 difference = clip.start - potential_clip.end;
+                if (difference.abs() < range) {
+                    adjustment = -difference;
+                    return true;
+                }
+
+                difference = potential_clip.start - clip.end;
+                if (difference.abs() < range) {
+                    adjustment = difference;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     int get_insert_index(int64 time) {
         int end_ret = 0;
         for (int i = 0; i < clips.size; i++) {
             Clip c = clips[i];
-       
+
             if (time >= c.start) {
                 if (time < c.start + c.duration/2)
                     return i;
@@ -100,7 +119,7 @@ public abstract class Track : Object {
     public Gap find_first_gap(int64 start) {
         int64 new_start = 0;
         int64 new_end = int64.MAX;
-        
+
         foreach (Clip c in clips) {
             if (c.start > new_start &&
                 c.start > start) {
@@ -122,19 +141,19 @@ public abstract class Track : Object {
         }
         return i;
     }
-    
+
     // If we are not on a valid gap (as in, a space between two clips or between the start
     // and the first clip), we return an empty (and invalid) gap
     public void find_containing_gap(int64 time, out Gap g) {
         g = new Gap(0, 0);
-        
+
         int index = get_gap_index(time);
         if (index < clips.size) {
             g.start = index > 0 ? clips[index - 1].end : 0;
             g.end = clips[index].start;
         }
     }
-    
+
     public Clip? find_overlapping_clip(int64 start, int64 length) {
         for (int i = 0; i < clips.size; i++) {
             Clip c = clips[i];
@@ -147,16 +166,16 @@ public abstract class Track : Object {
     public Clip? find_nearest_clip_edge(int64 time, out bool after) {
         int limit = clips.size * 2;
         int64 prev_time = clips[0].start;
-        
+
         for (int i = 1; i < limit; i++) {
             Clip c = clips[i / 2];
             int64 t;
-            
+
             if (i % 2 == 0)
                 t = c.start;
             else
                 t = c.end;
-                
+
             if (t > time) {
                 if (t - time < time - prev_time) {
                     after = ((i % 2) != 0);
@@ -168,22 +187,22 @@ public abstract class Track : Object {
             }
             prev_time = t;
         }
-    
+
         after = true;
         return clips[clips.size - 1];
     }
-    
+
     void do_clip_overwrite(Clip c) {
         int start_index = get_clip_from_time(c.start);
         int end_index = get_clip_from_time(c.end);
-        
+
         if (end_index >= 0) {
             int64 diff = c.end - clips[end_index].start;
             if (end_index == start_index) {
                 if (c == clips[end_index]) {
                     return;
                 }
-                
+
                 if (diff > 0) {
                     Clip cl = new Clip(clips[end_index].clipfile, clips[end_index].type, 
                                     clips[end_index].name, c.end, 
@@ -211,21 +230,21 @@ public abstract class Track : Object {
             }
             else
                 i++;
-        }        
-    }    
-    
+        }
+    }
+
     public void move(Clip c, int64 pos, int64 original_time) {
         Command command = new ClipAddCommand(this, c, original_time, pos);
         project.do_command(command);
     }
-    
+
     public void _move(Clip c, int64 pos) {
         if (pos < 0) {
             pos = 0;
         }
         c.start = pos;
-        do_clip_overwrite(c);    
-        
+        do_clip_overwrite(c);
+
         insert_clip_into_array(c, get_insert_index(c.start));
         project.reseek();
     }
@@ -237,18 +256,18 @@ public abstract class Track : Object {
         _move(c, pos);
         clip_added(c, select);
     }
-    
+
     public virtual void on_clip_updated(Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");    
     }
-    
+
     public void do_clip_paste(Clip clip, int64 position, bool new_clip) {
         if (new_clip)
             add(clip, position, true);
         else
             _move(clip, position);
     }
-    
+
     public Clip? get_clip(int i) {
         if (i < 0 || i >= clips.size)
             error("get_clip: Invalid index! %d (%d)", i, clips.size);
@@ -263,16 +282,16 @@ public abstract class Track : Object {
         }
         return -1;
     }
-    
+
     public Clip? get_clip_by_position(int64 pos) {
         int length = clips.size;
-        
+
         for (int i = length - 1; i >= 0; i--)
             if (clips[i].start < pos)
                 return pos >= clips[i].end ? null : clips[i];
         return null;
     }
-    
+
     public int64 get_length() {
         return clips.size == 0 ? 0 : clips[clips.size - 1].start + clips[clips.size - 1].duration;
     }
@@ -280,18 +299,18 @@ public abstract class Track : Object {
     public void _append_at_time(Clip c, int64 time, bool select) {
         add(c, time, select);
     }
-    
+
     public void append_at_time(Clip c, int64 time, bool select) {
         Command command = new ClipCommand(ClipCommand.Action.APPEND, this, c, time, select);
         project.do_command(command);
     }
-    
+
     public void delete_clip(Clip clip) {
         Command clip_command = new ClipCommand(ClipCommand.Action.DELETE, 
             this, clip, clip.start, false);
         project.do_command(clip_command);
     }
-    
+
     public void _delete_clip(Clip clip) {
         int index = get_clip_index(clip);
         assert(index != -1);
@@ -304,16 +323,16 @@ public abstract class Track : Object {
     public void delete_gap(Gap g) {
         project.reseek();
     }
-    
+
     public void remove_clip_from_array(Clip pos) {
         clips.remove(pos);
     }
-    
+
     void insert_clip_into_array(Clip c, int pos) {
         c.updated += on_clip_updated;
         clips.insert(pos, c);
     }
-    
+
     public void delete_all_clips() {
         uint size = clips.size;
         for (int i = 0; i < size; i++) { 
@@ -321,65 +340,65 @@ public abstract class Track : Object {
         }
         project.media_engine.go(0);
     }
-    
+
     public void revert_to_original(Clip clip) {
         Command command = new ClipRevertCommand(this, clip);
         project.do_command(command);
     }
-    
-    public void _revert_to_original(Clip c) {    
+
+    public void _revert_to_original(Clip c) {
         int index = get_clip_index(c);
         if (index == -1)
             error("revert_to_original: Clip not in track array!");
-            
+
         c.set_media_start_duration(0, c.clipfile.length);
 
         project.media_engine.go(c.start);
     }
-    
+
     public bool are_contiguous_clips(int64 position) {
         Clip right_clip = get_clip_by_position(position + 1);
         Clip left_clip = get_clip_by_position(position - 1);
-        
+
         return left_clip != null && right_clip != null && 
             left_clip != right_clip &&
             left_clip.clipfile == right_clip.clipfile &&
             left_clip.end == right_clip.start;
     }
-    
+
     public void split_at(int64 position) {
         Command command = new ClipSplitCommand(ClipSplitCommand.Action.SPLIT, this, position);
         project.do_command(command);
     }
-    
+
     public void _split_at(int64 position) {
         Clip c = get_clip_by_position(position);
         if (c == null)
             return;
-        
+
         Clip cn = new Clip(c.clipfile, c.type, c.name, position,
                            (position - c.start) + c.media_start, 
                            c.start + c.duration - position, false);
-        
+
         c.duration = position - c.start;
-        
+
         add(cn, position, false);
-    }  
-    
+    }
+
     public void join(int64 position) {
         Command command = new ClipSplitCommand(ClipSplitCommand.Action.JOIN, this, position);
         project.do_command(command);
     }
-    
+
     public void _join(int64 position) {
         assert(are_contiguous_clips(position));
         if (are_contiguous_clips(position)) {
             Clip right_clip = get_clip_by_position(position + 1);
             assert(right_clip != null);
-        
+
             int right_clip_index = get_clip_index(right_clip);
             assert(right_clip_index > 0);
-            
+
             int left_clip_index = right_clip_index - 1;
             Clip left_clip = get_clip(left_clip_index);
             assert(left_clip != null);
@@ -387,22 +406,22 @@ public abstract class Track : Object {
             _delete_clip(right_clip);
         }
     }
-    
+
     public void trim(Clip clip, int64 delta, Gdk.WindowEdge edge) {
         Command command = new ClipTrimCommand(this, clip, delta, edge);
         project.do_command(command);
     }
-    
+
     public void _trim(Clip clip, int64 delta, Gdk.WindowEdge edge) {
         clip.trim(delta, edge);
         do_clip_overwrite(clip);
     }
- 
+
     public int64 previous_edit(int64 pos) {
         for (int i = clips.size - 1; i >= 0 ; --i) {
             Clip c = clips[i];
             if (c.start + c.duration < pos)
-                return c.start + c.duration;            
+                return c.start + c.duration;
             if (c.start < pos)
                 return c.start;
         }
@@ -419,7 +438,7 @@ public abstract class Track : Object {
     public virtual void write_attributes(FileStream f) {
         f.printf("type=\"%s\" name=\"%s\" ", name(), get_display_name());
     }
-    
+
     public void save(FileStream f) {
         f.printf("    <track ");
         write_attributes(f);
@@ -428,25 +447,25 @@ public abstract class Track : Object {
             clips[i].save(f, project.get_clipfile_index(clips[i].clipfile));
         f.puts("    </track>\n");
     }
-    
+
     public string get_display_name() {
         return display_name;
     }
-    
+
     public void set_display_name(string new_display_name) {
         if (display_name != new_display_name) {
             display_name = new_display_name;
             track_renamed(this);
         }
     }
-    
+
     public void set_selected(bool is_selected) {
         if (this.is_selected != is_selected) {
             this.is_selected = is_selected;
             track_selection_changed(this);
         }
     }
-    
+
     public bool get_is_selected() {
         return is_selected;
     }
@@ -462,17 +481,17 @@ public class AudioTrack : Track {
     public signal void parameter_changed(Parameter parameter, double new_value);
     public signal void level_changed(double level_left, double level_right);
     public signal void channel_count_changed(int channel_count);
-    
+
     public AudioTrack(Project project, string display_name) {
         base(project, display_name);
-        
+
         set_default_num_channels(INVALID_CHANNEL_COUNT);
         _set_pan(0);
         _set_volume(1.0);
     }
 
     protected override string name() { return "audio"; }
-    
+
     public override MediaType media_type() {
         return MediaType.AUDIO;
     }
@@ -480,7 +499,7 @@ public class AudioTrack : Track {
     public override void write_attributes(FileStream f) {
         base.write_attributes(f);
         f.printf("volume=\"%f\" panorama=\"%f\" ", get_volume(), get_pan());
-        
+
         int channels;
         if (get_num_channels(out channels) &&
             channels != INVALID_CHANNEL_COUNT)
@@ -495,7 +514,7 @@ public class AudioTrack : Track {
             project.do_command(parameter_command);
         }
     }
-    
+
     public void _set_pan(double new_value) {
         assert(new_value <= 1.0 && new_value >= -1.0);
         double old_value = get_pan();
@@ -504,11 +523,11 @@ public class AudioTrack : Track {
             parameter_changed(Parameter.PAN, new_value);
         }
     }
-    
+
     public double get_pan() {
         return pan;
     }
-    
+
     public void set_volume(double new_volume) {
         double old_volume = get_volume();
         if (!float_within(old_volume - new_volume, 0.005)) {
@@ -526,11 +545,11 @@ public class AudioTrack : Track {
             parameter_changed(Parameter.VOLUME, new_volume);
         }
     }
-    
+
     public double get_volume() {
         return volume;
     }
-    
+
     public void set_default_num_channels(int num) {
         default_num_channels = num;
     }
@@ -538,28 +557,28 @@ public class AudioTrack : Track {
     public bool get_num_channels(out int num) {
         if (clips.size == 0)
             return false;
-         
+
         foreach (Clip c in clips) {
             if (c.clipfile.is_online()) {
                 bool can = c.clipfile.get_num_channels(out num);
                 assert(can);
-                
+
                 return can;
             }
         }
-        
+
         if (default_num_channels == INVALID_CHANNEL_COUNT)
             return false;
-            
+
         num = default_num_channels;
         return true;
     }
-    
+
     public override bool check(Clip clip) {
         if (!clip.clipfile.is_online()) {
             return true;
         }
-        
+
         if (clips.size == 0) {
             int number_of_channels = 0;
             if (clip.clipfile.get_num_channels(out number_of_channels)) {
@@ -567,7 +586,7 @@ public class AudioTrack : Track {
             }
             return true;
         }
-        
+
         bool good = false;
         int number_of_channels;
         if (clip.clipfile.get_num_channels(out number_of_channels)) {
@@ -585,7 +604,7 @@ public class AudioTrack : Track {
         }
         return good;
     }
-    
+
     public void on_level_changed(double level_left, double level_right) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_level_changed");
         level_changed(level_left, level_right);
