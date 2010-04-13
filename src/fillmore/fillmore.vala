@@ -450,8 +450,7 @@ class Recorder : Gtk.Window, TransportDelegate {
 
         // toolbar
         set_sensitive_group(main_group, "Play", true);
-        set_sensitive_group(main_group, "Record", number_of_tracks > 0 
-                && !project.transport_is_recording());
+        set_sensitive_group(main_group, "Record", number_of_tracks > 0 && is_stopped);
     }
 
     public Model.Track? selected_track() {
