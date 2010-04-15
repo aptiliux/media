@@ -518,10 +518,18 @@ class Recorder : Gtk.Window, TransportDelegate {
                 on_rewind();
                 break;
             case KeySyms.Left:
-                project.media_engine.go(project.transport_get_position() - Gst.SECOND);
+                if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+                    project.go_previous();
+                } else {
+                    project.media_engine.go(project.transport_get_position() - Gst.SECOND);
+                }
                 break;
             case KeySyms.Right:
-                project.media_engine.go(project.transport_get_position() + Gst.SECOND);
+                if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+                    project.go_next();
+                } else {
+                    project.media_engine.go(project.transport_get_position() + Gst.SECOND);
+                }
                 break;
             case KeySyms.KP_Add:
             case KeySyms.equal:
