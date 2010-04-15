@@ -420,8 +420,8 @@ public abstract class Track : Object {
     public int64 previous_edit(int64 pos) {
         for (int i = clips.size - 1; i >= 0 ; --i) {
             Clip c = clips[i];
-            if (c.start + c.duration < pos)
-                return c.start + c.duration;
+            if (c.end < pos)
+                return c.end;
             if (c.start < pos)
                 return c.start;
         }
@@ -432,6 +432,8 @@ public abstract class Track : Object {
         foreach (Clip c in clips)
             if (c.start > pos)
                 return c.start;
+            else if (c.end > pos)
+                return c.end;
         return get_length();
     }
 

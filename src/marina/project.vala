@@ -766,15 +766,13 @@ public abstract class Project : TempoInformation, Object {
         transport_go(new_position);
     }
 
+    // Move to the next clip boundary after the current transport position.
     public void go_next() {
-        int64 new_position = 0;
+        int64 start_pos = transport_get_position();
+        int64 new_position = get_length();
         foreach (Track track in tracks) {
-            if (track.get_length() > transport_get_position()) {
-                if (new_position != 0) {
-                    new_position = int64.min(new_position, track.next_edit(transport_get_position()));
-                } else {
-                    new_position = track.next_edit(transport_get_position());
-                }
+            if (track.get_length() > start_pos) {
+                new_position = int64.min(new_position, track.next_edit(start_pos));
             }
         }
         transport_go(new_position);
