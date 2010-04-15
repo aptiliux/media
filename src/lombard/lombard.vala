@@ -201,6 +201,7 @@ class App : Gtk.Window, TransportDelegate {
         project.error_occurred += do_error_dialog;
         project.undo_manager.undo_changed += on_undo_changed;
         project.media_engine.post_export += on_post_export;
+        project.playstate_changed += on_playstate_changed;
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
@@ -772,6 +773,13 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_paste() {
         timeline.paste();
+    }
+
+    void on_playstate_changed(PlayState playstate) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
+        if (playstate == PlayState.STOPPED) {
+            update_menu();
+        }
     }
 
     void on_undo_changed(bool can_undo) {
