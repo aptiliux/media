@@ -463,8 +463,8 @@ public class ClipLibraryView : Gtk.EventBox {
      int name_sort(Gtk.TreeModel model, Gtk.TreeIter a, Gtk.TreeIter b) {
         string left;
         string right;
-        model.get(a, ColumnType.FILENAME, out left);
-        model.get(b, ColumnType.FILENAME, out right);
+        model.get(a, ColumnType.NAME, out left);
+        model.get(b, ColumnType.NAME, out right);
         return stricmp(left, right);
      }
 }
