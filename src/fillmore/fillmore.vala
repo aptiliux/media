@@ -47,7 +47,7 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     public const string NAME = "Fillmore";
     const Gtk.ActionEntry[] entries = {
-        { "File", null, "_File", null, null, null },
+        { "Project", null, "_Project", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
         { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
         { "Save", Gtk.STOCK_SAVE, "_Save", "<Control>S", "Save project", on_project_save },
@@ -101,17 +101,17 @@ class Recorder : Gtk.Window, TransportDelegate {
     const string ui = """
 <ui>
   <menubar name="MenuBar">
-    <menu name="FileMenu" action="File">
-      <menuitem name="FileNew" action="NewProject" />
-      <menuitem name="FileOpen" action="Open" />
-      <menuitem name="FileSave" action="Save" />
-      <menuitem name="FileSaveAs" action="SaveAs" />
+    <menu name="ProjectMenu" action="Project">
+      <menuitem name="New" action="NewProject" />
+      <menuitem name="Open" action="Open" />
+      <menuitem name="Save" action="Save" />
+      <menuitem name="SaveAs" action="SaveAs" />
       <separator />
-      <menuitem name="FileExport" action="Export" />
+      <menuitem name="Export" action="Export" />
       <separator />
-      <menuitem name="FileProperty" action="Settings" />
+      <menuitem name="Property" action="Settings" />
       <separator />
-      <menuitem name="FileQuit" action="Quit"/>
+      <menuitem name="Quit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
@@ -1059,7 +1059,7 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_dirty_changed(bool isDirty) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_dirty_changed");
-        Gtk.MenuItem? file_save = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/FileMenu/FileSave");
+        Gtk.MenuItem? file_save = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/ProjectMenu/Save");
         assert(file_save != null);
         file_save.set_sensitive(isDirty);
     }

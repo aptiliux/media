@@ -51,7 +51,7 @@ class App : Gtk.Window, TransportDelegate {
     const string LibraryToggle = "Library";
 
     const Gtk.ActionEntry[] entries = {
-        { "File", null, "_File", null, null, null },
+        { "Project", null, "_Project", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, null, on_open },
         { "Save", Gtk.STOCK_SAVE, null, null, null, on_save },
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Shift><Control>S", null, on_save_as },
@@ -95,15 +95,15 @@ class App : Gtk.Window, TransportDelegate {
     const string ui = """
 <ui>
   <menubar name="MenuBar">
-    <menu name="FileMenu" action="File">
-      <menuitem name="FileOpen" action="Open"/>
-      <menuitem name="FileSave" action="Save"/>
-      <menuitem name="FileSaveAs" action="SaveAs"/>
+    <menu name="Project" action="Project">
+      <menuitem name="Open" action="Open"/>
+      <menuitem name="Save" action="Save"/>
+      <menuitem name="SaveAs" action="SaveAs"/>
       <separator/>
-      <menuitem name="FilePlay" action="Play"/>
+      <menuitem name="Play" action="Play"/>
       <separator/>
-      <menuitem name="FileExport" action="Export"/>
-      <menuitem name="FileQuit" action="Quit"/>
+      <menuitem name="Export" action="Export"/>
+      <menuitem name="Quit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
       <menuitem name="EditUndo" action="Undo" />
