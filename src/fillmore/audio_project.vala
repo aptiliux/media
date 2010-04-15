@@ -151,6 +151,5 @@ class AudioProject : Project {
         GLib.DirUtils.remove(audio_path);
     }
 
-
 }
 }

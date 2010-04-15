@@ -318,7 +318,7 @@ public abstract class Project : TempoInformation, Object {
     // less work to move it to fillmore/lombard once we have a transport class.
     public View.MediaEngine media_engine;
 
-    protected string project_file;
+    protected string project_file;  // may be null if project has not yet been saved
     public ProjectLoader loader;
 
     FetcherCompletion fetcher_completion;
@@ -1060,11 +1060,12 @@ public abstract class Project : TempoInformation, Object {
     }
 
     public string get_audio_path() {
-        return Path.build_filename(get_path(), "audio files");
+        string path = get_path();
+        return path == null ? null : Path.build_filename(path, "audio files");
     }
 
     string get_path() {
-        return Path.get_dirname(project_file);
+        return project_file == null ? null : Path.get_dirname(project_file);
     }
 }
 }
