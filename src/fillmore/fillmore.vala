@@ -1083,6 +1083,7 @@ class Recorder : Gtk.Window, TransportDelegate {
     void on_playstate_changed(PlayState playstate) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_playstate_changed");
         if (playstate == PlayState.STOPPED) {
+            cursor_pos = -1;
             play_button.set_active(false);
             set_sensitive_group(main_group, "Export", project.can_export());
             update_menu();
