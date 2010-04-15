@@ -261,10 +261,6 @@ class App : Gtk.Window, TransportDelegate {
     }
 
     void on_quit() {
-        if (!is_stopped()) {
-            return;
-        }
-
         if (project.undo_manager.is_dirty) {
             switch (DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
                 case Gtk.ResponseType.ACCEPT:
@@ -611,8 +607,7 @@ class App : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "Save", stopped);
         set_sensitive_group(main_group, "SaveAs", stopped);
         set_sensitive_group(main_group, "Export", project.can_export());
-        set_sensitive_group(main_group, "Quit", stopped);
-        
+
         // Edit Menu
         set_sensitive_group(main_group, "Undo", stopped && project.undo_manager.can_undo);
         set_sensitive_group(main_group, "Delete", stopped && (clip_selected || library_selected));
@@ -784,7 +779,7 @@ class App : Gtk.Window, TransportDelegate {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());
-        undo.set_sensitive(can_undo);
+        undo.set_sensitive(can_undo && !project.transport_is_playing());
     }
 
     void on_select_all() {

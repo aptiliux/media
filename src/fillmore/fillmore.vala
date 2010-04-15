@@ -426,7 +426,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "SaveAs", is_stopped);
         set_sensitive_group(main_group, "Settings", is_stopped);
         set_sensitive_group(main_group, "Export", project.can_export());
-        set_sensitive_group(main_group, "Quit", is_stopped);
+        set_sensitive_group(main_group, "Quit", !project.transport_is_recording());
 
         // Edit menu
         set_sensitive_group(main_group, "Undo", is_stopped && project.undo_manager.can_undo);
@@ -682,7 +682,7 @@ class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_quit() {
-        if (is_stopped()) {
+        if (!project.transport_is_recording()) {
             project.closed += on_project_close;
             finished_closing += on_quit_finished_closing;
             project.close();
@@ -1069,7 +1069,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());
-        undo.set_sensitive(can_undo);
+        undo.set_sensitive(can_undo && is_stopped());
     }
 
     void on_playstate_changed(PlayState playstate) {
