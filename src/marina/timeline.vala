@@ -448,8 +448,9 @@ public class TimeLine : Gtk.EventBox {
 
     public void update_pos(int event_x) {
         int64 time = provider.xpos_to_time(event_x);
-
-        project.snap_coord(out time, provider.get_pixel_snap_time());
+        if (project.snap_to_clip) {
+            project.snap_coord(out time, provider.get_pixel_snap_time());
+        }
         project.media_engine.go(time);
     }
 
