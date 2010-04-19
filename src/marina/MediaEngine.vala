@@ -633,7 +633,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     const string MIN_GST_PLUGINS_GOOD = "0.10.21";
     const string MIN_GST_PLUGINS_BASE = "0.10.28";
     public Gst.Pipeline pipeline;
-
+    public Gst.Bin record_bin;
     // Video playback
     public Gst.Element converter;
 
@@ -976,7 +976,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     public virtual void pause() {
         if (project.transport_is_recording()) {
-            pipeline.send_event(new Gst.Event.eos());
+            record_bin.send_event(new Gst.Event.eos());
             play_state = PlayState.POST_RECORD;
         } else {
             if (!playing) {
@@ -1060,9 +1060,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_track._delete_clip(record_region);
 
         audio_in.unlink_many(record_capsfilter, wav_encoder, record_sink);
-        pipeline.remove_many(audio_in, record_capsfilter, wav_encoder, record_sink);
-
+        record_bin.remove_many(audio_in, record_capsfilter, wav_encoder, record_sink);
+        pipeline.remove(record_bin);
         record_completed();
+        record_bin = null;
         record_region = null;
         record_track = null;
         audio_in = record_capsfilter = null;
@@ -1089,7 +1090,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         if (gst_state != Gst.State.NULL)
             error("can't record now: %s", gst_state.to_string());
-
+        record_bin = new Gst.Bin("recordingbin");
         record_track._move(record_region, position);
         record_track.clip_added(record_region, true);
         audio_in = make_element("gconfaudiosrc");
@@ -1099,9 +1100,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_sink.set("location", record_region.clipfile.filename);
         wav_encoder = make_element("wavenc");
 
-        pipeline.add_many(audio_in, record_capsfilter, wav_encoder, record_sink);
+        record_bin.add_many(audio_in, record_capsfilter, wav_encoder, record_sink);
         if (!audio_in.link_many(record_capsfilter, wav_encoder, record_sink))
             error("audio_in: couldn't link");
+        pipeline.add(record_bin);
 
         play_state = PlayState.PRE_RECORD;
         set_gst_state(Gst.State.PAUSED);    // we must advance to PAUSED before we can seek
