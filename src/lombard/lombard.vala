@@ -787,7 +787,7 @@ class App : Gtk.Window, TransportDelegate {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());
-        undo.set_sensitive(can_undo && !project.transport_is_playing());
+        set_sensitive_group(main_group, "Undo", is_stopped() && project.undo_manager.can_undo);
     }
 
     void on_select_all() {

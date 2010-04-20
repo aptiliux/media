@@ -1077,7 +1077,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         Gtk.MenuItem? undo = (Gtk.MenuItem?) get_widget(manager, "/MenuBar/EditMenu/EditUndo");
         assert(undo != null);
         undo.set_label("_Undo " + project.undo_manager.get_undo_title());
-        undo.set_sensitive(can_undo && is_stopped());
+        set_sensitive_group(main_group, "Undo", is_stopped() && project.undo_manager.can_undo);
     }
 
     void on_playstate_changed(PlayState playstate) {
