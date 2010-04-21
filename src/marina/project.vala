@@ -309,6 +309,29 @@ public abstract class Project : TempoInformation, Object {
     public const string LOMBARD_FILE_EXTENSION = "lom";
     public const string LOMBARD_FILE_FILTER = "*." + LOMBARD_FILE_EXTENSION;
 
+    const string license = """
+%s is free software; you can redistribute it and/or modify it under the 
+terms of the GNU Lesser General Public License as published by the Free 
+Software Foundation; either version 2.1 of the License, or (at your option) 
+any later version.
+
+%s is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for 
+more details.
+
+You should have received a copy of the GNU Lesser General Public License 
+along with %s; if not, write to the Free Software Foundation, Inc., 
+51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+""";
+
+    public const string[] authors = { 
+        "Robert Powell <rob@yorba.org>",
+        "Adam Dingle <adam@yorba.org>",
+        "Andrew O'Mahoney <andrew.omahony@att.net>",
+        null
+    };
+
     public Gee.ArrayList<Track> tracks = new Gee.ArrayList<Track>();
     public Gee.ArrayList<Track> inactive_tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
@@ -1028,6 +1051,10 @@ public abstract class Project : TempoInformation, Object {
 
     public abstract double get_version();
     public abstract string get_app_name();
+
+    public string get_license() {
+        return license.printf(get_app_name(), get_app_name(), get_app_name());
+    }
 
     public void set_time_signature(Fraction time_signature) {
         TimeSignatureCommand command = new TimeSignatureCommand(this, time_signature);

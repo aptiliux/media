@@ -882,9 +882,13 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_about() {
         Gtk.show_about_dialog(this,
-          "version", "%1.2lf".printf(project.get_version()),
-          "comments", "a multitrack recorder",
-          "copyright", "(c) 2009 yorba"
+            "version", "%1.1lf".printf(project.get_version()),
+            "comments", "An audio editor and recorder",
+            "copyright", "Copyright 2009-2010 Yorba Foundation",
+            "website", "http://www.yorba.org",
+            "license", project.get_license(),
+            "website-label", "Visit the Yorba web site",
+            "authors", project.authors
         );
     }
 
@@ -985,7 +989,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         }
         Gtk.init(ref args);
         try {
-            GLib.Environment.set_application_name(_PROGRAM_NAME);
+            GLib.Environment.set_application_name("Fillmore");
             if (debug_level > -1) {
                 set_logging_level((Logging.Level)debug_level);
             }

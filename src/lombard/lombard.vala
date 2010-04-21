@@ -815,9 +815,13 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_about() {
         Gtk.show_about_dialog(this,
-          "version", "0.1",
-          "comments", "a video editor",
-          "copyright", "(c) 2009 yorba"
+            "version", "%1.1lf".printf(project.get_version()),
+            "comments", "A video editor",
+            "copyright", "Copyright 2009-2010 Yorba Foundation",
+            "website", "http://www.yorba.org",
+            "license", project.get_license(),
+            "website-label", "Visit the Yorba web site",
+            "authors", project.authors
         );
     }
 
@@ -858,7 +862,7 @@ void main(string[] args) {
     Gtk.init(ref args);
 
     try {
-        GLib.Environment.set_application_name(_PROGRAM_NAME);
+        GLib.Environment.set_application_name("Lombard");
 
         AppDirs.init(args[0], _PROGRAM_NAME);
         Gst.init(ref args);

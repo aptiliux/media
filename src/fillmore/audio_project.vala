@@ -70,7 +70,7 @@ class AudioProject : Project {
     }
 
     override double get_version() {
-        return 0.01;
+        return 0.1;
     }
 
     public override string get_app_name() {
