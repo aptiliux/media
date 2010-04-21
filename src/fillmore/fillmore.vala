@@ -513,11 +513,17 @@ class Recorder : Gtk.Window, TransportDelegate {
         switch (event.keyval) {
             case KeySyms.KP_Enter:
             case KeySyms.Return:
+                if (project.transport_is_recording()) {
+                    break;
+                }
                 if ((event.state & GDK_SHIFT_ALT_CONTROL_MASK) != 0)
                     return base.key_press_event(event);
                 on_rewind();
                 break;
             case KeySyms.Left:
+                if (project.transport_is_recording()) {
+                    break;
+                }
                 if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
                     project.go_previous();
                 } else {
@@ -525,6 +531,9 @@ class Recorder : Gtk.Window, TransportDelegate {
                 }
                 break;
             case KeySyms.Right:
+                if (project.transport_is_recording()) {
+                    break;
+                }
                 if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
                     project.go_next();
                 } else {
