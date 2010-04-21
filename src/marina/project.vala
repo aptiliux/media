@@ -328,7 +328,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public const string[] authors = { 
         "Robert Powell <rob@yorba.org>",
         "Adam Dingle <adam@yorba.org>",
-        "Andrew O'Mahoney <andrew.omahony@att.net>",
+        "Andrew O'Mahony <andrew.omahony@att.net>",
         null
     };
 
