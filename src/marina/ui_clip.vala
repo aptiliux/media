@@ -67,8 +67,9 @@ public class ClipView : Gtk.DrawingArea {
 
     static Gdk.Cursor left_trim_cursor = new Gdk.Cursor(Gdk.CursorType.LEFT_SIDE);
     static Gdk.Cursor right_trim_cursor = new Gdk.Cursor(Gdk.CursorType.RIGHT_SIDE);
-    static Gdk.Cursor hand_cursor = new Gdk.Cursor(Gdk.CursorType.HAND1);
-    static Gdk.Cursor plus_cursor = new Gdk.Cursor(Gdk.CursorType.HAND2); // will be used for drag
+    static Gdk.Cursor hand_cursor = new Gdk.Cursor.from_name(Gdk.Display.get_default(), "dnd-none");
+    // will be used for drag
+    static Gdk.Cursor plus_cursor = new Gdk.Cursor.from_name(Gdk.Display.get_default(), "dnd-copy");
 
     public signal void clip_deleted(Model.Clip clip);
     public signal void clip_moved(ClipView clip);
