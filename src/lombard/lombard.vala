@@ -288,6 +288,9 @@ class App : Gtk.Window, TransportDelegate {
             vbox = new Gtk.VBox(false, 0);
             vbox.pack_start(menubar, false, false, 0);
 
+            Gtk.VPaned v_pane = new Gtk.VPaned();
+            v_pane.set_position(290);
+
             h_pane = new Gtk.HPaned();
             h_pane.set_position(300);
             h_pane.child2_resize = 1;
@@ -300,24 +303,25 @@ class App : Gtk.Window, TransportDelegate {
                 h_pane.add2(drawing_area);
             }
             h_pane.child2.size_allocate += on_library_size_allocate;
-
-            Gtk.VPaned v_pane = new Gtk.VPaned();
-            v_pane.set_position(290);
+            v_pane.add1(h_pane);
 
             timeline_scrolled = new Gtk.ScrolledWindow(null, null);
             timeline_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC);
             timeline_scrolled.add_with_viewport(timeline);
+
+            Gtk.VBox timeline_vbox = new Gtk.VBox(false, 0);
+            timeline_vbox.pack_start(status_bar, false, false, 0);
+            timeline_vbox.pack_start(timeline_scrolled, true, true, 0);
+            v_pane.add2(timeline_vbox);
+
+            v_pane.child1_resize = 1;
+            v_pane.child2_resize = 0;
 
             h_adjustment = timeline_scrolled.get_hadjustment();
             h_adjustment.changed += on_adjustment_changed;
             prev_adjustment_lower = h_adjustment.get_lower();
             prev_adjustment_upper = h_adjustment.get_upper();
 
-            v_pane.add1(h_pane);
-            Gtk.VBox timeline_vbox = new Gtk.VBox(false, 0);
-            timeline_vbox.pack_start(status_bar, false, false, 0);
-            timeline_vbox.pack_start(timeline_scrolled, true, true, 0);
-            v_pane.add2(timeline_vbox);
             vbox.pack_start(v_pane, true, true, 0);
 
             add(vbox);
