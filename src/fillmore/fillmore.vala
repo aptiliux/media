@@ -830,11 +830,12 @@ class Recorder : Gtk.Window, TransportDelegate {
             if (result == Gtk.ResponseType.OK) {
                 if (new_name == "") {
                     is_ok = false;
-                    DialogUtils.error("Invalid track name", "Name cannot be empty");
+                    DialogUtils.error("Invalid track name.", "The track name cannot be empty.");
                 } else {
                     is_ok = !project.is_duplicate_track_name(track, new_name);
                     if (!is_ok) {
-                        DialogUtils.error("Duplicate track name", null);
+                        DialogUtils.error("Duplicate track name.",
+                            "A track with this name already exists.");
                     }
                 }
             }

@@ -428,9 +428,26 @@ public class TimeLine : Gtk.EventBox {
             return;
         }
 
-        track = track_view.get_track();
+        bool timeline_add = true;
 
-        project.create_clip_importer(track, true, provider.xpos_to_time(x));
+        if (a.length > 1) {
+            if (Gtk.drag_get_source_widget(context) != null) {
+                DialogUtils.warning("Cannot add files.",
+                    "Files must be dropped onto the timeline individually.");
+                return;
+            }
+
+            if (DialogUtils.add_cancel(
+                "Files must be dropped onto the timeline individually.\n" +
+                    "Do you wish to add these files to the library?") != Gtk.ResponseType.YES) {
+                        return;
+                    }
+            timeline_add = false;
+        } else {
+            track = track_view.get_track();
+        }
+
+        project.create_clip_importer(track, timeline_add, provider.xpos_to_time(x));
 
         try {
             foreach (string s in a) {

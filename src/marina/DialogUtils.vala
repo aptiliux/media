@@ -127,6 +127,18 @@ namespace DialogUtils {
             "</span>";
     }
 
+    public void warning(string major_message, string? minor_message) {
+        string message = bold_message(major_message);
+        if (minor_message != null) {
+            message = message + "\n\n" + minor_message;
+        }
+
+        Gtk.MessageDialog d = new Gtk.MessageDialog.with_markup(null, Gtk.DialogFlags.MODAL,
+                                Gtk.MessageType.WARNING, Gtk.ButtonsType.OK, message, null);
+        d.run();
+        d.destroy();
+    }
+
     public void error(string major_message, string? minor_message) {
         string message = bold_message(major_message);
         if (minor_message != null) {
@@ -175,6 +187,10 @@ namespace DialogUtils {
 
     public Gtk.ResponseType delete_keep(string message) {
         return two_button_dialog(message, "Keep", Gtk.STOCK_DELETE);
+    }
+
+    public Gtk.ResponseType add_cancel(string message) {
+        return two_button_dialog(message, Gtk.STOCK_CANCEL, Gtk.STOCK_ADD);
     }
 
     public Gtk.ResponseType delete_cancel(string message) {
