@@ -449,11 +449,12 @@ public class ClipLibraryView : Gtk.EventBox {
 
     public void delete_selection() {
         GLib.List<Gtk.TreePath> paths;
-
+        project.undo_manager.start_transaction("Delete Clips From Library");
         if (get_selected_rows(out paths) > 0) {
             for (int i = (int) paths.length() - 1; i >= 0; i--)
                 delete_row(list_store, paths.nth_data(i));
         }
+        project.undo_manager.end_transaction("Delete Clips From Library");
     }
 
     public void select_all() {

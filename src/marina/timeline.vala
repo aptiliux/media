@@ -341,6 +341,7 @@ public class TimeLine : Gtk.EventBox {
     }
 
     public void delete_selection() {
+        project.undo_manager.start_transaction("Delete Clips From Timeline");
         drag_widget = null;
         if (is_clip_selected()) {
             while (selected_clips.size > 0) {
@@ -364,6 +365,7 @@ public class TimeLine : Gtk.EventBox {
             }
 */
         }
+        project.undo_manager.end_transaction("Delete Clips From Timeline");
     }
 
     public void do_cut() {

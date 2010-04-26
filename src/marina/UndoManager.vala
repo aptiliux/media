@@ -60,21 +60,25 @@ public class UndoManager {
     }
 
     public void undo() {
-        bool in_transaction = false;
+        int in_transaction = 0;
         do {
             Command? the_command = get_current_command();
             if (the_command != null) {
                 command_list.remove(the_command);
                 TransactionCommand transaction_command = the_command as TransactionCommand;
                 if (transaction_command != null) {
-                    in_transaction = transaction_command.in_transaction();
+                    if (transaction_command.in_transaction()) {
+                        in_transaction++;
+                    } else {
+                        in_transaction--;
+                    }
                 } else {
                     the_command.undo();
                 }
             } else {
                 break;
             }
-        } while (in_transaction);
+        } while (in_transaction > 0);
         dirty_changed(is_dirty);
         undo_changed(can_undo);
     }
