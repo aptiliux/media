@@ -236,22 +236,6 @@ public const Gtk.TargetEntry[] drag_target_entries = {
     { "text/uri-list", 0, 0 } 
 };
 
-public Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, string text) {
-    Gtk.Label l = new Gtk.Label(text);
-    l.set_line_wrap(true);
-    l.use_markup = true;
-    
-    Gtk.Alignment a = new Gtk.Alignment(x, y, exp_x, exp_y);
-    a.add(l);
-    
-    return a;
-}
-
-public void add_label_to_table(Gtk.Table t, string str, int x, int y, int xpad, int ypad) {
-    Gtk.Alignment a = get_aligned_label(0.0f, 0.0f, 0.0f, 0.0f, str);
-    t.attach(a, x, x + 1, y, y + 1, Gtk.AttachOptions.FILL, Gtk.AttachOptions.FILL, xpad, ypad);
-}
-
 public Gdk.Color parse_color(string color) {
     Gdk.Color c;
     if (!Gdk.Color.parse(color, out c))

@@ -229,6 +229,25 @@ namespace DialogUtils {
         return run_dialog(parent, Gtk.MessageType.WARNING, title, message, buttons);
     }
 
+    Gtk.Alignment get_aligned_label(float x, float y, float exp_x, float exp_y, string text, 
+            bool selectable) {
+        Gtk.Label l = new Gtk.Label(text);
+        l.set_line_wrap(true);
+        l.use_markup = true;
+        l.selectable = selectable;
+        
+        Gtk.Alignment a = new Gtk.Alignment(x, y, exp_x, exp_y);
+        a.add(l);
+        
+        return a;
+    }
+
+    void add_label_to_table(Gtk.Table t, string str, int x, int y, int xpad, int ypad, 
+            bool selectable) {
+        Gtk.Alignment a = get_aligned_label(0.0f, 0.0f, 0.0f, 0.0f, str, selectable);
+        t.attach(a, x, x + 1, y, y + 1, Gtk.AttachOptions.FILL, Gtk.AttachOptions.FILL, xpad, ypad);
+    }
+
     public void show_clip_properties(Gtk.Window parent, ClipView? selected_clip, 
             Model.ClipFile ? clip_file, Fraction? frames_per_second) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
@@ -247,18 +266,18 @@ namespace DialogUtils {
             t.set_row_spacing(i, 10);
 
         row = 1;
-        add_label_to_table(t, "<b>Clip</b>", 0, row++, 5, 0);
+        add_label_to_table(t, "<b>Clip</b>", 0, row++, 5, 0, false);
 
         if (selected_clip != null) {
-            add_label_to_table(t, "<i>Name:</i>", 0, row, tab_padding, 0);
-            add_label_to_table(t, "%s".printf(selected_clip.clip.name), 1, row++, 5, 0);
+            add_label_to_table(t, "<i>Name:</i>", 0, row, tab_padding, 0, false);
+            add_label_to_table(t, "%s".printf(selected_clip.clip.name), 1, row++, 5, 0, true);
         }
 
-        add_label_to_table(t, "<i>Location:</i>", 0, row, tab_padding, 0);
-        add_label_to_table(t, "%s".printf(clip_file.filename), 1, row++, 5, 0); 
+        add_label_to_table(t, "<i>Location:</i>", 0, row, tab_padding, 0, false);
+        add_label_to_table(t, "%s".printf(clip_file.filename), 1, row++, 5, 0, true); 
 
         if (selected_clip != null) {
-            add_label_to_table(t, "<i>Timeline length:</i>", 0, row, tab_padding, 0);
+            add_label_to_table(t, "<i>Timeline length:</i>", 0, row, tab_padding, 0, false);
 
             string length_string = "";
             string actual_length = "";
@@ -275,51 +294,51 @@ namespace DialogUtils {
                 actual_length = time_to_string(selected_clip.clip.clipfile.length);
             }
 
-            add_label_to_table(t, "%s".printf(length_string), 1, row++, 5, 0);
+            add_label_to_table(t, "%s".printf(length_string), 1, row++, 5, 0, true);
 
             if (selected_clip.clip.is_trimmed()) {
-                add_label_to_table(t, "<i>Actual length:</i>", 0, row, tab_padding, 0);
-                add_label_to_table(t, "%s".printf(actual_length), 1, row++, 5, 0);
+                add_label_to_table(t, "<i>Actual length:</i>", 0, row, tab_padding, 0, false);
+                add_label_to_table(t, "%s".printf(actual_length), 1, row++, 5, 0, true);
             }
         }
 
-        if (clip_file.has_caps_structure(Model.MediaType.VIDEO)) {   
-            add_label_to_table(t, "<b>Video</b>", 0, row++, 5, 0);
+        if (clip_file.has_caps_structure(Model.MediaType.VIDEO)) {
+            add_label_to_table(t, "<b>Video</b>", 0, row++, 5, 0, false);
 
             int w, h;
             if (clip_file.get_dimensions(out w, out h)) {
-                add_label_to_table(t, "<i>Dimensions:</i>", 0, row, tab_padding, 0);
-                add_label_to_table(t, "%d x %d".printf(w, h), 1, row++, 5, 0);
+                add_label_to_table(t, "<i>Dimensions:</i>", 0, row, tab_padding, 0, false);
+                add_label_to_table(t, "%d x %d".printf(w, h), 1, row++, 5, 0, true);
             }
 
             Fraction r;
             if (clip_file.get_frame_rate(out r)) {
-                add_label_to_table(t, "<i>Frame rate:</i>", 0, row, tab_padding, 0);
+                add_label_to_table(t, "<i>Frame rate:</i>", 0, row, tab_padding, 0, false);
 
                 if (r.numerator % r.denominator != 0)
                     add_label_to_table(t, 
                                "%.2f frames per second".printf(r.numerator / (float)r.denominator), 
-                               1, row++, 5, 0);
+                               1, row++, 5, 0, true);
                 else
                     add_label_to_table(t, 
                                 "%d frames per second".printf(r.numerator / r.denominator), 
-                                1, row++, 5, 0);
+                                1, row++, 5, 0, true);
             }
         }
 
         if (clip_file.has_caps_structure(Model.MediaType.AUDIO)) {
-            add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0);
+            add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0, false);
 
             int rate;
             if (clip_file.get_sample_rate(out rate)) {
-                add_label_to_table(t, "<i>Sample rate:</i>", 0, row, tab_padding, 0);
-                add_label_to_table(t, "%d Hz".printf(rate), 1, row++, 5, 0);
+                add_label_to_table(t, "<i>Sample rate:</i>", 0, row, tab_padding, 0, false);
+                add_label_to_table(t, "%d Hz".printf(rate), 1, row++, 5, 0, true);
             }
 
             string s;
             if (clip_file.get_num_channels_string(out s)) {
-                add_label_to_table(t, "<i>Number of channels:</i>", 0, row, tab_padding, 0);
-                add_label_to_table(t, "%s".printf(s), 1, row++, 5, 0);
+                add_label_to_table(t, "<i>Number of channels:</i>", 0, row, tab_padding, 0, false);
+                add_label_to_table(t, "%s".printf(s), 1, row++, 5, 0, true);
             }
         }
 
