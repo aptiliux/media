@@ -22,6 +22,7 @@ public interface TimeSystem : Object {
     public abstract string? get_display_string(int token);    
     public abstract int frame_to_xsize(int frame);
     public abstract string get_time_string(int64 time);
+    public abstract string get_time_duration(int64 time);
 }
 
 public abstract class TimeSystemBase : Object {
@@ -124,6 +125,10 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         return time;
     }
 
+    public string get_time_duration(int64 the_time) {
+        // Timecode is already zero-based
+        return get_time_string(the_time);
+    }
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
         int pixels_per_large = 300;
         int pixels_per_medium = 50;
@@ -268,18 +273,23 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         return 1;
     }
 
-   string beats_to_string(int total_sixteenths, bool maximum_resolution) {
+   string beats_to_string(int total_sixteenths, bool maximum_resolution, bool zero_based) {
         int number_of_measures = 
-            (total_sixteenths / sixteenths_per_beat) / time_signature.numerator + 1;
+            (total_sixteenths / sixteenths_per_beat) / time_signature.numerator;
+        if (!zero_based) {
+            ++number_of_measures;
+        }
+
         int number_of_beats = 
             (total_sixteenths / sixteenths_per_beat) % time_signature.numerator + 1;
-        int number_of_sixteenths = total_sixteenths % sixteenths_per_beat;
+        int number_of_sixteenths = total_sixteenths % sixteenths_per_beat + 1;
         float pixels_per_bar = pixels_per_second / bars_per_second;
         float pixels_per_large_gap = large_pixel_sixteenth * pixels_per_sixteenth;
         if (maximum_resolution ||
-            pixels_per_large_gap < pixels_per_sixteenth * sixteenths_per_beat) {
+            ((pixels_per_large_gap < pixels_per_sixteenth * sixteenths_per_beat) &&
+            number_of_sixteenths > 1)) {
             return "%d.%d.%d".printf(number_of_measures, number_of_beats, number_of_sixteenths);
-        } else if (pixels_per_large_gap < pixels_per_bar) {
+        } else if (pixels_per_large_gap < pixels_per_bar && number_of_beats > 1) {
             return "%d.%d".printf(number_of_measures, number_of_beats);
         } else {
             return "%d".printf(number_of_measures);
@@ -291,7 +301,19 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         double sixteenths_per_second = sixteenths_per_beat * beats_per_second;
         double sixteenths_per_nanosecond = sixteenths_per_second / Gst.SECOND;
         int total_beats = (int)(the_time * sixteenths_per_nanosecond);
-        return beats_to_string(total_beats, true);
+        return beats_to_string(total_beats, true, false);
+    }
+
+    public string get_time_duration(int64 the_time) {
+        double beats_per_second = bpm / 60.0;
+        double sixteenths_per_second = sixteenths_per_beat * beats_per_second;
+        double sixteenths_per_nanosecond = sixteenths_per_second / Gst.SECOND;
+        int total_beats = (int)(the_time * sixteenths_per_nanosecond);
+        if (total_beats == 0 && the_time > 0) {
+            // round up
+            total_beats = 1;
+        }
+        return beats_to_string(total_beats, true, true);
     }
 
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
@@ -344,7 +366,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
 
     public string? get_display_string(int frame) {
         if ((frame % large_pixel_sixteenth) == 0) {
-            return beats_to_string(frame, false);
+            return beats_to_string(frame, false, false);
         }
         return null;
     }

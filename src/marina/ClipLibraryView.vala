@@ -323,7 +323,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
         list_store.set(it, ColumnType.THUMBNAIL, icon,
                             ColumnType.NAME, isolate_filename(clip_file.filename),
-                            ColumnType.DURATION, time_provider.get_time_string(clip_file.length),
+                            ColumnType.DURATION, time_provider.get_time_duration(clip_file.length),
                             ColumnType.FILENAME, clip_file.filename, -1);
     }
 
