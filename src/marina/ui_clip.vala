@@ -189,7 +189,9 @@ public class ClipView : Gtk.DrawingArea {
         else {
             layout = create_pango_layout("%s".printf(clip.name));
         }
-        Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + 14, layout);
+        int width, height;
+        layout.get_pixel_size(out width, out height);
+        Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + height, layout);
     }
 
     public override bool expose_event(Gdk.EventExpose event) {
