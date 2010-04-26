@@ -434,7 +434,7 @@ public class TimeLine : Gtk.EventBox {
 
         if (a.length > 1) {
             if (Gtk.drag_get_source_widget(context) != null) {
-                DialogUtils.warning("Cannot add files.",
+                DialogUtils.warning("Cannot add files",
                     "Files must be dropped onto the timeline individually.");
                 return;
             }
