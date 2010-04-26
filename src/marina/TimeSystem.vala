@@ -276,13 +276,15 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
    string beats_to_string(int total_sixteenths, bool maximum_resolution, bool zero_based) {
         int number_of_measures = 
             (total_sixteenths / sixteenths_per_beat) / time_signature.numerator;
-        if (!zero_based) {
-            ++number_of_measures;
-        }
 
         int number_of_beats = 
-            (total_sixteenths / sixteenths_per_beat) % time_signature.numerator + 1;
-        int number_of_sixteenths = total_sixteenths % sixteenths_per_beat + 1;
+            (total_sixteenths / sixteenths_per_beat) % time_signature.numerator;
+        int number_of_sixteenths = total_sixteenths % sixteenths_per_beat;
+        if (!zero_based) {
+            ++number_of_measures;
+            ++number_of_beats;
+            ++number_of_sixteenths;
+        }
         float pixels_per_bar = pixels_per_second / bars_per_second;
         float pixels_per_large_gap = large_pixel_sixteenth * pixels_per_sixteenth;
         if (maximum_resolution ||
