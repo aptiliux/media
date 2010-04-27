@@ -405,7 +405,6 @@ public class MediaAudioTrack : MediaTrack {
         if (!media_engine.pipeline.add(volume)) {
             error("could not add volume");
         }
-
         media_engine.level_changed += on_level_changed;
         level_changed += track.on_level_changed;
     }
@@ -915,7 +914,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         if (callback_id == 0)
             callback_id = Timeout.add(50, on_callback);
-
         pipeline.set_state(Gst.State.PLAYING);
     }
 
@@ -1155,6 +1153,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         media_track.error_occurred += on_error_occurred;
 
         tracks.add(media_track);
+        if (gst_state == Gst.State.PAUSED) {
+            pipeline.set_state(Gst.State.READY);
+            pipeline.set_state(Gst.State.PAUSED);
+        }
     }
 
     MediaTrack create_audio_track(Model.Track track) throws Error {
