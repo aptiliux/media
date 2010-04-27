@@ -932,9 +932,18 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_record() {
         if (record_button.get_active()) {
+            Model.AudioTrack audio_track = selected_track() as Model.AudioTrack;
+            int number_of_channels;
+            if (audio_track.get_num_channels(out number_of_channels)) {
+                if (number_of_channels == 2) {
+                    record_button.set_active(false);
+                    on_error_occurred("Can not record onto a stereo track", null);
+                    return;
+                }
+            }
             set_sensitive_group(main_group, "Record", false);
             set_sensitive_group(main_group, "Play", false);
-            project.record(selected_track() as Model.AudioTrack);
+            project.record(audio_track);
         }
     }
 
