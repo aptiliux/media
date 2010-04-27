@@ -1066,6 +1066,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_track = null;
         audio_in = record_capsfilter = null;
         wav_encoder = record_sink = null;
+        set_gst_state(Gst.State.PAUSED);
     }
 
     public void record(Model.AudioTrack track) {
