@@ -23,7 +23,9 @@ class RecordFetcherCompletion : FetcherCompletion {
         base.complete(fetch);
         Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
             isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length, false);
+        project.undo_manager.start_transaction("Record");
         track.append_at_time(the_clip, position, true);
+        project.undo_manager.end_transaction("Record");
     }
 }
 
