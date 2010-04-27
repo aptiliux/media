@@ -208,25 +208,23 @@ public abstract class Track : Object {
                                     clips[end_index].name, c.end, 
                                     clips[end_index].media_start + diff,
                                     clips[end_index].duration - diff, false);
-                    add(cl, cl.start, false);
+                    append_at_time(cl, cl.start, false);
                 }
             } else {
-                clips[end_index].set_media_start_duration(
-                    clips[end_index].media_start + diff,
-                    clips[end_index].duration - diff);
-                clips[end_index].start = c.end;
+                trim(clips[end_index], diff, Gdk.WindowEdge.WEST);
             }
         }
         if (start_index >= 0 && clips[start_index] != c) {
-            clips[start_index].duration = c.start - clips[start_index].start;
-        }
+            int64 delta = clips[start_index].end - c.start;
+            trim(clips[start_index], -delta, Gdk.WindowEdge.EAST);
+            }
 
         int i = 0;
         while (i < clips.size) {
             if (clips[i] != c && 
                 clips[i].start >= c.start &&
                 clips[i].end <= c.end) {
-                _delete_clip(clips[i]);
+                delete_clip(clips[i]);
             }
             else
                 i++;

@@ -247,12 +247,14 @@ public class TimeLine : Gtk.EventBox {
     void on_clip_view_move_commit(ClipView clip_view, int delta) {
         window.set_cursor(null);
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        project.undo_manager.start_transaction("Move Clip");
         foreach (ClipView selected_clip_view in selected_clips) {
             TrackView track_view = selected_clip_view.get_parent() as TrackView;
             selected_clip_view.clip.gnonlin_connect();
             track_view.get_track().move(selected_clip_view.clip, 
                  selected_clip_view.clip.start, selected_clip_view.initial_time);
         }
+        project.undo_manager.end_transaction("Move Clip");
     }
 
     void on_clip_view_trim_commit(ClipView clip_view, Gdk.WindowEdge edge) {
@@ -272,9 +274,11 @@ public class TimeLine : Gtk.EventBox {
                 break;
         }
         //restore back to pre-trim state
+        project.undo_manager.start_transaction("Trim Clip");
         clip_view.clip.trim(-delta, edge);
         clip_view.clip.gnonlin_connect();
         track_view.get_track().trim(clip_view.clip, delta, edge);
+        project.undo_manager.end_transaction("Trim Clip");
     }
 
     void constrain_move(ClipView clip_view, ref int delta) {
