@@ -941,7 +941,11 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         }
 
         FileStream f = FileStream.open(project_file, "w");
-
+        if (f == null) {
+            error_occurred("Could not save project",
+                "%s: %s".printf(project_file, GLib.strerror(GLib.errno)));
+            return;
+        }
         f.printf("<marina version=\"%d\">\n", get_file_version());
 
         save_library(f);
