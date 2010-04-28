@@ -35,11 +35,10 @@ public class Clipboard {
     public void paste(Model.Track selected_track, int64 time) {
         if (clips.size != 1) {
             foreach (TrackClipPair pair in clips) {
-                pair.track.do_clip_paste(pair.clip.copy(), time + pair.clip.start - minimum_time, 
-                    true);
+                pair.track.do_clip_paste(pair.clip.copy(), time + pair.clip.start - minimum_time);
             }
         } else {
-            selected_track.do_clip_paste(clips[0].clip.copy(), time, true);
+            selected_track.do_clip_paste(clips[0].clip.copy(), time);
         }
     }
 }
@@ -399,7 +398,9 @@ public class TimeLine : Gtk.EventBox {
             view = clipboard.clips[0].clip.type == Model.MediaType.VIDEO ?
                             find_video_track_view() : find_audio_track_view();
         }
+        project.undo_manager.start_transaction("Paste");
         clipboard.paste(view.get_track(), pos);
+        project.undo_manager.end_transaction("Paste");
         queue_draw();
     }
 

@@ -259,11 +259,8 @@ public abstract class Track : Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");    
     }
 
-    public void do_clip_paste(Clip clip, int64 position, bool new_clip) {
-        if (new_clip)
-            add(clip, position, true);
-        else
-            _move(clip, position);
+    public void do_clip_paste(Clip clip, int64 position) {
+        append_at_time(clip, position, true);
     }
 
     public Clip? get_clip(int i) {
