@@ -95,80 +95,81 @@ class Recorder : Gtk.Window, TransportDelegate {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
         { "Library", null, "_Library", "F9", null, on_view_library, true },
-        { "Snap", null, "_Snap", null, null, on_snap, false }
+        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, false }
     };
 
     const string ui = """
 <ui>
   <menubar name="MenuBar">
     <menu name="ProjectMenu" action="Project">
-      <menuitem name="New" action="NewProject" />
-      <menuitem name="Open" action="Open" />
-      <menuitem name="Save" action="Save" />
-      <menuitem name="SaveAs" action="SaveAs" />
-      <separator />
-      <menuitem name="Export" action="Export" />
-      <separator />
-      <menuitem name="Property" action="Settings" />
-      <separator />
+      <menuitem name="New" action="NewProject"/>
+      <menuitem name="Open" action="Open"/>
+      <menuitem name="Save" action="Save"/>
+      <menuitem name="SaveAs" action="SaveAs"/>
+      <separator/>
+      <menuitem name="Export" action="Export"/>
+      <separator/>
+      <menuitem name="Property" action="Settings"/>
+      <separator/>
       <menuitem name="Quit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
-      <menuitem name="EditUndo" action="Undo" />
-      <separator />
-      <menuitem name="EditCut" action="Cut" />
-      <menuitem name="EditCopy" action="Copy" />
-      <menuitem name="EditPaste" action="Paste" />
-      <menuitem name="EditDelete" action="Delete" />
+      <menuitem name="EditUndo" action="Undo"/>
       <separator/>
-      <menuitem name="EditSelectAll" action="SelectAll" />
-      <separator />
-      <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead" />
-      <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead" />
-      <menuitem name="Snap" action="Snap" />
-      <separator />
-      <menuitem name="ClipViewProperties" action="ClipProperties" />
+      <menuitem name="EditCut" action="Cut"/>
+      <menuitem name="EditCopy" action="Copy"/>
+      <menuitem name="EditPaste" action="Paste"/>
+      <menuitem name="EditDelete" action="Delete"/>
+      <separator/>
+      <menuitem name="EditSelectAll" action="SelectAll"/>
+      <separator/>
+      <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
+      <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
+      <separator/>
+      <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="ViewMenu" action="View">
-        <menuitem name="ViewLibrary" action="Library" />
-        <separator />
-        <menuitem name="ViewZoomIn" action="ZoomIn" />
-        <menuitem name="ViewZoomOut" action="ZoomOut" />
+        <menuitem name="ViewLibrary" action="Library"/>
+        <separator/>
+        <menuitem name="ViewZoomIn" action="ZoomIn"/>
+        <menuitem name="ViewZoomOut" action="ZoomOut"/>
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
+        <separator/>
+        <menuitem name="Snap" action="Snap"/>
     </menu>
     <menu name="TrackMenu" action="Track">
-      <menuitem name="TrackNew" action="NewTrack" />
-      <menuitem name="TrackRename" action="Rename" />
-      <menuitem name="TrackDelete" action="DeleteTrack" />
+      <menuitem name="TrackNew" action="NewTrack"/>
+      <menuitem name="TrackRename" action="Rename"/>
+      <menuitem name="TrackDelete" action="DeleteTrack"/>
     </menu>
     <menu name="HelpMenu" action="Help">
-      <menuitem name="HelpContents" action="Contents" />
-      <separator />
-      <menuitem name="HelpAbout" action="About" />
-      <menuitem name="SaveGraph" action="SaveGraph" />
+      <menuitem name="HelpContents" action="Contents"/>
+      <separator/>
+      <menuitem name="HelpAbout" action="About"/>
+      <menuitem name="SaveGraph" action="SaveGraph"/>
     </menu>
   </menubar>
   <popup name="ClipContextMenu">
-    <menuitem name="Cut" action="Cut" />
-    <menuitem name="Copy" action="Copy" />
-    <separator />
-    <menuitem name="ClipContextProperties" action="ClipProperties" />
+    <menuitem name="Cut" action="Cut"/>
+    <menuitem name="Copy" action="Copy"/>
+    <separator/>
+    <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
   <popup name="LibraryContextMenu">
-    <menuitem name="ClipContextProperties" action="ClipProperties" />
+    <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
   <toolbar name="Toolbar">
-    <toolitem name="New" action="NewTrack" />
+    <toolitem name="New" action="NewTrack"/>
     <separator/>
-    <toolitem name="Rewind" action="Rewind" />
-    <toolitem name="End" action="End" />
-    <toolitem name="Play" action="Play" />
+    <toolitem name="Rewind" action="Rewind"/>
+    <toolitem name="End" action="End"/>
+    <toolitem name="Play" action="Play"/>
     <toolitem name="Record" action="Record"/>
   </toolbar>
-  <accelerator name="Rewind" action="Rewind" />
-  <accelerator name="End" action="End" />
-  <accelerator name="Play" action="Play" />
-  <accelerator name="Record" action="Record" />
+  <accelerator name="Rewind" action="Rewind"/>
+  <accelerator name="End" action="End"/>
+  <accelerator name="Play" action="Play"/>
+  <accelerator name="Record" action="Record"/>
 </ui>
 """;
 

@@ -89,7 +89,7 @@ class App : Gtk.Window, TransportDelegate {
 
     const Gtk.ToggleActionEntry[] check_actions = { 
         { LibraryToggle, null, "_Library", "F9", null, on_view_library, true },
-        { "Snap", null, "_Snap", null, null, on_snap, true }
+        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, true }
     };
 
     const string ui = """
@@ -106,44 +106,45 @@ class App : Gtk.Window, TransportDelegate {
       <menuitem name="Quit" action="Quit"/>
     </menu>
     <menu name="EditMenu" action="Edit">
-      <menuitem name="EditUndo" action="Undo" />
+      <menuitem name="EditUndo" action="Undo"/>
       <separator/>
       <menuitem name="EditCut" action="Cut"/>
       <menuitem name="EditCopy" action="Copy"/>
       <menuitem name="EditPaste" action="Paste"/>
       <menuitem name="EditDelete" action="Delete"/>
       <separator/>
-      <menuitem name="EditSelectAll" action="SelectAll" />
-      <separator />
+      <menuitem name="EditSelectAll" action="SelectAll"/>
+      <separator/>
       <menuitem name="ClipSplitAtPlayhead" action="SplitAtPlayhead"/>
       <menuitem name="ClipTrimToPlayhead" action="TrimToPlayhead"/>
-      <menuitem name="Snap" action="Snap" />
       <separator/>
       <menuitem name="ClipViewProperties" action="ClipProperties"/>
     </menu>
     <menu name="ViewMenu" action="View">
         <menuitem name="ViewLibrary" action="Library"/>
-        <separator />
+        <separator/>
         <menuitem name="ViewZoomIn" action="ZoomIn"/>
         <menuitem name="ViewZoomOut" action="ZoomOut"/>
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
+        <separator/>
+        <menuitem name="Snap" action="Snap"/>
     </menu>
     <menu name="GoMenu" action="Go">
       <menuitem name="GoStart" action="Start"/>
       <menuitem name="GoEnd" action="End"/>
     </menu>
     <menu name="HelpMenu" action="Help">
-      <menuitem name="HelpContents" action="Contents" />
-      <separator />
+      <menuitem name="HelpContents" action="Contents"/>
+      <separator/>
       <menuitem name="HelpAbout" action="About"/>
-      <menuitem name="SaveGraph" action="SaveGraph" />
+      <menuitem name="SaveGraph" action="SaveGraph"/>
     </menu>
   </menubar>
 
   <popup name="ClipContextMenu">
     <menuitem name="ClipContextCut" action="Cut"/>
     <menuitem name="ClipContextCopy" action="Copy"/>
-    <separator />
+    <separator/>
     <menuitem name="ClipContextProperties" action="ClipProperties"/>
   </popup>
   <popup name="LibraryContextMenu">
