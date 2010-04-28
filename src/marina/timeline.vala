@@ -70,7 +70,7 @@ public class TimeLine : Gtk.EventBox {
     // GapView will re-emerge after 0.1 release
     // public GapView gap_view;
 
-    public TimeLine(Model.Project p, Model.TimeSystem provider) {
+    public TimeLine(Model.Project p, Model.TimeSystem provider, Gdk.DragAction actions) {
         add_events(Gdk.EventMask.POINTER_MOTION_MASK);
         drag_widget = null;
         can_focus = true;
@@ -93,7 +93,7 @@ public class TimeLine : Gtk.EventBox {
 
         pixel_div = pixel_max / pixel_min;
         provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
-        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
+        Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, actions);
     }
 
     public void zoom_to_project(double width) {
@@ -454,7 +454,8 @@ public class TimeLine : Gtk.EventBox {
             track = track_view.get_track();
         }
 
-        project.create_clip_importer(track, timeline_add, provider.xpos_to_time(x));
+        project.create_clip_importer(track, timeline_add, provider.xpos_to_time(x),
+            context.action == Gdk.DragAction.MOVE);
 
         try {
             foreach (string s in a) {

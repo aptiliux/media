@@ -49,29 +49,6 @@ class VideoProject : Project {
         return t;
     }
 
-    public VideoTrack? find_video_track() {
-        foreach (Track track in tracks) {
-            if (track is VideoTrack) {
-                return track as VideoTrack;
-            }
-        }
-        return null;
-    }
-
-    protected override void do_append(Track track, ClipFile clipfile, string name, int64 insert_time) {
-        string description = "Append Clip";
-        undo_manager.start_transaction(description);
-        if (clipfile.video_caps != null) {
-            Track? video_track = find_video_track();
-            if (video_track != null && track != video_track) {
-                Clip clip = new Clip(clipfile, MediaType.VIDEO, name, 0, 0, clipfile.length, false);
-                video_track.append_at_time(clip, insert_time, true);
-            }
-        }
-        base.do_append(track, clipfile, name, insert_time);
-        undo_manager.end_transaction(description);
-    }
-
     public void go_previous_frame() {
         VideoTrack? video_track = find_video_track();
         if (video_track != null) {

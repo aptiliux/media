@@ -509,10 +509,8 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
             break;
         }
 
-        if (clipfile.audio_caps != null) {
-            Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
-            track.append_at_time(clip, insert_time, true);
-        }
+        Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
+        track.append_at_time(clip, insert_time, true);
     }
 
     public void append(Track track, ClipFile clipfile) {
@@ -522,7 +520,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         foreach (Track temp_track in tracks) {
             insert_time = int64.max(insert_time, temp_track.get_length());
         }
-        do_append(track, clipfile, name, insert_time);        
+        do_append(track, clipfile, name, insert_time);
     }
 
     public void add(Track track, ClipFile clipfile, int64 time) {
@@ -1044,10 +1042,11 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         }
     }
 
-    public void create_clip_importer(Model.Track? track, bool timeline_add, int64 time_to_add) {
+    public void create_clip_importer(Model.Track? track, bool timeline_add, 
+            int64 time_to_add, bool both_tracks) {
         if (timeline_add) {
             assert(track != null);
-            importer = new Model.TimelineImporter(track, this, time_to_add);
+            importer = new Model.TimelineImporter(track, this, time_to_add, both_tracks);
         } else {
             importer = new Model.LibraryImporter(this);
         }
@@ -1095,6 +1094,24 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
     string get_path() {
         return project_file == null ? null : Path.get_dirname(project_file);
+    }
+
+    public VideoTrack? find_video_track() {
+        foreach (Track track in tracks) {
+            if (track is VideoTrack) {
+                return track as VideoTrack;
+            }
+        }
+        return null;
+    }
+
+    public AudioTrack? find_audio_track() {
+        foreach (Track track in tracks) {
+            if (track is AudioTrack) {
+                return track as AudioTrack;
+            }
+        }
+        return null;
     }
 }
 }

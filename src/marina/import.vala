@@ -417,14 +417,28 @@ public class LibraryImporter : Object {
 public class TimelineImporter : LibraryImporter {
     Track track;
     int64 time_to_add;
-    public TimelineImporter(Track track, Project p, int64 time_to_add) {
+    bool both_tracks;
+
+    public TimelineImporter(Track track, Project p, int64 time_to_add, bool both_tracks) {
         base(p);
         this.track = track;
         this.time_to_add = time_to_add;
+        this.both_tracks = both_tracks;
     }
 
     protected override void append_existing_clipfile(ClipFile f) {
         project.add(track, f, time_to_add);
+        if (both_tracks) {
+            Track other_track;
+            if (track is Model.VideoTrack) {
+                other_track = project.find_audio_track();
+            } else {
+                other_track = project.find_video_track();
+            }
+            if (other_track != null) {
+                project.add(other_track, f, time_to_add);
+            }
+        }
     }
 
     protected override void on_clip_complete(ClipFile f) {

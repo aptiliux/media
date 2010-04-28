@@ -39,7 +39,8 @@ public class ClipLibraryView : Gtk.EventBox {
     SortMode sort_mode;
     Model.TimeSystem time_provider;
 
-    public ClipLibraryView(Model.Project p, Model.TimeSystem time_provider, string? drag_message) {
+    public ClipLibraryView(Model.Project p, Model.TimeSystem time_provider, string? drag_message,
+            Gdk.DragAction actions) {
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, Gdk.DragAction.COPY);
         project = p;
         this.time_provider = time_provider;
@@ -70,8 +71,7 @@ public class ClipLibraryView : Gtk.EventBox {
         project.clipfile_added += on_clipfile_added;
         project.cleared += remove_all_rows;
 
-        Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries,
-                            Gdk.DragAction.COPY);
+        Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries, actions);
         tree_view.drag_begin += on_drag_begin;
         tree_view.drag_data_get += on_drag_data_get;
         tree_view.cursor_changed += on_cursor_changed;
@@ -217,7 +217,7 @@ public class ClipLibraryView : Gtk.EventBox {
         string[] a = selection_data.get_uris();
         Gtk.drag_finish(context, true, false, time);
 
-        project.create_clip_importer(null, false, 0);
+        project.create_clip_importer(null, false, 0, false);
 
         try {
             foreach (string s in a) {

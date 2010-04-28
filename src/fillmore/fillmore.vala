@@ -236,11 +236,11 @@ class Recorder : Gtk.Window, TransportDelegate {
         record_button = (Gtk.ToggleToolButton) get_widget(manager, "/Toolbar/Record");
         on_undo_changed(false);
 
-        library = new ClipLibraryView(project, provider, null);
+        library = new ClipLibraryView(project, provider, null, Gdk.DragAction.COPY);
         library.selection_changed += on_library_selection_changed;
         library.drag_data_received += on_drag_data_received;
 
-        timeline = new TimeLine(project, provider);
+        timeline = new TimeLine(project, provider, Gdk.DragAction.COPY);
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
         timeline.size_allocate += on_timeline_size_allocate;

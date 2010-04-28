@@ -207,7 +207,8 @@ class App : Gtk.Window, TransportDelegate {
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
 
-        timeline = new TimeLine(project, project.time_provider);
+        timeline = new TimeLine(project, project.time_provider,
+            Gdk.DragAction.COPY | Gdk.DragAction.MOVE);
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
@@ -215,7 +216,8 @@ class App : Gtk.Window, TransportDelegate {
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
 
-        library = new ClipLibraryView(project, project.time_provider, "Drag clips here.");
+        library = new ClipLibraryView(project, project.time_provider, "Drag clips here.",
+            Gdk.DragAction.COPY | Gdk.DragAction.MOVE);
         library.selection_changed += on_library_selection_changed;
         library.drag_data_received += on_drag_data_received;
 
@@ -446,7 +448,7 @@ class App : Gtk.Window, TransportDelegate {
         load_errors.clear();
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
-            project.create_clip_importer(null, false, 0);
+            project.create_clip_importer(null, false, 0, false);
             project.importer.started += on_importer_started;
             try {
                 foreach (string s in filenames) {
