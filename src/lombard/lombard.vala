@@ -385,6 +385,9 @@ class App : Gtk.Window, TransportDelegate {
     public void on_load_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
         queue_draw();
+        if (project.find_video_track() == null) {
+            project.add_track(new Model.VideoTrack(project));
+        }
 
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
         h_pane.set_position(h_pane.allocation.width - project.library_width);

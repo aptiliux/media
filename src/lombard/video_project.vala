@@ -49,7 +49,7 @@ class VideoProject : Project {
         return t;
     }
 
-    VideoTrack? find_video_track() {
+    public VideoTrack? find_video_track() {
         foreach (Track track in tracks) {
             if (track is VideoTrack) {
                 return track as VideoTrack;
