@@ -69,7 +69,8 @@ public class ClipLibraryView : Gtk.EventBox {
 
         tree_view.set_headers_visible(false);
         project.clipfile_added += on_clipfile_added;
-        project.cleared += remove_all_rows;
+        project.cleared += on_remove_all_rows;
+        project.time_signature_changed += on_time_signature_changed;
 
         Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries, actions);
         tree_view.drag_begin += on_drag_begin;
@@ -387,8 +388,8 @@ public class ClipLibraryView : Gtk.EventBox {
         return b;
     }
 
-    void remove_all_rows() {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "remove_all_rows");
+    void on_remove_all_rows() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_remove_all_rows");
         Gtk.TreeModel model = tree_view.get_model();
         Gtk.TreeIter iter;
 
@@ -396,6 +397,20 @@ public class ClipLibraryView : Gtk.EventBox {
 
         while (b) {
             b = remove_row(out iter);
+        }
+    }
+
+    void on_time_signature_changed(Fraction time_signature) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_time_signature_changed");
+        Gtk.TreeIter iter;
+        bool more_items = list_store.get_iter_first(out iter);
+        while (more_items) {
+            string filename;
+            list_store.get(iter, ColumnType.FILENAME, out filename, -1);
+            Model.ClipFile clip_file = project.find_clipfile(filename);
+            list_store.set(iter, ColumnType.DURATION,
+                time_provider.get_time_duration(clip_file.length), -1);
+            more_items = list_store.iter_next(ref iter);
         }
     }
 
