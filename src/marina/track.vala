@@ -220,14 +220,19 @@ public abstract class Track : Object {
             }
 
         int i = 0;
-        while (i < clips.size) {
-            if (clips[i] != c && 
-                clips[i].start >= c.start &&
-                clips[i].end <= c.end) {
-                delete_clip(clips[i]);
+        // TODO: This code assumes that when a delete happens, it is reflected immediately.
+        // When we are in an undo (or redo) deleting will happen later.  It would be better
+        // for callers not to have to deal with this problem.  Too large of a change for now.
+        if (!project.undo_manager.in_undo) {
+            while (i < clips.size) {
+                if (clips[i] != c && 
+                    clips[i].start >= c.start &&
+                    clips[i].end <= c.end) {
+                    delete_clip(clips[i]);
+                }
+                else
+                    i++;
             }
-            else
-                i++;
         }
     }
 

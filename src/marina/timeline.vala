@@ -48,6 +48,7 @@ public class TimeLine : Gtk.EventBox {
     public weak Model.TimeSystem provider;
     public View.Ruler ruler;
     Gtk.Widget drag_widget = null;
+    bool copying;
     public Gee.ArrayList<TrackView> tracks = new Gee.ArrayList<TrackView>();
     Gtk.VBox vbox;
 
@@ -174,6 +175,10 @@ public class TimeLine : Gtk.EventBox {
 
     void on_clip_view_move_begin(ClipView clip_view, bool copy) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_begin");
+        copying = copy;
+        if (copy) {
+            project.undo_manager.start_transaction("Copy Clip");
+        }
         foreach (ClipView selected_clip in selected_clips) {
             selected_clip.initial_time = selected_clip.clip.start;
             selected_clip.clip.gnonlin_disconnect();
@@ -189,7 +194,7 @@ public class TimeLine : Gtk.EventBox {
                 // We'll want to call move_begin for each clip that is linked, or in a group 
                 // or selected and not iterate over them in this fashion in the timeline.
                 Model.Clip clip = selected_clip.clip.copy();
-                track_view.get_track().add(clip, selected_clip.clip.start, false);
+                track_view.get_track().append_at_time(clip, selected_clip.clip.start, false);
                 track_view.move_to_top(selected_clip);
             }
         }
@@ -254,6 +259,11 @@ public class TimeLine : Gtk.EventBox {
                  selected_clip_view.clip.start, selected_clip_view.initial_time);
         }
         project.undo_manager.end_transaction("Move Clip");
+        if (copying) {
+            copying = false;
+            project.undo_manager.end_transaction("Copy Clip");
+        }
+
     }
 
     void on_clip_view_trim_commit(ClipView clip_view, Gdk.WindowEdge edge) {
