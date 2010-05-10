@@ -465,7 +465,7 @@ public class TimeLine : Gtk.EventBox {
         }
 
         project.create_clip_importer(track, timeline_add, provider.xpos_to_time(x),
-            context.action == Gdk.DragAction.MOVE);
+            context.action == Gdk.DragAction.COPY);
 
         try {
             foreach (string s in a) {

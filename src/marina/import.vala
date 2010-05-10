@@ -426,8 +426,7 @@ public class TimelineImporter : LibraryImporter {
         this.both_tracks = both_tracks;
     }
 
-    protected override void append_existing_clipfile(ClipFile f) {
-        project.add(track, f, time_to_add);
+    void add_to_both(ClipFile clip_file) {
         if (both_tracks) {
             Track other_track;
             if (track is Model.VideoTrack) {
@@ -436,14 +435,24 @@ public class TimelineImporter : LibraryImporter {
                 other_track = project.find_video_track();
             }
             if (other_track != null) {
-                project.add(other_track, f, time_to_add);
+                project.add(other_track, clip_file, time_to_add);
             }
         }
     }
 
+    protected override void append_existing_clipfile(ClipFile f) {
+        project.undo_manager.start_transaction("Create Clip");
+        project.add(track, f, time_to_add);
+        add_to_both(f);
+        project.undo_manager.end_transaction("Create Clip");
+    }
+
     protected override void on_clip_complete(ClipFile f) {
+        project.undo_manager.start_transaction("Create Clip");
         base.on_clip_complete(f);
         project.add(track, f, time_to_add);
+        add_to_both(f);
+        project.undo_manager.end_transaction("Create Clip");
     }
 }
 }
