@@ -248,7 +248,7 @@ public class TimeLine : Gtk.EventBox {
         queue_draw();
     }
 
-    void on_clip_view_move_commit(ClipView clip_view, int delta) {
+    void on_clip_view_move_commit(ClipView clip_view, int64 delta) {
         window.set_cursor(null);
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
         project.undo_manager.start_transaction("Move Clip");
@@ -263,7 +263,6 @@ public class TimeLine : Gtk.EventBox {
             copying = false;
             project.undo_manager.end_transaction("Copy Clip");
         }
-
     }
 
     void on_clip_view_trim_commit(ClipView clip_view, Gdk.WindowEdge edge) {
@@ -290,20 +289,22 @@ public class TimeLine : Gtk.EventBox {
         project.undo_manager.end_transaction("Trim Clip");
     }
 
-    void constrain_move(ClipView clip_view, ref int delta) {
-        int min_delta = 5;
+    void constrain_move(ClipView clip_view, ref int64 delta) {
+        int min_delta = clip_view.SNAP_DELTA;
+        int delta_xsize = provider.time_to_xsize(delta);
         TrackView track_view = (TrackView) clip_view.parent as TrackView;
         Model.Track track = track_view.get_track();
-        if (delta.abs() < min_delta) {
+        if (delta_xsize.abs() < min_delta) {
             int64 range = provider.xsize_to_time(min_delta);
             int64 adjustment;
             if (track.clip_is_near(clip_view.clip, range, out adjustment)) {
-                delta = provider.time_to_xsize(adjustment);
+                delta = adjustment;
+                clip_view.snap(provider.time_to_xsize(adjustment));
             }
         }
     }
 
-    void on_clip_view_move_request(ClipView clip_view, int delta) {
+    void on_clip_view_move_request(ClipView clip_view, int64 delta) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
         if (project.snap_to_clip) {
             constrain_move(clip_view, ref delta);
@@ -313,28 +314,28 @@ public class TimeLine : Gtk.EventBox {
         }
     }
 
-    bool move_allowed(ref int move_distance) {
+    bool move_allowed(ref int64 move_distance) {
         if (drag_widget == null) {
             return false;
         }
 
         foreach(ClipView clip_view in selected_clips) {
-            int position = provider.time_to_xpos(clip_view.clip.start);
-            if ((position + move_distance) < BORDER) {
+            int position = provider.time_to_xpos(clip_view.clip.start + move_distance);
+            if (position < BORDER) {
                 return false;
             }
         }
         return true;
     }
 
-    void move_the_clips(int move_distance) {
+    void move_the_clips(int64 move_distance) {
         foreach (ClipView clip_view in selected_clips) {
             do_clip_move(clip_view, move_distance);
         }
     }
 
-    public void do_clip_move(ClipView clip_view, int delta) {
-        clip_view.clip.start += provider.xsize_to_time(delta);
+    public void do_clip_move(ClipView clip_view, int64 delta) {
+        clip_view.clip.start += delta;
     }
 
     public void on_ruler_position_changed(int x) {

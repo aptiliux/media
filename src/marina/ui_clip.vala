@@ -59,11 +59,14 @@ public class ClipView : Gtk.DrawingArea {
     Gdk.Color color_normal;
     Gdk.Color color_selected;
     int drag_point;
+    int snap_amount;
+    bool snapped;
     MotionMode motion_mode = MotionMode.NONE;
     bool button_down = false;
     bool pending_selection;
     const int MIN_DRAG = 5;
     const int TRIM_WIDTH = 10;
+    public const int SNAP_DELTA = 10;
 
     static Gdk.Cursor left_trim_cursor = new Gdk.Cursor(Gdk.CursorType.LEFT_SIDE);
     static Gdk.Cursor right_trim_cursor = new Gdk.Cursor(Gdk.CursorType.RIGHT_SIDE);
@@ -74,8 +77,8 @@ public class ClipView : Gtk.DrawingArea {
     public signal void clip_deleted(Model.Clip clip);
     public signal void clip_moved(ClipView clip);
     public signal void selection_request(ClipView clip_view, bool extend_selection);
-    public signal void move_request(ClipView clip_view, int delta);
-    public signal void move_commit(ClipView clip_view, int delta);
+    public signal void move_request(ClipView clip_view, int64 delta);
+    public signal void move_commit(ClipView clip_view, int64 delta);
     public signal void move_begin(ClipView clip_view, bool copy);
     public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
@@ -209,6 +212,8 @@ public class ClipView : Gtk.DrawingArea {
         if (primary_press) {
             button_down = true;
             drag_point = (int)event.x;
+            snap_amount = 0;
+            snapped = false;
         }
 
         bool extend_selection = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
@@ -262,7 +267,7 @@ public class ClipView : Gtk.DrawingArea {
                 }
                 break;
                 case MotionMode.DRAGGING: {
-                    int delta = (int) event.x - drag_point;
+                    int64 delta = time_provider.xsize_to_time((int) event.x - drag_point);
                     if (motion_mode == MotionMode.DRAGGING) {
                         move_commit(this, delta);
                     }
@@ -286,7 +291,19 @@ public class ClipView : Gtk.DrawingArea {
         }
 
         event.x -= allocation.x;
-        int delta = (int) event.x - drag_point;
+        int delta_pixels = (int)(event.x - drag_point) - snap_amount;
+        if (snapped) {
+            snap_amount += delta_pixels;
+            if (snap_amount.abs() < SNAP_DELTA) {
+                return true;
+            }
+            delta_pixels += snap_amount;
+            snap_amount = 0;
+            snapped = false;
+        }
+
+        int64 delta_time = time_provider.xsize_to_time(delta_pixels);
+
         switch (motion_mode) {
             case MotionMode.NONE:
                 if (!button_down && is_left_trim(event.x, event.y)) {
@@ -294,7 +311,7 @@ public class ClipView : Gtk.DrawingArea {
                 } else if (!button_down && is_right_trim(event.x, event.y)) {
                     window.set_cursor(right_trim_cursor);
                 } else if (is_selected && button_down) {
-                    if (delta.abs() > MIN_DRAG) {
+                    if (delta_pixels.abs() > MIN_DRAG) {
                         bool do_copy = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
                         if (do_copy) {
                             window.set_cursor(plus_cursor);
@@ -311,20 +328,19 @@ public class ClipView : Gtk.DrawingArea {
             case MotionMode.RIGHT_TRIM:
             case MotionMode.LEFT_TRIM:
                 if (button_down) {
-                    int64 time_delta = time_provider.xsize_to_time(delta);
                     if (motion_mode == MotionMode.LEFT_TRIM) {
-                        clip.trim(time_delta, Gdk.WindowEdge.WEST);
+                        clip.trim(delta_time, Gdk.WindowEdge.WEST);
                     } else {
                         int64 duration = clip.duration;
-                        clip.trim(time_delta, Gdk.WindowEdge.EAST);
+                        clip.trim(delta_time, Gdk.WindowEdge.EAST);
                         if (duration != clip.duration) {
-                            drag_point += (int)delta;
+                            drag_point += (int)delta_pixels;
                         }
                     }
                 }
                 return true;
             case MotionMode.DRAGGING:
-                move_request(this, delta);
+                move_request(this, delta_time);
                 return true;
         }
         return false;
@@ -347,5 +363,10 @@ public class ClipView : Gtk.DrawingArea {
         if (!is_selected) {
             selection_request(this, true);
         }
+    }
+    
+    public void snap(int64 amount) {
+        snap_amount = time_provider.time_to_xsize(amount);
+        snapped = true;
     }
 }
