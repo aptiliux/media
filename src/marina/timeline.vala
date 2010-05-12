@@ -179,15 +179,14 @@ public class TimeLine : Gtk.EventBox {
         if (copy) {
             project.undo_manager.start_transaction("Copy Clip");
         }
+
+        //The first pass removes the clips from the track model and makes any copies
         foreach (ClipView selected_clip in selected_clips) {
             selected_clip.initial_time = selected_clip.clip.start;
             selected_clip.clip.gnonlin_disconnect();
             TrackView track_view = selected_clip.get_parent() as TrackView;
             if (track_view != null) {
                 track_view.get_track().remove_clip_from_array(selected_clip.clip);
-                if (selected_clip != clip_view) {
-                    track_view.move_to_top(selected_clip);
-                }
             }
             if (copy) {
                 // TODO: When adding in linking/groups, this should be moved into track_view
@@ -195,8 +194,14 @@ public class TimeLine : Gtk.EventBox {
                 // or selected and not iterate over them in this fashion in the timeline.
                 Model.Clip clip = selected_clip.clip.copy();
                 track_view.get_track().append_at_time(clip, selected_clip.clip.start, false);
-                track_view.move_to_top(selected_clip);
             }
+        }
+
+        //The second pass moves the selected clips to the top.  We can't do this in one pass
+        //because creating a copy inserts the new copy in the z-order at the top.
+        foreach (ClipView selected_clip in selected_clips) {
+            TrackView track_view = selected_clip.get_parent() as TrackView;
+            track_view.move_to_top(selected_clip);
         }
     }
 
