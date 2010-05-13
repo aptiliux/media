@@ -217,7 +217,7 @@ public class ClipFileDeleteCommand : Command {
     
     public override void undo() {
         try {
-            project.add_clipfile(clipfile);
+            project._add_clipfile(clipfile);
         } catch (Error e) {
             project.error_occurred("Could not add clipfile.", e.message);
         }
@@ -346,6 +346,36 @@ public class BpmCommand : Command {
     
     public override string description() {
         return "Set Tempo";
+    }
+}
+
+public class AddClipCommand : Command {
+    ClipFile clip_file;
+    Project project;
+
+    public AddClipCommand(Project project, ClipFile clip_file) {
+        this.project = project;
+        this.clip_file = clip_file;
+    }
+
+    public override void apply() {
+        try {
+            project._add_clipfile(clip_file);
+        } catch (GLib.Error error) {
+            project.error_occurred("Error importing", "An error occurred importing this file.");
+        }
+    }
+
+    public override void undo() {
+        project._remove_clipfile(clip_file);
+    }
+
+    public override bool merge(Command command) {
+        return false;
+    }
+
+    public override string description() {
+        return "Add Clip To Library";
     }
 }
 

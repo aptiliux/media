@@ -392,11 +392,7 @@ public class LibraryImporter : Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_complete");
         ClipFile cf = project.find_clipfile(f.filename);
         if (cf == null) {
-            try {
-                project.add_clipfile(f);
-            } catch (Error e) {
-                on_error_occurred(e.message);
-            }
+            project.add_clipfile(f);
         }
     }
 

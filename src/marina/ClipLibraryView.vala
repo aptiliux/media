@@ -69,6 +69,7 @@ public class ClipLibraryView : Gtk.EventBox {
 
         tree_view.set_headers_visible(false);
         project.clipfile_added += on_clipfile_added;
+        project.clipfile_removed += on_clipfile_removed;
         project.cleared += on_remove_all_rows;
         project.time_signature_changed += on_time_signature_changed;
 
@@ -368,14 +369,16 @@ public class ClipLibraryView : Gtk.EventBox {
         return -1;
     }
 
-    public void on_clipfile_updated(Model.ClipFile f) {
-        Gtk.TreeIter iter;
+    public void on_clipfile_removed(Model.ClipFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_removed");
+        Gtk.TreeIter it;
 
-        if (find_clipfile(f, out iter) >= 0)
-            update_iter(iter, f);
+        if (find_clipfile(f, out it) >= 0) {
+            remove_row(ref it);
+        }
     }
 
-    bool remove_row(out Gtk.TreeIter it) {
+    bool remove_row(ref Gtk.TreeIter it) {
         bool b = list_store.remove(it);
         num_clipfiles--;
         if (num_clipfiles == 0) {
@@ -396,7 +399,7 @@ public class ClipLibraryView : Gtk.EventBox {
         bool b = model.get_iter_first(out iter);
 
         while (b) {
-            b = remove_row(out iter);
+            b = remove_row(ref iter);
         }
     }
 
@@ -438,7 +441,7 @@ public class ClipLibraryView : Gtk.EventBox {
                 project.undo_manager.reset();
             }
         }
-        remove_row(out it);
+        remove_row(ref it);
     }
 
     public bool has_selection() {

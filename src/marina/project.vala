@@ -195,15 +195,10 @@ public class MediaLoaderHandler : LoaderHandler {
             load_error("Could not load %s.".printf(f.clipfile.filename));
             warning("Could not load %s: %s", f.clipfile.filename, f.error_string);
         }
-        try {
-            the_project.add_clipfile(f.clipfile);
-            num_clipfiles_complete++;
-            if (num_clipfiles_complete == clipfetchers.size) {
-                complete();
-            }
-        } catch (Error e) {
-            load_error("Error loading %s.".printf(f.clipfile.filename));
-            warning("Error loading %s: %s", f.clipfile.filename, f.error_string);
+        the_project.add_clipfile(f.clipfile);
+        num_clipfiles_complete++;
+        if (num_clipfiles_complete == clipfetchers.size) {
+            complete();
         }
     }
 
@@ -379,6 +374,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public signal void error_occurred(string major_message, string? minor_message);
 
     public signal void clipfile_added(ClipFile c);
+    public signal void clipfile_removed(ClipFile clip_file);
     public signal void cleared();
 
     public abstract TimeCode get_clip_time(ClipFile f);
@@ -683,7 +679,12 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         track_removed(track);
     }
 
-    public virtual void add_clipfile(ClipFile clipfile) throws Error {
+    public void add_clipfile(ClipFile clipfile) {
+        Model.Command command = new Model.AddClipCommand(this, clipfile);
+        do_command(command);
+    }
+
+    public void _add_clipfile(ClipFile clipfile) throws Error {
         clipfiles.add(clipfile);
         if (clipfile.is_online() && clipfile.is_of_type(MediaType.VIDEO)) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
@@ -742,6 +743,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
     public void _remove_clipfile(ClipFile cf) {
         clipfiles.remove(cf);
+        clipfile_removed(cf);
     }
 
     public void remove_clipfile(string filename) {
@@ -1009,14 +1011,10 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
             emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, fetcher.error_string);
             error_occurred("Error retrieving clip", fetcher.error_string);
         } else {
-            try {
-                if (get_clipfile_index(fetcher.clipfile) == -1) {
-                    add_clipfile(fetcher.clipfile);
-                }
-                fetcher_completion.complete(fetcher);
-            } catch (Error e) {
-                error_occurred("Error retrieving clip", fetcher.error_string);
+            if (get_clipfile_index(fetcher.clipfile) == -1) {
+                add_clipfile(fetcher.clipfile);
             }
+            fetcher_completion.complete(fetcher);
         }
     }
 
