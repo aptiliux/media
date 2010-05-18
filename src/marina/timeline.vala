@@ -66,6 +66,7 @@ public class TimeLine : Gtk.EventBox {
     float pixel_div;
     float pixel_min = 0.1f;
     float pixel_max = 4505.0f;
+    Gtk.Label high_water;
 
     public const int RULER_HEIGHT = 20;
     // GapView will re-emerge after 0.1 release
@@ -179,9 +180,14 @@ public class TimeLine : Gtk.EventBox {
         if (copy) {
             project.undo_manager.start_transaction("Copy Clip");
         }
-
+        ClipView max_clip = null;
         //The first pass removes the clips from the track model and makes any copies
         foreach (ClipView selected_clip in selected_clips) {
+            if (max_clip == null) {
+                max_clip = selected_clip;
+            } else if (max_clip.clip.end < selected_clip.clip.end) {
+                max_clip = selected_clip;
+            }
             selected_clip.initial_time = selected_clip.clip.start;
             selected_clip.clip.gnonlin_disconnect();
             TrackView track_view = selected_clip.get_parent() as TrackView;
@@ -196,6 +202,11 @@ public class TimeLine : Gtk.EventBox {
                 track_view.get_track().append_at_time(clip, selected_clip.clip.start, false);
             }
         }
+
+        high_water = new Gtk.Label(null);
+        Gtk.Fixed the_parent = clip_view.get_parent() as Gtk.Fixed;
+        the_parent.put(high_water,
+            max_clip.allocation.x + max_clip.allocation.width, max_clip.allocation.y);
 
         //The second pass moves the selected clips to the top.  We can't do this in one pass
         //because creating a copy inserts the new copy in the z-order at the top.
@@ -256,6 +267,10 @@ public class TimeLine : Gtk.EventBox {
     void on_clip_view_move_commit(ClipView clip_view, int64 delta) {
         window.set_cursor(null);
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        Gtk.Fixed fixed = high_water.get_parent() as Gtk.Fixed;
+        fixed.remove(high_water);
+        high_water = null;
+
         project.undo_manager.start_transaction("Move Clip");
         foreach (ClipView selected_clip_view in selected_clips) {
             TrackView track_view = selected_clip_view.get_parent() as TrackView;
@@ -324,7 +339,14 @@ public class TimeLine : Gtk.EventBox {
             return false;
         }
 
+        ClipView max_clip = null;
+
         foreach(ClipView clip_view in selected_clips) {
+            if (max_clip == null) {
+                max_clip = clip_view;
+            } else if (clip_view.clip.end  > max_clip.clip.end){
+                max_clip = clip_view;
+            }
             int position = provider.time_to_xpos(clip_view.clip.start + move_distance);
             if (position < BORDER) {
                 return false;
