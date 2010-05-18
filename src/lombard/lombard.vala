@@ -38,6 +38,7 @@ class App : Gtk.Window, TransportDelegate {
     Gtk.ActionGroup main_group;
 
     bool done_zoom = false;
+    int64 center_time = -1;
 
     Gtk.VBox vbox = null;
     Gtk.MenuBar menubar;
@@ -212,6 +213,7 @@ class App : Gtk.Window, TransportDelegate {
         timeline.selection_changed += on_timeline_selection_changed;
         timeline.track_changed += on_track_changed;
         timeline.drag_data_received += on_drag_data_received;
+        timeline.size_allocate += on_timeline_size_allocate;
         project.media_engine.position_changed += on_position_changed;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
@@ -698,18 +700,36 @@ class App : Gtk.Window, TransportDelegate {
         toggle_library(action.get_active());
     }
 
+    int64 get_zoom_center_time() {
+        return project.transport_get_position();
+    }
+
+    void do_zoom(float increment) {
+        center_time = get_zoom_center_time();
+        timeline.zoom(increment);
+    }
+
     void on_zoom_in() {
-        timeline.zoom(0.1f);
+        do_zoom(0.1f);
         done_zoom = true;
     }
 
     void on_zoom_out() {
-        timeline.zoom(-0.1f);
+        do_zoom(-0.1f);
         done_zoom = true;
     }
 
     void on_zoom_to_project() {
         timeline.zoom_to_project(h_adjustment.page_size);
+    }
+
+    void on_timeline_size_allocate(Gdk.Rectangle rectangle) {
+        if (center_time != -1) {
+            int new_center_pixel = project.time_provider.time_to_xpos(center_time);
+            int page_size = (int)(h_adjustment.get_page_size() / 2);
+            h_adjustment.clamp_page(new_center_pixel - page_size, new_center_pixel + page_size);
+            center_time = -1;
+        }
     }
 
     void set_sensitive_group(Gtk.ActionGroup group, string group_path, bool sensitive) {
