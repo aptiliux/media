@@ -37,7 +37,6 @@ class App : Gtk.Window, TransportDelegate {
 
     Gtk.ActionGroup main_group;
 
-    bool done_zoom = false;
     int64 center_time = -1;
 
     Gtk.VBox vbox = null;
@@ -215,6 +214,7 @@ class App : Gtk.Window, TransportDelegate {
         timeline.drag_data_received += on_drag_data_received;
         timeline.size_allocate += on_timeline_size_allocate;
         project.media_engine.position_changed += on_position_changed;
+        project.media_engine.callback_pulse += on_callback_pulse;
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
 
@@ -360,11 +360,7 @@ class App : Gtk.Window, TransportDelegate {
 
             prev_adjustment_lower = a.get_lower();
             prev_adjustment_upper = a.get_upper();
-
-            if (done_zoom)
-                on_position_changed();
         }
-        done_zoom = false;
     }
 
     void on_drag_data_received(Gtk.Widget w, Gdk.DragContext context, int x, int y,
@@ -505,31 +501,6 @@ class App : Gtk.Window, TransportDelegate {
 
     const float SCROLL_MARGIN = 0.05f;
 
-    // Scroll if necessary so that horizontal position xpos is visible in the window.
-    void scroll_to(int xpos) {
-        float margin = project.transport_is_playing() ? 0.0f : SCROLL_MARGIN;
-        int page_size = (int) h_adjustment.page_size;
-
-        int x = -1;
-        if (xpos < h_adjustment.value + page_size * margin) {  // too far left
-            x =  (int) (xpos - h_adjustment.page_size / 3);
-            h_adjustment.set_value(x);
-        } else if (xpos > h_adjustment.value + page_size * (1 - margin)) {  // too far right
-            x = (int) (xpos - h_adjustment.page_size * 2 / 3);
-            int scroll_width = 0;
-            Gtk.Widget scroll = timeline_scrolled.get_vscrollbar();
-            if (scroll.visible) {
-                scroll_width = scroll.allocation.width + 2;
-            }
-            int max_value = (int) (h_adjustment.upper - timeline_scrolled.allocation.width + 
-                scroll_width);
-            if (x > max_value) {
-                x = max_value;
-            }
-            h_adjustment.set_value(x);
-        }
-    }
-
     void scroll_toward_center(int xpos) {
         int cursor_pos = xpos - (int) h_adjustment.value;
 
@@ -580,11 +551,15 @@ class App : Gtk.Window, TransportDelegate {
 
     public void on_position_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_position_changed");
-        int xpos = timeline.provider.time_to_xpos(project.transport_get_position());
-        scroll_to(xpos);
-        if (project.transport_is_playing())
-            scroll_toward_center(xpos);  
         update_menu();
+    }
+
+    void on_callback_pulse() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_callback_pulse");
+        if (project.transport_is_playing()) {
+            scroll_toward_center(project.time_provider.time_to_xpos(project.media_engine.position));
+        }
+        timeline.queue_draw();
     }
 
     public void on_track_changed() {
@@ -711,12 +686,10 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_zoom_in() {
         do_zoom(0.1f);
-        done_zoom = true;
     }
 
     void on_zoom_out() {
         do_zoom(-0.1f);
-        done_zoom = true;
     }
 
     void on_zoom_to_project() {
