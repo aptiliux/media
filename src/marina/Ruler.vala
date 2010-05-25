@@ -19,7 +19,7 @@ public class Ruler : Gtk.DrawingArea {
 
     public override bool expose_event(Gdk.EventExpose event) {
         int x = event.area.x;
-        int frame = 0;
+        int frame = provider.get_start_token(x);
 
         Cairo.Context context = Gdk.cairo_create(window);
 
@@ -33,7 +33,6 @@ public class Ruler : Gtk.DrawingArea {
         context.set_source_rgb(1.0, 1.0, 1.0);
         int stop = event.area.x + event.area.width;
         Pango.FontDescription f = Pango.FontDescription.from_string("Sans 8");
-
         while (x <= stop) {
             x = provider.frame_to_xsize(frame);
             int y = provider.get_pixel_height(frame);
@@ -59,7 +58,6 @@ public class Ruler : Gtk.DrawingArea {
 
             frame = provider.get_next_position(frame);
         }
-
         context.set_antialias(old_antialias);
         context.set_line_width(1.0);
         context.stroke();

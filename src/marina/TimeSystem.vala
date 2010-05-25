@@ -14,13 +14,14 @@ public interface TimeSystem : Object {
     public abstract int64 xsize_to_time(int x);
     public abstract int time_to_xpos(int64 time);
     public abstract int64 get_pixel_snap_time();
-    public abstract int time_to_xsize(int64 time);    
+    public abstract int time_to_xsize(int64 time);
     public abstract float get_pixel_percentage();
-    public abstract int get_start_token();
+    public abstract int get_start_token(int xsize);
     public abstract int get_next_position(int token);
     public abstract int get_pixel_height(int token);
-    public abstract string? get_display_string(int token);    
+    public abstract string? get_display_string(int token);
     public abstract int frame_to_xsize(int frame);
+    public abstract int xsize_to_frame(int xsize);
     public abstract string get_time_string(int64 time);
     public abstract string get_time_duration(int64 time);
 }
@@ -35,7 +36,7 @@ public abstract class TimeSystemBase : Object {
     const int BORDER = 4;  // TODO: should use same value as timeline.  will happen when this gets
                            // refactored back into view code.
 
-    abstract int[] get_timeline_seconds();    
+    abstract int[] get_timeline_seconds();
     abstract int correct_sub_second_value(float seconds, int div, int fps);
 
     protected int correct_seconds_value (float seconds, int div, int fps) {
@@ -134,7 +135,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         int pixels_per_medium = 50;
         int pixels_per_small = 20;
 
-        pixel_percentage += inc;    
+        pixel_percentage += inc;
         if (pixel_percentage < 0.0f)
             pixel_percentage = 0.0f;
         else if (pixel_percentage > 1.0f)
@@ -147,7 +148,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
                                                     large_pixel_frames, fps);
         small_pixel_frames = correct_seconds_value(pixels_per_small / pixels_per_second, 
                                                     medium_pixel_frames, fps);
-    
+
         if (small_pixel_frames == medium_pixel_frames) {
             int i = medium_pixel_frames;
 
@@ -167,8 +168,13 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         return ((int) (frame * pixels_per_frame));
     }
 
-    public int get_start_token() {
-        return 0;
+    public int xsize_to_frame(int xsize) {
+        return (int) (xsize / pixels_per_frame);
+    }
+
+    public int get_start_token(int xsize) {
+        int start_frame = xsize_to_frame(xsize);
+        return large_pixel_frames * (start_frame / large_pixel_frames);
     }
 
     public int get_next_position(int token) {
@@ -358,8 +364,13 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         return ((int) (frame * pixels_per_sixteenth));
     }
 
-    public int get_start_token() {
-        return 0;
+    public int xsize_to_frame(int xsize) {
+        return (int) (xsize / pixels_per_sixteenth);
+    }
+
+    public int get_start_token(int xsize) {
+        int start_frame = xsize_to_frame(xsize);
+        return large_pixel_sixteenth * (start_frame / large_pixel_sixteenth);
     }
 
     public int get_next_position(int token) {
