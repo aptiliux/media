@@ -638,17 +638,19 @@ class App : Gtk.Window, TransportDelegate {
                     return base.key_press_event(event);
                 on_go_start();
                 break;
-            case KeySyms.Up:
-                project.go_previous();
-                break;
-            case KeySyms.Down:
-                project.go_next();
-                break;
             case KeySyms.Left:
-                project.go_previous_frame();
+                if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+                    project.go_previous();
+                } else {
+                    project.go_previous_frame();
+                }
                 break;
             case KeySyms.Right:
-                project.go_next_frame();
+                if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+                    project.go_next();
+                } else {
+                    project.go_next_frame();
+                }
                 break;
             case KeySyms.KP_Add:
             case KeySyms.equal:
