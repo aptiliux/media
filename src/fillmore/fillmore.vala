@@ -468,8 +468,17 @@ class Recorder : Gtk.Window, TransportDelegate {
         h_adjustment.set_value(0.0);
     }
 
-    public void scroll_to_end() {
-        int new_adjustment = timeline.provider.time_to_xpos(project.get_length());
+    public void page_to_time(int64 time) {
+        double location_in_window = timeline.provider.time_to_xpos(time) - h_adjustment.get_value();
+        int window_width = timeline.parent.allocation.width;
+        if (location_in_window > 0.9 * window_width || 
+            location_in_window < 0.1 * window_width) {
+            scroll_to_time(time);
+        }
+    }
+
+    public void scroll_to_time(int64 time) {
+        int new_adjustment = timeline.provider.time_to_xpos(time);
         int window_width = timeline.parent.allocation.width;
         if (new_adjustment < timeline.parent.allocation.width) {
             new_adjustment = 0;
@@ -483,6 +492,10 @@ class Recorder : Gtk.Window, TransportDelegate {
         }
 
         h_adjustment.set_value(new_adjustment);
+    }
+
+    public void scroll_to_end() {
+        scroll_to_time(project.get_length());
     }
 
     static int sgn(int x) {
@@ -530,6 +543,7 @@ class Recorder : Gtk.Window, TransportDelegate {
                 } else {
                     project.media_engine.go(project.transport_get_position() - Gst.SECOND);
                 }
+                page_to_time(project.transport_get_position());
                 break;
             case KeySyms.Right:
                 if (project.transport_is_recording()) {
@@ -540,6 +554,7 @@ class Recorder : Gtk.Window, TransportDelegate {
                 } else {
                     project.media_engine.go(project.transport_get_position() + Gst.SECOND);
                 }
+                page_to_time(project.transport_get_position());
                 break;
             case KeySyms.KP_Add:
             case KeySyms.equal:
