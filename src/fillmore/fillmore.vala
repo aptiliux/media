@@ -49,7 +49,7 @@ class Recorder : Gtk.Window, TransportDelegate {
     const Gtk.ActionEntry[] entries = {
         { "Project", null, "_Project", null, null, null },
         { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
-        { "NewProject", Gtk.STOCK_NEW, "_New...", null, "Create new project", on_project_new },
+        { "NewProject", Gtk.STOCK_NEW, "_New", null, "Create new project", on_project_new },
         { "Save", Gtk.STOCK_SAVE, "_Save", "<Control>S", "Save project", on_project_save },
         { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>S", 
             "Save project with new name", on_project_save_as },
