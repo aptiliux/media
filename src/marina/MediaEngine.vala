@@ -313,6 +313,9 @@ public class ClickTrack : Object {
                 if (project.click_during_record) {
                     setup_clicks(project.get_bpm(), project.get_time_signature());
                 } else {
+                    // TODO: Hack for bug #1436 Should be waiting for async message
+                    // instead, spend some extra time allowing the seek to finish
+                    setup_clicks(project.get_bpm(), project.get_time_signature());
                     clear_controllers();
                 }
             }
