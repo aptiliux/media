@@ -33,7 +33,19 @@ public class Gap {
 
 public class ClipFile : Object {
     public string filename;
-    public int64 length;
+    int64 _length;
+    public int64 length {
+        public get {
+            if (!online) {
+                warning("retrieving length while clip offline");
+            }
+            return _length;
+        }
+        
+        public set {
+            _length = value;
+        }
+    }
 
     bool online;
 
@@ -287,11 +299,13 @@ public class ClipFetcher : Fetcher {
             }
 
             Gst.Format format = Gst.Format.TIME;
-            if (!pipeline.query_duration(ref format, out clipfile.length) ||
+            int64 length;
+            if (!pipeline.query_duration(ref format, out length) ||
                     format != Gst.Format.TIME) {
                 do_error("Can't fetch length");
                 return;
             }
+            clipfile.length = length;
 
             clipfile_online(true);
             pipeline.set_state(Gst.State.NULL);
@@ -465,7 +479,6 @@ public class Clip : Object {
         this.connected = clipfile.is_online();
         this.set_media_start_duration(media_start, duration);
         this.start = start;
-
         clipfile.updated += on_clipfile_updated;
     }
 
@@ -481,6 +494,7 @@ public class Clip : Object {
                 // fire signals directly.  Make certain that loading a file still works
                 // properly in this case.
                 set_media_start_duration(media_start, duration);
+
                 start = start;
             }
         } else {
@@ -559,7 +573,7 @@ public class Clip : Object {
             duration = 0;
         }
 
-        if (media_start + duration > clipfile.length) {
+        if (clipfile.is_online() && media_start + duration > clipfile.length) {
             // We are saturating the value
             media_start = clipfile.length - duration;
         }
