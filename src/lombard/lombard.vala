@@ -496,7 +496,17 @@ class App : Gtk.Window, TransportDelegate {
 
     public void load_project(string filename) {
         loading = true;
+
+        try {
+            project.media_engine.disconnect_output(video_output);
+            video_output = new View.VideoOutput(drawing_area);
+            project.media_engine.connect_output(video_output);
+        } catch (Error e) {
+            do_error_dialog("Could not create video output", e.message);
+        }
+
         project.load(filename);
+
     }
 
     const float SCROLL_MARGIN = 0.05f;
