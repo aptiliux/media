@@ -1157,10 +1157,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         media_track.error_occurred += on_error_occurred;
 
         tracks.add(media_track);
-        if (gst_state == Gst.State.PAUSED) {
-            pipeline.set_state(Gst.State.READY);
-            pipeline.set_state(Gst.State.PAUSED);
-        }
     }
 
     MediaTrack create_audio_track(Model.Track track) throws Error {
