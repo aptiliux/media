@@ -4,10 +4,8 @@ all: $(PROGRAM)
 -include ../../configure.mk
 
 VALA_LDFLAGS = `pkg-config --libs $(EXT_PKGS)`
-
-SRC_FILES = \
-	test.vala \
-	marina/ProjectLoading.vala \
+-include sources.mk
+SRC_FILES += \
 	../marina/ProjectLoader.vala \
 	../marina/Logging.vala \
 	../marina/util.vala

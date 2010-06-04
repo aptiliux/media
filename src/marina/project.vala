@@ -6,6 +6,8 @@
 
 using Logging;
 
+extern const string _VERSION;
+
 namespace Model {
 public class MediaLoaderHandler : LoaderHandler {
     protected weak Project the_project;
@@ -1050,7 +1052,11 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         }
     }
 
-    public abstract double get_version();
+    public string get_version() {
+        stderr.printf("version is %s\n", _VERSION);
+        return _VERSION;
+    }
+
     public abstract string get_app_name();
 
     public string get_license() {

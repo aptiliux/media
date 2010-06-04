@@ -71,10 +71,6 @@ class AudioProject : Project {
         return Path.build_filename(pathname, filename);
     }
 
-    override double get_version() {
-        return 0.1;
-    }
-
     public override string get_app_name() {
         return Recorder.NAME;
     }

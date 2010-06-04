@@ -52,7 +52,14 @@ EXPANDED_SRC_HEADER_FILES = $(foreach header,$(SRC_HEADER_FILES),vapi/$(header))
 EXPANDED_RESOURCE_FILES = $(foreach res,$(RESOURCE_FILES),ui/$(res))
 VALA_STAMP = $(BUILD_DIR)/.stamp
 
-DEFINES = _PROGRAM_NAME='"$(PROGRAM_NAME)"' _PREFIX='"$(PREFIX)"'
+ifdef PROGRAM
+DEFINES = _PROGRAM_NAME='"$(PROGRAM_NAME)"'
+endif
+
+ifdef LIBRARY
+DEFINES = _VERSION='"$(VERSION)"' _PREFIX='"$(PREFIX)"'
+endif
+
 VALA_CFLAGS = `pkg-config --cflags $(EXT_PKGS)` $(foreach hdir,$(HEADER_DIRS),-I$(hdir)) \
 	$(foreach def,$(DEFINES),-D$(def))
 

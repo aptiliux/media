@@ -830,7 +830,7 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_about() {
         Gtk.show_about_dialog(this,
-            "version", "%1.1lf".printf(project.get_version()),
+            "version", project.get_version(),
             "comments", "A video editor",
             "copyright", "Copyright 2009-2010 Yorba Foundation",
             "website", "http://www.yorba.org",
