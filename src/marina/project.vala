@@ -1053,7 +1053,6 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     }
 
     public string get_version() {
-        stderr.printf("version is %s\n", _VERSION);
         return _VERSION;
     }
 
