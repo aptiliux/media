@@ -419,29 +419,27 @@ public class ClipLibraryView : Gtk.EventBox {
 
     void delete_row(Gtk.TreeModel model, Gtk.TreePath path) {
         Gtk.TreeIter it;
-        list_store.get_iter(out it, path);
+        if (list_store.get_iter(out it, path)) {
+            string filename;
+            model.get(it, ColumnType.FILENAME, out filename, -1);
+            if (project.clipfile_on_track(filename)) {
+                if (DialogUtils.delete_cancel("Clip is in use.  Delete anyway?") !=
+                    Gtk.ResponseType.YES)
+                    return;
+            }
 
-        string filename;
-        model.get(it, ColumnType.FILENAME, out filename, -1);
+            project.remove_clipfile(filename);
 
-        if (project.clipfile_on_track(filename)) {
-            if (DialogUtils.delete_cancel("Clip is in use.  Delete anyway?") !=
-                Gtk.ResponseType.YES)
-                return;
-        }
-
-        project.remove_clipfile(filename);
-
-        if (Path.get_dirname(filename) == project.get_audio_path()) {
-            if (DialogUtils.delete_keep("Delete clip from disk?  This action is not undoable.")
-                                                == Gtk.ResponseType.YES) {
-                if (FileUtils.unlink(filename) != 0) {
-                    project.error_occurred("Could not delete %s", filename);
+            if (Path.get_dirname(filename) == project.get_audio_path()) {
+                if (DialogUtils.delete_keep("Delete clip from disk?  This action is not undoable.")
+                                                    == Gtk.ResponseType.YES) {
+                    if (FileUtils.unlink(filename) != 0) {
+                        project.error_occurred("Could not delete %s", filename);
+                    }
+                    project.undo_manager.reset();
                 }
-                project.undo_manager.reset();
             }
         }
-        remove_row(ref it);
     }
 
     public bool has_selection() {

@@ -8,7 +8,7 @@ using Logging;
 
 namespace Model {
 
-public class ClipImporter : MultiFileProgressInterface, Object {  
+public class ClipImporter : MultiFileProgressInterface, Object {
     enum ImportState {
         FETCHING,
         IMPORTING,
@@ -111,7 +111,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                 else
                     start_import();
             } else {
-                print_debug("Fetching: %s\n".printf(filenames[current_file_importing]));
+                emit(this, Facility.IMPORT, Level.VERBOSE, 
+                    "fetching %s".printf(filenames[current_file_importing]));
                 our_fetcher = new Model.ClipFetcher(filenames[current_file_importing]);
                 our_fetcher.ready += on_fetcher_ready;
             }
@@ -240,7 +241,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             pipeline.add(video_convert);
 
             video_decoder = new SingleDecodeBin(Gst.Caps.from_string(
-                                                               "video/x-raw-yuv; video/x-raw-rgb"),
+                                                               "video/x-raw-yuv"),
                                                                "videodecodebin", 
                                                                f.clipfile.filename);
             video_decoder.pad_added += on_pad_added;
@@ -254,7 +255,10 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             audio_convert = make_element("audioconvert");
             pipeline.add(audio_convert);
 
-            audio_decoder = new SingleDecodeBin(Gst.Caps.from_string("audio/x-raw-int"),
+            // setup for importing h.264 and other int flavors.  change to audio/x-raw-float
+            // if you need to import ogg and other float flavors.  see bug 2055
+            audio_decoder = new SingleDecodeBin(
+                Gst.Caps.from_string("audio/x-raw-int"),
                                                     "audiodecodebin", f.clipfile.filename);
             audio_decoder.pad_added += on_pad_added;
 
@@ -267,12 +271,14 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         if (!mux.link(filesink))
             error("do_import: Cannot link mux to filesink!");
 
-        print_debug("Starting import to %s...".printf(queued_filenames[current_file_importing]));
+        emit(this, Facility.IMPORT, Level.VERBOSE, 
+            "Starting import to %s...".printf(queued_filenames[current_file_importing]));
         pipeline.set_state(Gst.State.PLAYING);
     }
 
     void on_pad_added(Gst.Bin b, Gst.Pad p) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
+
         string str = p.caps.to_string();
         Gst.Pad sink = null;
 
@@ -283,7 +289,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             audio_pad = p;
             sink = audio_convert.get_compatible_pad(p, p.caps);
         } else {
-            error_occurred("Unrecognized prefix %s".printf(str));
+            //error_occurred here gives a segfault
+            warning("Unrecognized prefix %s".printf(str));
             return;
         }
 
@@ -296,8 +303,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_error");
         Error e;
         string text;
-
         message.parse_error(out e, out text);
+        warning("%s\n", text);
         error_occurred(text);
     }
 
@@ -323,7 +330,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         if (old_state == new_state) 
             return;
 
-        print_debug("Import State in %s".printf(new_state.to_string()));
+        emit(this, Facility.IMPORT, Level.VERBOSE,
+            "Import State in %s".printf(new_state.to_string()));
         if (new_state == Gst.State.PAUSED) {
             if (!import_done) {
                 if (video_pad != null) {
@@ -332,7 +340,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                 if (audio_pad != null) {
                     our_fetcher.clipfile.audio_caps = audio_pad.caps;
                 }
-                print_debug("Got clipfile info for: %s\n".printf(our_fetcher.clipfile.filename));
+                emit(this, Facility.IMPORT, Level.VERBOSE,
+                    "Got clipfile info for: %s".printf(our_fetcher.clipfile.filename));
             }
         } else if (new_state == Gst.State.NULL) {
             if (import_state == ImportState.CANCELLED) {

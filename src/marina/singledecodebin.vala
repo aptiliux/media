@@ -53,23 +53,23 @@ class SingleDecodeBin : Gst.Bin {
                                                         Gst.PadPresence.ALWAYS, new Gst.Caps.any());
         Gst.PadTemplate src_pad = new Gst.PadTemplate("srcpadtemplate", Gst.PadDirection.SINK, 
                                                         Gst.PadPresence.ALWAYS, new Gst.Caps.any());
-        
+
         add_pad_template (src_pad);
         add_pad_template (sink_pad);
     }
-        
+
     public SingleDecodeBin(Gst.Caps? caps, string name, string? uri) throws Error {
         this.caps = caps == null ? new Gst.Caps.any() : caps;
-        
+
         typefind = Gst.ElementFactory.make("typefind", "internal-typefind");
         add(typefind);
 
         if (uri != null) {
             Gst.Element file_src = make_element("filesrc");
-            
+
             file_src.set("location", uri);
             add(file_src);
-            
+
             file_src.link(typefind);
         } else {
             Gst.GhostPad sinkpad = new Gst.GhostPad("sink", typefind.get_pad("sink"));
@@ -99,10 +99,10 @@ class SingleDecodeBin : Gst.Bin {
     Gst.ElementFactory[] getSortedFactoryList() {
         Gst.Registry registry = Gst.Registry.get_default();
         Gst.ElementFactory[] factories = new Gst.ElementFactory[0];
-        
+
         foreach (Gst.PluginFeature plugin_feature in 
             registry.get_feature_list(typeof(Gst.ElementFactory)) ) {
-                
+
             Gst.ElementFactory factory = plugin_feature as Gst.ElementFactory;
             if (factory == null || factory.get_rank() < 64)
                 continue;
@@ -110,7 +110,7 @@ class SingleDecodeBin : Gst.Bin {
             if (klass.contains("Demuxer") || klass.contains("Decoder") || klass.contains("Parse"))
                 factories += factory;
         }
-        
+
         qsort(factories, factories.length, sizeof(Gst.ElementFactory *), 
             (GLib.CompareFunc) factory_compare);
         return factories;
@@ -132,7 +132,7 @@ class SingleDecodeBin : Gst.Bin {
                     }
                 }
         }
-                
+
         return res;
     }
 
@@ -142,7 +142,7 @@ class SingleDecodeBin : Gst.Bin {
     void closeLink(Gst.Element element) {
         Gst.Pad[] to_connect = new Gst.Pad[0];
         bool is_dynamic = false;
-        
+
         foreach (Gst.PadTemplate template in element.get_pad_template_list ()) {
             if (template.direction != Gst.PadDirection.SRC)
                 continue;
@@ -158,7 +158,8 @@ class SingleDecodeBin : Gst.Bin {
         }
 
         if (is_dynamic) {
-            print_debug("%s is a dynamic element".printf(element.get_name()));
+            emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE,
+                "%s is a dynamic element".printf(element.get_name()));
             controlDynamicElement(element);
         }
 
@@ -238,18 +239,19 @@ class SingleDecodeBin : Gst.Bin {
     // If the pad has the desired caps, it will create a ghostpad.
     // If no compatible elements could be found, the search will stop.
     void closePadLink(Gst.Element element, Gst.Pad pad, Gst.Caps caps) {
-        print_debug("element:%s, pad:%s, caps:%s".printf(element.get_name(),
-                                             pad.get_name(),
-                                             caps.to_string()));
+        emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+            "element:%s, pad:%s, caps:%s".printf(element.get_name(),
+                pad.get_name(),
+                caps.to_string()));
         if (caps.is_empty()) {
-            print_debug("unknown type");
+            emit(this, Facility.SINGLEDECODEBIN, Level.INFO, "unknown type");
             return;
         }
         if (caps.is_any()) {
-            print_debug("type is not known yet, waiting");
+            emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, "type is not known yet, waiting");
             return;
         }
-        
+
         pad.get_direction ();
 
         if (!caps.intersect(this.caps).is_empty()) {
@@ -257,17 +259,20 @@ class SingleDecodeBin : Gst.Bin {
             if (srcpad == null)
                 wrapUp(element, pad);
         } else if (is_raw(caps)) {
-            print_debug("We hit a raw caps which isn't the wanted one");
+            emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+                "We hit a raw caps which isn't the wanted one");
             // TODO : recursively remove everything until demux/typefind
         } else {
             // Find something
             if (caps.get_size() > 1) {
-                print_debug("many possible types, delaying");
+                emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+                    "many possible types, delaying");
                 return;
             }
             Gee.ArrayList<Gst.ElementFactory> facts = findCompatibleFactory(caps);
             if (facts.size == 0) {
-                print_debug("unknown type");
+                emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+                    "unknown type");
                 return;
             }
             tryToLink1(element, pad, facts);
@@ -281,8 +286,12 @@ class SingleDecodeBin : Gst.Bin {
             return;
         markValidElements(element);
         removeUnusedElements(typefind);
-        print_debug("ghosting pad %s".printf(pad.get_name()));
+        emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+            "ghosting pad %s".printf(pad.get_name()));
         srcpad = new Gst.GhostPad("src", pad);
+        if (caps.is_fixed()) {
+            srcpad.set_caps(caps);
+        }
         srcpad.set_active(true);
         
         add_pad(srcpad);
@@ -291,11 +300,12 @@ class SingleDecodeBin : Gst.Bin {
 
     // Mark this element and upstreams as valid
     void markValidElements(Gst.Element element) {
-        print_debug("element:%s".printf(element.get_name()));
+        emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+            "element:%s".printf(element.get_name()));
         if (element == typefind)
             return;
         validelements.add(element);
-        
+
         // find upstream element
         Gst.Pad pad = (Gst.Pad) element.sinkpads.first().data;
         Gst.Element parent = pad.get_peer().get_parent_element();
@@ -309,7 +319,8 @@ class SingleDecodeBin : Gst.Bin {
                 Gst.Element peer = pad.get_peer().get_parent_element();
                 removeUnusedElements(peer);
                 if (!(peer in validelements)) {
-                    print_debug("removing %s".printf(peer.get_name()));
+                    emit(this, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+                        "removing %s".printf(peer.get_name()));
                     pad.unlink(pad.get_peer());
                     peer.set_state(Gst.State.NULL);
                     remove(peer);
@@ -341,9 +352,9 @@ class SingleDecodeBin : Gst.Bin {
 
     static void typefindHaveTypeCb(Gst.Element t, int probability, Gst.Caps caps, 
                                                                             SingleDecodeBin data) {
-        print_debug("probability:%d, caps:%s".printf(probability, caps.to_string()));
-
-        data.closePadLink(t, t.get_pad("src"), caps);       
+        emit(data, Facility.SINGLEDECODEBIN, Level.VERBOSE, 
+            "probability:%d, caps:%s".printf(probability, caps.to_string()));
+        data.closePadLink(t, t.get_pad("src"), caps);
     }
 
     // Dynamic element Callbacks

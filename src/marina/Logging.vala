@@ -9,7 +9,9 @@ public enum Facility {
     SIGNAL_HANDLERS,
     DEVELOPER_WARNINGS,
     GRAPH,
-    LOADING
+    LOADING,
+    IMPORT,
+    SINGLEDECODEBIN
 }
 
 public enum Level {
@@ -25,14 +27,18 @@ const Level active_facility[] = {
     Level.CRITICAL, // SIGNAL_HANDLERS
     Level.CRITICAL, // DEVELOPER_WARNINGS
     Level.CRITICAL, // GRAPH
-    Level.CRITICAL //LOADING
+    Level.CRITICAL, //LOADING
+    Level.CRITICAL, //IMPORT
+    Level.CRITICAL  //SINGLEDECODEBIN
 };
 
 const string facility_names[] = {
     "SIGNAL_HANDLERS",
     "DEVELOPER_WARNINGS",
     "GRAPH",
-    "LOADING"
+    "LOADING",
+    "IMPORT",
+    "SINGLEDECODEBIN"
 };
 
 Level current_level = Level.HIGH;
