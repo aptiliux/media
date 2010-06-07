@@ -74,10 +74,9 @@ endif
 
 VALAFLAGS = -g --enable-checking --thread $(USER_VALAFLAGS)
 
-# Do not remove hard tab or at symbol; necessary for dependencies to complete.  (Possible make
-# bug.)
+# We touch the C file so that we have a better chance of a valid executable.  Bug #1778
 $(EXPANDED_C_FILES): $(VALA_STAMP)
-	@
+	touch $@
 
 $(EXPANDED_OBJ_FILES): %.o: %.c $(CONFIG_IN) Makefile
 	$(CC) -c $(VALA_CFLAGS) $(CFLAGS) -o $@ $<
