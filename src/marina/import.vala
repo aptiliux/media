@@ -369,7 +369,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
 public class LibraryImporter : Object {
     protected Project project;
-    protected ClipImporter importer;
+    public ClipImporter importer;
 
     public signal void started(ClipImporter i, int num);
     

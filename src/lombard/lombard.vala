@@ -446,7 +446,7 @@ class App : Gtk.Window, TransportDelegate {
         load_errors.clear();
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
-            project.create_clip_importer(null, false, 0, false);
+            project.create_clip_importer(null, false, 0, false, null, 0);
             project.importer.started.connect(on_importer_started);
             try {
                 foreach (string s in filenames) {

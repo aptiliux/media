@@ -493,8 +493,7 @@ public class TimeLine : Gtk.EventBox {
         }
 
         project.create_clip_importer(track, timeline_add, provider.xpos_to_time(x),
-            context.action == Gdk.DragAction.COPY);
-
+            context.action == Gdk.DragAction.COPY, (Gtk.Window) get_toplevel(), a.length);
         try {
             foreach (string s in a) {
                 string filename;

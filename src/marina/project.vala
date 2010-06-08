@@ -1043,13 +1043,18 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     }
 
     public void create_clip_importer(Model.Track? track, bool timeline_add, 
-            int64 time_to_add, bool both_tracks) {
+            int64 time_to_add, bool both_tracks, Gtk.Window? progress_window_parent, int number) {
         if (timeline_add) {
             assert(track != null);
             importer = new Model.TimelineImporter(track, this, time_to_add, both_tracks);
         } else {
             importer = new Model.LibraryImporter(this);
         }
+        if (progress_window_parent != null) {
+            new MultiFileProgress(progress_window_parent, number, "Import", 
+                importer.importer);
+        }
+
     }
 
     public string get_version() {
