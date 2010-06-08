@@ -68,15 +68,15 @@ public class ClipLibraryView : Gtk.EventBox {
         tree_view.modify_base(Gtk.StateType.NORMAL, parse_color("#444"));
 
         tree_view.set_headers_visible(false);
-        project.clipfile_added += on_clipfile_added;
-        project.clipfile_removed += on_clipfile_removed;
-        project.cleared += on_remove_all_rows;
-        project.time_signature_changed += on_time_signature_changed;
+        project.clipfile_added.connect(on_clipfile_added);
+        project.clipfile_removed.connect(on_clipfile_removed);
+        project.cleared.connect(on_remove_all_rows);
+        project.time_signature_changed.connect(on_time_signature_changed);
 
         Gtk.drag_source_set(tree_view, Gdk.ModifierType.BUTTON1_MASK, drag_target_entries, actions);
-        tree_view.drag_begin += on_drag_begin;
-        tree_view.drag_data_get += on_drag_data_get;
-        tree_view.cursor_changed += on_cursor_changed;
+        tree_view.drag_begin.connect(on_drag_begin);
+        tree_view.drag_data_get.connect(on_drag_data_get);
+        tree_view.cursor_changed.connect(on_cursor_changed);
 
         selection = tree_view.get_selection();
         selection.set_mode(Gtk.SelectionMode.MULTIPLE);
@@ -89,8 +89,8 @@ public class ClipLibraryView : Gtk.EventBox {
         // to click outside any cell in the library to clear your selection,
         // and also does not allow dragging multiple clips from the library
         // to the timeline
-        tree_view.button_press_event += on_button_pressed;
-        tree_view.button_release_event += on_button_released;
+        tree_view.button_press_event.connect(on_button_pressed);
+        tree_view.button_release_event.connect(on_button_released);
 
         try {
             default_audio_icon =
@@ -236,7 +236,7 @@ public class ClipLibraryView : Gtk.EventBox {
     }
 
     
-    void on_drag_data_get(Gtk.TreeView tree_view, Gdk.DragContext context, Gtk.SelectionData data, 
+    void on_drag_data_get(Gdk.DragContext context, Gtk.SelectionData data, 
                             uint info, uint time) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_drag_data_get");
         string uri;

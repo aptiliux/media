@@ -179,7 +179,7 @@ class App : Gtk.Window, TransportDelegate {
 
         load_errors = new Gee.ArrayList<string>();
         drawing_area = new Gtk.DrawingArea();
-        drawing_area.realize += on_drawing_realize;
+        drawing_area.realize.connect(on_drawing_realize);
         drawing_area.modify_bg(Gtk.StateType.NORMAL, parse_color("#000"));
 
         main_group = new Gtk.ActionGroup("main");
@@ -196,32 +196,32 @@ class App : Gtk.Window, TransportDelegate {
 
         project = new Model.VideoProject(project_filename);
         project.snap_to_clip = true;
-        project.name_changed += set_project_name;
-        project.load_error += on_load_error;
-        project.load_complete += on_load_complete;
-        project.error_occurred += do_error_dialog;
-        project.undo_manager.undo_changed += on_undo_changed;
-        project.media_engine.post_export += on_post_export;
-        project.playstate_changed += on_playstate_changed;
+        project.name_changed.connect(set_project_name);
+        project.load_error.connect(on_load_error);
+        project.load_complete.connect(on_load_complete);
+        project.error_occurred.connect(do_error_dialog);
+        project.undo_manager.undo_changed.connect(on_undo_changed);
+        project.media_engine.post_export.connect(on_post_export);
+        project.playstate_changed.connect(on_playstate_changed);
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
 
         timeline = new TimeLine(project, project.time_provider,
             Gdk.DragAction.COPY | Gdk.DragAction.MOVE);
-        timeline.selection_changed += on_timeline_selection_changed;
-        timeline.track_changed += on_track_changed;
-        timeline.drag_data_received += on_drag_data_received;
-        timeline.size_allocate += on_timeline_size_allocate;
-        project.media_engine.position_changed += on_position_changed;
-        project.media_engine.callback_pulse += on_callback_pulse;
+        timeline.selection_changed.connect(on_timeline_selection_changed);
+        timeline.track_changed.connect(on_track_changed);
+        timeline.drag_data_received.connect(on_drag_data_received);
+        timeline.size_allocate.connect(on_timeline_size_allocate);
+        project.media_engine.position_changed.connect(on_position_changed);
+        project.media_engine.callback_pulse.connect(on_callback_pulse);
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
 
         library = new ClipLibraryView(project, project.time_provider, "Drag clips here.",
             Gdk.DragAction.COPY | Gdk.DragAction.MOVE);
-        library.selection_changed += on_library_selection_changed;
-        library.drag_data_received += on_drag_data_received;
+        library.selection_changed.connect(on_library_selection_changed);
+        library.drag_data_received.connect(on_drag_data_received);
 
         status_bar = new View.StatusBar(project, project.time_provider, TimeLine.BAR_HEIGHT);
 
@@ -244,7 +244,7 @@ class App : Gtk.Window, TransportDelegate {
 
         on_undo_changed(false);
 
-        delete_event += on_delete_event;
+        delete_event.connect(on_delete_event);
 
         if (project_filename == null) {
             default_track_set();
@@ -307,7 +307,7 @@ class App : Gtk.Window, TransportDelegate {
             } else {
                 h_pane.add2(drawing_area);
             }
-            h_pane.child2.size_allocate += on_library_size_allocate;
+            h_pane.child2.size_allocate.connect(on_library_size_allocate);
             v_pane.add1(h_pane);
 
             timeline_scrolled = new Gtk.ScrolledWindow(null, null);
@@ -323,7 +323,7 @@ class App : Gtk.Window, TransportDelegate {
             v_pane.child2_resize = 0;
 
             h_adjustment = timeline_scrolled.get_hadjustment();
-            h_adjustment.changed += on_adjustment_changed;
+            h_adjustment.changed.connect(on_adjustment_changed);
             prev_adjustment_lower = h_adjustment.get_lower();
             prev_adjustment_upper = h_adjustment.get_upper();
 
@@ -447,7 +447,7 @@ class App : Gtk.Window, TransportDelegate {
         GLib.SList<string> filenames;
         if (DialogUtils.open(this, filters, true, true, out filenames)) {
             project.create_clip_importer(null, false, 0, false);
-            project.importer.started += on_importer_started;
+            project.importer.started.connect(on_importer_started);
             try {
                 foreach (string s in filenames) {
                     string str;

@@ -114,7 +114,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                 emit(this, Facility.IMPORT, Level.VERBOSE, 
                     "fetching %s".printf(filenames[current_file_importing]));
                 our_fetcher = new Model.ClipFetcher(filenames[current_file_importing]);
-                our_fetcher.ready += on_fetcher_ready;
+                our_fetcher.ready.connect(on_fetcher_ready);
             }
         }
 
@@ -149,7 +149,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                                                           current_file_importing, filenames.size));
     }
 
-    bool need_to_import(ClipFetcher f) {
+    bool need_to_import(Fetcher f) {
         if (f.clipfile.is_of_type(MediaType.VIDEO)) {
             uint32 format;
             if (f.clipfile.get_video_format(out format)) {
@@ -163,7 +163,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         return false;
     }
 
-    void on_fetcher_ready(ClipFetcher f) {
+    void on_fetcher_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
         try {
             if (f.error_string != null) {
@@ -196,7 +196,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                             // Truly need to import
                             save_file_md5_checksum(new_filename, checksum);
                             queued_filenames.add(new_filename);
-                            queued_fetchers.add(f);
+                            queued_fetchers.add(f as ClipFetcher);
                             break;
                         }
                     }
@@ -244,7 +244,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                                                                "video/x-raw-yuv"),
                                                                "videodecodebin", 
                                                                f.clipfile.filename);
-            video_decoder.pad_added += on_pad_added;
+            video_decoder.pad_added.connect(on_pad_added);
 
             pipeline.add(video_decoder);
 
@@ -260,7 +260,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             audio_decoder = new SingleDecodeBin(
                 Gst.Caps.from_string("audio/x-raw-int"),
                                                     "audiodecodebin", f.clipfile.filename);
-            audio_decoder.pad_added += on_pad_added;
+            audio_decoder.pad_added.connect(on_pad_added);
 
             pipeline.add(audio_decoder);
 
@@ -276,7 +276,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         pipeline.set_state(Gst.State.PLAYING);
     }
 
-    void on_pad_added(Gst.Bin b, Gst.Pad p) {
+    void on_pad_added(Gst.Pad p) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
 
         string str = p.caps.to_string();
@@ -318,7 +318,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
     void on_state_changed(Gst.Bus b, Gst.Message m) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_changed");
-        if (m.src != pipeline) 
+        if (m.src() != pipeline) 
             return;
 
         Gst.State old_state;
@@ -377,9 +377,9 @@ public class LibraryImporter : Object {
         project = p;
         
         importer = new ClipImporter();
-        importer.clip_complete += on_clip_complete;
-        importer.error_occurred += on_error_occurred;   
-        importer.importing_started += on_importer_started;
+        importer.clip_complete.connect(on_clip_complete);
+        importer.error_occurred.connect(on_error_occurred);
+        importer.importing_started.connect(on_importer_started);
     }
 
     void on_importer_started(ClipImporter i, int num) {

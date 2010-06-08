@@ -329,7 +329,7 @@ public abstract class Track : Object {
     }
 
     void insert_clip_into_array(Clip c, int pos) {
-        c.updated += on_clip_updated;
+        c.updated.connect(on_clip_updated);
         clips.insert(pos, c);
     }
 

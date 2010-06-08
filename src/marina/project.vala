@@ -191,7 +191,7 @@ public class MediaLoaderHandler : LoaderHandler {
         return true;
     }
 
-    void fetcher_ready(ClipFetcher f) {
+    void fetcher_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
         if (f.error_string != null) {
             load_error("Could not load %s.".printf(f.clipfile.filename));
@@ -228,7 +228,7 @@ public class MediaLoaderHandler : LoaderHandler {
 
         try {
             ClipFetcher fetcher = new ClipFetcher(filename);
-            fetcher.ready += fetcher_ready;
+            fetcher.ready.connect(fetcher_ready);
             clipfetchers.insert(id, fetcher);
         } catch (Error e) {
             load_error(e.message);
@@ -386,9 +386,9 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         project_file = filename;
 
         media_engine = new View.MediaEngine(this, include_video);
-        track_added += media_engine.on_track_added;
-        media_engine.playstate_changed += on_playstate_changed;
-        media_engine.error_occurred += on_error_occurred;
+        track_added.connect(media_engine.on_track_added);
+        media_engine.playstate_changed.connect(on_playstate_changed);
+        media_engine.error_occurred.connect(on_error_occurred);
 
         set_default_framerate(INVALID_FRAME_RATE);
     }
@@ -663,8 +663,8 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     }
 
     public virtual void add_track(Track track) {
-        track.clip_removed += on_clip_removed;
-        track.error_occurred += on_error_occurred;
+        track.clip_removed.connect(on_clip_removed);
+        track.error_occurred.connect(on_error_occurred);
         tracks.add(track);
         track_added(track);
     }
@@ -690,17 +690,17 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         clipfiles.add(clipfile);
         if (clipfile.is_online() && clipfile.is_of_type(MediaType.VIDEO)) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
-            fetcher.ready += on_thumbnail_ready;
+            fetcher.ready.connect(on_thumbnail_ready);
             pending_thumbs.add(fetcher);
         } else {
             clipfile_added(clipfile);
         }
     }
 
-    void on_thumbnail_ready(ThumbnailFetcher f) {
+    void on_thumbnail_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_thumbnail_ready");
         clipfile_added(f.clipfile);
-        pending_thumbs.remove(f);
+        pending_thumbs.remove(f as ThumbnailFetcher);
     }
 
     public bool clipfile_on_track(string filename) {
@@ -895,10 +895,10 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
         loader = new ProjectLoader(new MediaLoaderHandler(this), fname);
 
-        loader.load_started += on_load_started;
-        loader.load_error += on_load_error;
-        loader.load_complete += on_load_complete;
-        loader.load_complete += media_engine.on_load_complete;
+        loader.load_started.connect(on_load_started);
+        loader.load_error.connect(on_load_error);
+        loader.load_complete.connect(on_load_complete);
+        loader.load_complete.connect(media_engine.on_load_complete);
         media_engine.set_play_state(PlayState.LOADING);
         media_engine.pipeline.set_state(Gst.State.NULL);
         loader.load();
@@ -1001,14 +1001,14 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
             throws Error {
         ClipFetcher fetcher = new ClipFetcher(filename);
         this.fetcher_completion = fetcher_completion;
-        fetcher.ready += on_fetcher_ready;
+        fetcher.ready.connect(on_fetcher_ready);
         pending.add(fetcher);
     }
 
     // TODO: We should be using Library importer rather than this mechanism for fillmore
-    void on_fetcher_ready(ClipFetcher fetcher) {
+    void on_fetcher_ready(Fetcher fetcher) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fetcher_ready");
-        pending.remove(fetcher);
+        pending.remove(fetcher as ClipFetcher);
         if (fetcher.error_string != null) {
             emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, fetcher.error_string);
             error_occurred("Error retrieving clip", fetcher.error_string);

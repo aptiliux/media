@@ -12,7 +12,7 @@ class FillmoreTrackView : Gtk.VBox, TrackView {
     TrackView track_view;
     public FillmoreTrackView(TrackView track_view) {
         this.track_view = track_view;
-        track_view.clip_view_added += on_clip_view_added;
+        track_view.clip_view_added.connect(on_clip_view_added);
 
         pack_start(track_view, true, true, 0);
         pack_start(new TrackSeparator(), false, false, 0);

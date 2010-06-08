@@ -177,7 +177,7 @@ public abstract class Fetcher : Object {
     protected abstract void on_pad_added(Gst.Pad pad);
     protected abstract void on_state_change(Gst.Bus bus, Gst.Message message);
 
-    public signal void ready();
+    public signal void ready(Fetcher fetcher);
 
     protected void do_error(string error) {
         error_string = error;
@@ -207,7 +207,7 @@ public class ClipFetcher : Fetcher {
     public ClipFetcher(string filename) throws Error {
         clipfile = new ClipFile(filename);
 
-        clipfile_online += clipfile.set_online;
+        clipfile_online.connect(clipfile.set_online);
 
         filesrc = make_element("filesrc");
         filesrc.set("location", filename);
@@ -221,7 +221,7 @@ public class ClipFetcher : Fetcher {
 
         if (!filesrc.link(decodebin))
             error("can't link filesrc");
-        decodebin.pad_added += on_pad_added;
+        decodebin.pad_added.connect(on_pad_added);
 
         Gst.Bus bus = pipeline.get_bus();
 
@@ -276,7 +276,7 @@ public class ClipFetcher : Fetcher {
 
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
-        if (message.src != pipeline)
+        if (message.src() != pipeline)
             return;
 
         Gst.State old_state;
@@ -310,7 +310,7 @@ public class ClipFetcher : Fetcher {
             clipfile_online(true);
             pipeline.set_state(Gst.State.NULL);
         } else if (new_state == Gst.State.NULL) {
-            ready();
+            ready(this);
         }
     }
 }
@@ -334,13 +334,13 @@ public class ThumbnailFetcher : Fetcher {
         pipeline.set_auto_flush_bus(false);
 
         thumbnail_sink = new ThumbnailSink();
-        thumbnail_sink.have_thumbnail += on_have_thumbnail;
+        thumbnail_sink.have_thumbnail.connect(on_have_thumbnail);
 
         colorspace = make_element("ffmpegcolorspace");
 
         pipeline.add_many(single_bin, thumbnail_sink, colorspace);
 
-        single_bin.pad_added += on_pad_added;
+        single_bin.pad_added.connect(on_pad_added);
 
         colorspace.link(thumbnail_sink);
 
@@ -375,7 +375,7 @@ public class ThumbnailFetcher : Fetcher {
 
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
-        if (message.src != pipeline)
+        if (message.src() != pipeline)
             return;
 
         Gst.State new_state;
@@ -396,7 +396,7 @@ public class ThumbnailFetcher : Fetcher {
                     pipeline.set_state(Gst.State.NULL);
             }
         } else if (new_state == Gst.State.NULL) {
-            ready();
+            ready(this);
         }
     }
 }
@@ -479,7 +479,7 @@ public class Clip : Object {
         this.connected = clipfile.is_online();
         this.set_media_start_duration(media_start, duration);
         this.start = start;
-        clipfile.updated += on_clipfile_updated;
+        clipfile.updated.connect(on_clipfile_updated);
     }
 
     public void gnonlin_connect() { connected = true; }
@@ -601,7 +601,7 @@ public class FetcherCompletion {
     public FetcherCompletion() {
     }
 
-    public virtual void complete(ClipFetcher fetcher) {
+    public virtual void complete(Fetcher fetcher) {
     }
 }
 }

@@ -20,8 +20,8 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         this.timeline = timeline;
         this.transport_delegate = transport_delegate;
 
-        track.clip_added += on_clip_added;
-        track.clip_removed += on_clip_removed;
+        track.clip_added.connect(on_clip_added);
+        track.clip_removed.connect(on_clip_removed);
     }
 
     override void size_request(out Gtk.Requisition requisition) {
@@ -44,10 +44,10 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
     void on_clip_added(Model.Track t, Model.Clip clip, bool select) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
         ClipView view = new ClipView(transport_delegate, clip, timeline.provider, clip_height);
-        view.clip_moved += on_clip_moved;
-        view.clip_deleted += on_clip_deleted;
-        view.move_begin += on_move_begin;
-        view.trim_begin += on_trim_begin;
+        view.clip_moved.connect(on_clip_moved);
+        view.clip_deleted.connect(on_clip_deleted);
+        view.move_begin.connect(on_move_begin);
+        view.trim_begin.connect(on_trim_begin);
 
         put(view, timeline.provider.time_to_xpos(clip.start), TimeLine.BORDER);
         view.show();
@@ -103,7 +103,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         foreach (Gtk.Widget w in get_children()) {
             ClipView view = w as ClipView;
             if (view.clip == clip) {
-                view.clip_moved -= on_clip_moved;
+                view.clip_moved.disconnect(on_clip_moved);
                 remove(view);
                 timeline.track_changed();
                 return;

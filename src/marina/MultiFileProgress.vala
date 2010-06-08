@@ -44,7 +44,7 @@ public class MultiFileProgress : Gtk.Window {
         button_area.set("layout-style", Gtk.ButtonBoxStyle.CENTER); 
         
         cancel_button = new Gtk.Button.from_stock(Gtk.STOCK_CANCEL);
-        cancel_button.clicked += on_cancel_clicked;
+        cancel_button.clicked.connect(on_cancel_clicked);
         
         button_area.add(cancel_button);
         
@@ -56,7 +56,7 @@ public class MultiFileProgress : Gtk.Window {
         set_modal(true);
         set_title(dialog_title);     
         
-        destroy += on_destroy;
+        destroy.connect(on_destroy);
         this.dialog_title = dialog_title;
         
         add(vbox);
@@ -64,9 +64,9 @@ public class MultiFileProgress : Gtk.Window {
         
         provider_interface = provider;
         
-        provider_interface.fraction_updated += on_fraction_updated;
-        provider_interface.file_updated += on_file_updated;
-        provider_interface.done += on_done;
+        provider_interface.fraction_updated.connect(on_fraction_updated);
+        provider_interface.file_updated.connect(on_file_updated);
+        provider_interface.done.connect(on_done);
     }
 
     void on_done() {

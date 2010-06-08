@@ -85,8 +85,8 @@ class SingleDecodeBin : Gst.Bin {
 
     void controlDynamicElement(Gst.Element element) {
         dynamics.add(element);
-        element.pad_added += dynamicPadAddedCb;
-        element.no_more_pads += dynamicNoMorePadsCb;
+        element.pad_added.connect(dynamicPadAddedCb);
+        element.no_more_pads.connect(dynamicNoMorePadsCb);
     }
 
     static int factory_compare(Gst.ElementFactory** a, Gst.ElementFactory** b) {
@@ -192,9 +192,7 @@ class SingleDecodeBin : Gst.Bin {
         add(queue);
         queue.sync_state_with_parent();
         pad.link(queue.get_pad("sink"));
-        pad = queue.get_pad("src");
-
-        return pad;
+        return queue.get_pad("src");
     }
 
     // Tries to link one of the factories' element to the given pad.

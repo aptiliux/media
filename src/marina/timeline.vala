@@ -78,16 +78,16 @@ public class TimeLine : Gtk.EventBox {
         can_focus = true;
         project = p;
         this.provider = provider;
-        provider.geometry_changed += on_geometry_changed;
+        provider.geometry_changed.connect(on_geometry_changed);
 
         vbox = new Gtk.VBox(false, 0);
         ruler = new View.Ruler(provider, RULER_HEIGHT);
-        ruler.position_changed += on_ruler_position_changed;
+        ruler.position_changed.connect(on_ruler_position_changed);
         vbox.pack_start(ruler, false, false, 0);
 
-        project.track_added += on_track_added;
-        project.track_removed += on_track_removed;
-        project.media_engine.position_changed += on_position_changed;
+        project.track_added.connect(on_track_added);
+        project.track_removed.connect(on_track_removed);
+        project.media_engine.position_changed.connect(on_position_changed);
         add(vbox);
 
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
@@ -135,7 +135,7 @@ public class TimeLine : Gtk.EventBox {
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         TrackView track_view = ClassFactory.get_class_factory().get_track_view(track, this);
-        track_view.clip_view_added += on_clip_view_added;
+        track_view.clip_view_added.connect(on_clip_view_added);
         tracks.add(track_view);
         vbox.pack_start(track_view, false, false, 0);
         trackview_added(track_view);
@@ -159,12 +159,12 @@ public class TimeLine : Gtk.EventBox {
 
     public void on_clip_view_added(ClipView clip_view) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_clip_view_added");
-        clip_view.selection_request += on_clip_view_selection_request;
-        clip_view.move_request += on_clip_view_move_request;
-        clip_view.move_commit += on_clip_view_move_commit;
-        clip_view.move_begin += on_clip_view_move_begin;
-        clip_view.trim_begin += on_clip_view_trim_begin;
-        clip_view.trim_commit += on_clip_view_trim_commit;
+        clip_view.selection_request.connect(on_clip_view_selection_request);
+        clip_view.move_request.connect(on_clip_view_move_request);
+        clip_view.move_commit.connect(on_clip_view_move_commit);
+        clip_view.move_begin.connect(on_clip_view_move_begin);
+        clip_view.trim_begin.connect(on_clip_view_trim_begin);
+        clip_view.trim_commit.connect(on_clip_view_trim_commit);
     }
 
     public void deselect_all_clips() {

@@ -17,7 +17,7 @@ public class ClipFetcher {
     public string get_filename() {
         return filename;
     }
-    public signal void ready();
+    public signal void ready(ClipFetcher fetcher);
 }
 
 public class ClipFile {
@@ -80,7 +80,7 @@ void check_document(void *fixture) {
     Model.ProjectBuilder project_builder = state_change_fixture->project_builder;
 
     document_valid = true;
-    project_builder.error_occurred += on_error_occurred;
+    project_builder.error_occurred.connect(on_error_occurred);
     
     // We call check project to check the integrity of the file skeleton.
     // If it's good, then we can load all the pieces of the file (library, tracks).

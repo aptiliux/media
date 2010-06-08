@@ -19,7 +19,7 @@ class RecordFetcherCompletion : FetcherCompletion {
         this.position = position;
     }
 
-    public override void complete(ClipFetcher fetch) {
+    public override void complete(Fetcher fetch) {
         base.complete(fetch);
         Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
             isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length, false);
@@ -40,8 +40,8 @@ class AudioProject : Project {
             if (!has_been_saved) {
                 project_file = generate_filename();
             }
-            media_engine.callback_pulse += media_engine.on_callback_pulse;
-            media_engine.record_completed += on_record_completed;
+            media_engine.callback_pulse.connect(media_engine.on_callback_pulse);
+            media_engine.record_completed.connect(on_record_completed);
         }
     }
 

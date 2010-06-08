@@ -18,7 +18,7 @@ namespace UI {
             Gtk.Label label = new Gtk.Label("Track name:");
             entry = new Gtk.Entry();
             entry.set_activates_default(true);
-            entry.changed += on_entry_changed;
+            entry.changed.connect(on_entry_changed);
 
             Gtk.Table table = new Gtk.Table(1, 2, false);
             table.attach_defaults(label, 0, 1, 0, 1);

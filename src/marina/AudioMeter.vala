@@ -23,9 +23,9 @@ public class AudioMeter : Gtk.DrawingArea {
         }
 
         this.requisition.height = 10;
-        expose_event += on_expose_event;
-        track.level_changed += on_level_changed;
-        track.channel_count_changed += on_channel_count_changed;
+        expose_event.connect(on_expose_event);
+        track.level_changed.connect(on_level_changed);
+        track.channel_count_changed.connect(on_channel_count_changed);
     }
 
     void initialize_meter() {

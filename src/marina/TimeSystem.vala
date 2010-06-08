@@ -235,8 +235,8 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
     public BarBeatTimeSystem(TempoInformation tempo_information) {
         bpm = tempo_information.get_bpm();
         time_signature = tempo_information.get_time_signature();
-        tempo_information.bpm_changed += on_bpm_changed;
-        tempo_information.time_signature_changed += on_time_signature_changed;
+        tempo_information.bpm_changed.connect(on_bpm_changed);
+        tempo_information.time_signature_changed.connect(on_time_signature_changed);
         set_constants();
     }
 

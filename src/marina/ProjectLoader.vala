@@ -300,8 +300,8 @@ public class ProjectLoader : Object {
     public ProjectLoader(LoaderHandler loader_handler, string? file_name) {
         this.file_name = file_name;
         this.loader_handler = loader_handler;
-        loader_handler.load_error += on_load_error;
-        loader_handler.complete += on_handler_complete;
+        loader_handler.load_error.connect(on_load_error);
+        loader_handler.complete.connect(on_handler_complete);
     }
     
     void on_load_error(string error) {
@@ -332,7 +332,7 @@ public class ProjectLoader : Object {
         XmlTreeLoader tree_loader = new XmlTreeLoader(text);
         
         ProjectBuilder builder = new ProjectBuilder(loader_handler);
-        builder.error_occurred += on_load_error;
+        builder.error_occurred.connect(on_load_error);
         
         if (builder.check_project(tree_loader.root)) {
             emit(this, Facility.LOADING, Level.VERBOSE, "project checked out.  starting load");

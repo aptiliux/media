@@ -91,8 +91,8 @@ public class ClipView : Gtk.DrawingArea {
         this.height = height;
         is_selected = false;
 
-        clip.moved += on_clip_moved;
-        clip.updated += on_clip_updated;
+        clip.moved.connect(on_clip_moved);
+        clip.updated.connect(on_clip_updated);
 
         Gdk.Color.parse("000", out color_black);
         get_clip_colors();

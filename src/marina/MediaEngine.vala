@@ -29,9 +29,9 @@ class MediaClip : Object {
         this.composition = composition;
         file_source = make_element("gnlsource");
         if (!clip.is_recording) {
-            clip.duration_changed += on_duration_changed;
-            clip.media_start_changed += on_media_start_changed;
-            clip.start_changed += on_start_changed;
+            clip.duration_changed.connect(on_duration_changed);
+            clip.media_start_changed.connect(on_media_start_changed);
+            clip.start_changed.connect(on_start_changed);
 
             composition.add(file_source);
 
@@ -39,15 +39,15 @@ class MediaClip : Object {
             on_media_start_changed(clip.media_start);
             on_duration_changed(clip.duration);
         }
-        clip.removed += on_clip_removed;
+        clip.removed.connect(on_clip_removed);
     }
 
     ~MediaClip() {
-        clip.removed -= on_clip_removed;
+        clip.removed.disconnect(on_clip_removed);
         if (!clip.is_recording) {
-            clip.duration_changed -= on_duration_changed;
-            clip.media_start_changed -= on_media_start_changed;
-            clip.start_changed -= on_start_changed;
+            clip.duration_changed.disconnect(on_duration_changed);
+            clip.media_start_changed.disconnect(on_media_start_changed);
+            clip.start_changed.disconnect(on_start_changed);
         }
         file_source.set_state(Gst.State.NULL);
     }
@@ -119,11 +119,11 @@ public abstract class MediaTrack : Object {
     public MediaTrack(MediaEngine media_engine, Model.Track track) throws Error {
         clips = new Gee.ArrayList<MediaClip>();
         this.media_engine = media_engine;
-        track.clip_added += on_clip_added;
-        track.track_removed += on_track_removed;
+        track.clip_added.connect(on_clip_added);
+        track.track_removed.connect(on_track_removed);
 
-        media_engine.pre_export += on_pre_export;
-        media_engine.post_export += on_post_export;
+        media_engine.pre_export.connect(on_pre_export);
+        media_engine.post_export.connect(on_post_export);
 
         composition = (Gst.Bin) make_element("gnlcomposition");
 
@@ -146,8 +146,8 @@ public abstract class MediaTrack : Object {
         }
 
         media_engine.pipeline.add(composition);
-        composition.pad_added += on_pad_added;
-        composition.pad_removed += on_pad_removed;
+        composition.pad_added.connect(on_pad_added);
+        composition.pad_removed.connect(on_pad_removed);
     }
 
     ~MediaTrack() {
@@ -159,12 +159,12 @@ public abstract class MediaTrack : Object {
     protected abstract Gst.Element empty_element() throws Error;
     public abstract Gst.Element? get_element();
 
-    public abstract void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
-    public abstract void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element);
+    public abstract void link_new_pad(Gst.Pad pad, Gst.Element track_element);
+    public abstract void unlink_pad(Gst.Pad pad, Gst.Element track_element);
 
     void on_clip_added(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
-        clip.updated += on_clip_updated;
+        clip.updated.connect(on_clip_updated);
         on_clip_updated(clip);
     }
 
@@ -178,7 +178,7 @@ public abstract class MediaTrack : Object {
                 } else {
                     media_clip = new MediaVideoClip(composition, clip, clip.clipfile.filename);
                 }
-                media_clip.clip_removed += on_media_clip_removed;
+                media_clip.clip_removed.connect(on_media_clip_removed);
 
                 clips.add(media_clip);
             } catch (Error e) {
@@ -195,18 +195,18 @@ public abstract class MediaTrack : Object {
 
     void on_media_clip_removed(MediaClip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_clip_removed");
-        clip.clip_removed -= on_media_clip_removed;
+        clip.clip_removed.disconnect(on_media_clip_removed);
         clips.remove(clip);
     }
 
-    void on_pad_added(Gst.Bin bin, Gst.Pad pad) {
+    void on_pad_added(Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
-        link_new_pad(bin, pad, get_element());
+        link_new_pad(pad, get_element());
     }
 
-    void on_pad_removed(Gst.Bin bin, Gst.Pad pad) {
+    void on_pad_removed(Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_removed");
-        unlink_pad(bin, pad, get_element());
+        unlink_pad(pad, get_element());
     }
 
     void on_track_removed(Model.Track track) {
@@ -251,13 +251,13 @@ public class MediaVideoTrack : MediaTrack {
         return blackness;
     }
 
-    public override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+    public override void link_new_pad(Gst.Pad pad, Gst.Element track_element) {
         if (pad.link(track_element.get_static_pad("sink")) != Gst.PadLinkReturn.OK) {
             error("couldn't link pad to converter");
         }
     }
 
-    public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+    public override void unlink_pad(Gst.Pad pad, Gst.Element track_element) {
         pad.unlink(track_element.get_static_pad("sink"));
     }
 }
@@ -285,7 +285,7 @@ public class ClickTrack : Object {
         audio_source.set("volume", project.click_volume);
 
         audio_source.link_many(audio_convert, volume, engine.adder);
-        engine.playstate_changed += on_playstate_changed;
+        engine.playstate_changed.connect(on_playstate_changed);
     }
 
     void clear_controllers() {
@@ -373,7 +373,7 @@ public class MediaAudioTrack : MediaTrack {
 
     public MediaAudioTrack(MediaEngine media_engine, Model.AudioTrack track) throws Error {
         base(media_engine, track);
-        track.parameter_changed += on_parameter_changed;
+        track.parameter_changed.connect(on_parameter_changed);
 
         audio_convert = make_element("audioconvert");
         audio_resample = make_element("audioresample");
@@ -408,12 +408,12 @@ public class MediaAudioTrack : MediaTrack {
         if (!media_engine.pipeline.add(volume)) {
             error("could not add volume");
         }
-        media_engine.level_changed += on_level_changed;
-        level_changed += track.on_level_changed;
+        media_engine.level_changed.connect(on_level_changed);
+        level_changed.connect(track.on_level_changed);
     }
 
     ~MediaAudioTrack() {
-        media_engine.level_changed -= on_level_changed;
+        media_engine.level_changed.disconnect(on_level_changed);
         media_engine.pipeline.remove_many(audio_convert, audio_resample, pan, volume, level);
     }
 
@@ -442,7 +442,8 @@ public class MediaAudioTrack : MediaTrack {
         return media_engine.get_audio_silence();
     }
 
-    override void link_new_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+    override void link_new_pad(Gst.Pad pad, Gst.Element track_element) {
+        Gst.Bin bin = (Gst.Bin) pad.get_parent_element();
         if (!bin.link_many(audio_convert, audio_resample, level, pan, volume)) {
             stderr.printf("could not link_new_pad for audio track");
         }
@@ -456,7 +457,8 @@ public class MediaAudioTrack : MediaTrack {
         }
     }
 
-    public override void unlink_pad(Gst.Bin bin, Gst.Pad pad, Gst.Element track_element) {
+    public override void unlink_pad(Gst.Pad pad, Gst.Element track_element) {
+        Gst.Bin bin = (Gst.Bin) pad.get_parent_element();
         bin.unlink_many(audio_convert, audio_resample, level, pan, volume, track_element);
         track_element.release_request_pad(adder_pad);
     }
@@ -674,7 +676,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     public MediaEngine(Model.Project project, bool include_video) throws Error {
         tracks = new Gee.ArrayList<MediaTrack>();
         this.project = project;
-        playstate_changed += project.on_playstate_changed;
+        playstate_changed.connect(project.on_playstate_changed);
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
@@ -820,14 +822,14 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                 temp = rms.list_get_value(1);
                 level_right = temp.get_double();
             }
-            level_changed(message.src, level_left, level_right);
+            level_changed(message.src(), level_left, level_right);
         }
     }
 
     void on_state_change(Gst.Bus bus, Gst.Message message) {
-        if (message.src != pipeline) {
+        if (message.src() != pipeline) {
             emit(this, Facility.GRAPH, Level.VERBOSE, 
-                "on_state_change returning.  message from %s".printf(message.src.get_name()));
+                "on_state_change returning.  message from %s".printf(message.src().get_name()));
             return;
         }
 
@@ -1153,8 +1155,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             return;
         }
 
-        media_track.track_removed += on_track_removed;
-        media_track.error_occurred += on_error_occurred;
+        media_track.track_removed.connect(on_track_removed);
+        media_track.error_occurred.connect(on_error_occurred);
 
         tracks.add(media_track);
     }

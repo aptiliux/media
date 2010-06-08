@@ -198,20 +198,20 @@ class Recorder : Gtk.Window, TransportDelegate {
         project.snap_to_clip = false;
         provider = new Model.BarBeatTimeSystem(project);
 
-        project.media_engine.callback_pulse += on_callback_pulse;
-        project.media_engine.post_export += on_post_export;
-        project.media_engine.position_changed += on_position_changed;
+        project.media_engine.callback_pulse.connect(on_callback_pulse);
+        project.media_engine.post_export.connect(on_post_export);
+        project.media_engine.position_changed.connect(on_position_changed);
 
-        project.load_error += on_load_error;
-        project.name_changed += on_name_changed;
-        project.undo_manager.dirty_changed += on_dirty_changed;
-        project.undo_manager.undo_changed += on_undo_changed;
-        project.error_occurred += on_error_occurred;
-        project.playstate_changed += on_playstate_changed;
-        project.track_added += on_track_added;
-        project.track_removed += on_track_removed;
-        project.load_complete += on_load_complete;
-        project.closed += on_project_close;
+        project.load_error.connect(on_load_error);
+        project.name_changed.connect(on_name_changed);
+        project.undo_manager.dirty_changed.connect(on_dirty_changed);
+        project.undo_manager.undo_changed.connect(on_undo_changed);
+        project.error_occurred.connect(on_error_occurred);
+        project.playstate_changed.connect(on_playstate_changed);
+        project.track_added.connect(on_track_added);
+        project.track_removed.connect(on_track_removed);
+        project.load_complete.connect(on_load_complete);
+        project.closed.connect(on_project_close);
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
@@ -237,14 +237,14 @@ class Recorder : Gtk.Window, TransportDelegate {
         on_undo_changed(false);
 
         library = new ClipLibraryView(project, provider, null, Gdk.DragAction.COPY);
-        library.selection_changed += on_library_selection_changed;
-        library.drag_data_received += on_drag_data_received;
+        library.selection_changed.connect(on_library_selection_changed);
+        library.drag_data_received.connect(on_drag_data_received);
 
         timeline = new TimeLine(project, provider, Gdk.DragAction.COPY);
-        timeline.track_changed += on_track_changed;
-        timeline.drag_data_received += on_drag_data_received;
-        timeline.size_allocate += on_timeline_size_allocate;
-        timeline.selection_changed += on_timeline_selection_changed;
+        timeline.track_changed.connect(on_track_changed);
+        timeline.drag_data_received.connect(on_drag_data_received);
+        timeline.size_allocate.connect(on_timeline_size_allocate);
+        timeline.selection_changed.connect(on_timeline_selection_changed);
         
         ClipView.context_menu = (Gtk.Menu) manager.get_widget("/ClipContextMenu");
         ClipLibraryView.context_menu = (Gtk.Menu) manager.get_widget("/LibraryContextMenu");
@@ -273,7 +273,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         timeline_library_pane.child1_resize = 1;
         timeline_library_pane.add2(library_scrolled);
         timeline_library_pane.child2_resize = 0;
-        timeline_library_pane.child1.size_allocate += on_library_size_allocate;
+        timeline_library_pane.child1.size_allocate.connect(on_library_size_allocate);
 
         vbox.pack_start(timeline_library_pane, true, true, 0);
         add(vbox);
@@ -287,7 +287,7 @@ class Recorder : Gtk.Window, TransportDelegate {
 
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
-        delete_event += on_delete_event;
+        delete_event.connect(on_delete_event);
         loading = true;
         project.load(project_file);
         if (project_file == null) {
@@ -365,9 +365,9 @@ class Recorder : Gtk.Window, TransportDelegate {
     void on_track_added(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_added");
         update_menu();
-        track.clip_added += on_clip_added;
-        track.clip_removed += on_clip_removed;
-        track.track_selection_changed += on_track_selection_changed;
+        track.clip_added.connect(on_clip_added);
+        track.clip_removed.connect(on_clip_removed);
+        track.track_selection_changed.connect(on_track_selection_changed);
     }
 
     void on_track_removed(Model.Track unused) {
@@ -377,13 +377,13 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_clip_added(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_added");
-        clip.moved += on_clip_moved;
+        clip.moved.connect(on_clip_moved);
         update_menu();
     }
 
     void on_clip_removed(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_removed");
-        clip.moved -= on_clip_moved;
+        clip.moved.disconnect(on_clip_moved);
         update_menu();
     }
 
@@ -603,8 +603,8 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_new_finished_closing(bool project_did_close) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_new_finished_closing");
-        project.closed -= on_project_close;
-        finished_closing -= on_project_new_finished_closing;
+        project.closed.disconnect(on_project_close);
+        finished_closing.disconnect(on_project_new_finished_closing);
         if (project_did_close) {
             project.media_engine.set_play_state(PlayState.LOADING);
             project.load(null);
@@ -616,14 +616,14 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_new() {
         load_errors.clear();
-        project.closed += on_project_close;
-        finished_closing += on_project_new_finished_closing;
+        project.closed.connect(on_project_close);
+        finished_closing.connect(on_project_new_finished_closing);
         project.close();
     }
 
     void on_project_open_finished_closing(bool project_did_close) {
-        project.closed -= on_project_close;
-        finished_closing -= on_project_open_finished_closing;
+        project.closed.disconnect(on_project_close);
+        finished_closing.disconnect(on_project_open_finished_closing);
         if (project_did_close) {
             GLib.SList<string> filenames;
             if (DialogUtils.open(this, filters, false, false, out filenames)) {
@@ -635,8 +635,8 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_open() {
         load_errors.clear();
-        project.closed += on_project_close;
-        finished_closing += on_project_open_finished_closing;
+        project.closed.connect(on_project_close);
+        finished_closing.connect(on_project_open_finished_closing);
         project.close();
     }
 
@@ -649,8 +649,8 @@ class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_save_new_file_finished_closing(bool did_close) {
-        project.closed -= on_project_close;
-        finished_closing -= on_save_new_file_finished_closing;
+        project.closed.disconnect(on_project_close);
+        finished_closing.disconnect(on_save_new_file_finished_closing);
         project.load(project.get_project_file());
     }
 
@@ -672,8 +672,8 @@ class Recorder : Gtk.Window, TransportDelegate {
         if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             if (saving_new_file && project.get_project_file() != null) {
-                project.closed += on_project_close;
-                finished_closing += on_save_new_file_finished_closing;
+                project.closed.connect(on_project_close);
+                finished_closing.connect(on_save_new_file_finished_closing);
                 project.close();
             }
             return true;
@@ -707,8 +707,8 @@ class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_quit_finished_closing(bool project_did_close) {
-        project.closed -= on_project_close;
-        finished_closing -= on_quit_finished_closing;
+        project.closed.disconnect(on_project_close);
+        finished_closing.disconnect(on_quit_finished_closing);
         if (project_did_close) {
             Gtk.main_quit();
         }
@@ -716,8 +716,8 @@ class Recorder : Gtk.Window, TransportDelegate {
 
     void on_quit() {
         if (!project.transport_is_recording()) {
-            project.closed += on_project_close;
-            finished_closing += on_quit_finished_closing;
+            project.closed.connect(on_project_close);
+            finished_closing.connect(on_quit_finished_closing);
             project.close();
         }
     }

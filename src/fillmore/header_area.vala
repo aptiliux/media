@@ -17,8 +17,8 @@ class TrackHeader : Gtk.EventBox {
         this.track = track;
         this.header_area = area;
         
-        track.track_renamed += on_track_renamed;
-        track.track_selection_changed += on_track_selection_changed;
+        track.track_renamed.connect(on_track_renamed);
+        track.track_selection_changed.connect(on_track_selection_changed);
         set_size_request(width, height);
         modify_bg(Gtk.StateType.NORMAL, header_area.background_color);
         modify_bg(Gtk.StateType.SELECTED, parse_color("#68a"));
@@ -94,7 +94,7 @@ class AudioTrackHeader : TrackHeader {
         pan_box.pack_start(new Gtk.Label(" L"), false, false, 0);
         pan = new PanSlider();
         pan.set_adjustment(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
-        pan.value_changed += on_pan_value_changed;
+        pan.value_changed.connect(on_pan_value_changed);
         pan_box.pack_start(pan, true, true, 1);
         pan_box.pack_start(new Gtk.Label("R "), false, false, 0);
 
@@ -104,13 +104,13 @@ class AudioTrackHeader : TrackHeader {
         volume_box.pack_start(min_speaker, false, false, 0);
         volume = new VolumeSlider();
         volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 1, 0));
-        volume.value_changed += on_volume_value_changed;
+        volume.value_changed.connect(on_volume_value_changed);
         volume_box.pack_start(volume, true, true, 0);
         Gtk.Image max_speaker = new Gtk.Image.from_file(
             AppDirs.get_resources_dir().get_child("max_speaker.png").get_path());
         volume_box.pack_start(max_speaker, false, false, 0);
 
-        track.parameter_changed += on_parameter_changed;
+        track.parameter_changed.connect(on_parameter_changed);
 
         Gtk.VBox vbox = new Gtk.VBox(false, 0);
         vbox.pack_start(track_label, true, true, 0);
@@ -163,8 +163,8 @@ class HeaderArea : Gtk.EventBox {
     
     public HeaderArea(Recorder recorder, Model.TimeSystem provider, int height) {
         this.project = recorder.project;
-        recorder.timeline.trackview_removed += on_trackview_removed;
-        recorder.timeline.trackview_added += on_trackview_added;
+        recorder.timeline.trackview_removed.connect(on_trackview_removed);
+        recorder.timeline.trackview_added.connect(on_trackview_added);
         
         set_size_request(TrackHeader.width, 0);
         modify_bg(Gtk.StateType.NORMAL, background_color);
