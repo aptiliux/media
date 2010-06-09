@@ -21,6 +21,7 @@ public class MultiFileProgress : Gtk.Window {
     Gtk.Label number_label;
     Gtk.Button cancel_button;
     int num_files;
+    bool needs_show;
     
     MultiFileProgressInterface provider_interface;
   
@@ -29,7 +30,7 @@ public class MultiFileProgress : Gtk.Window {
     public MultiFileProgress(Gtk.Window parent, int num_files, 
         string dialog_title, MultiFileProgressInterface provider) {
         this.num_files = num_files;
-        
+        needs_show = true;
         file_label = new Gtk.Label("");
         number_label = new Gtk.Label("");
         progress_bar = new Gtk.ProgressBar();
@@ -49,18 +50,11 @@ public class MultiFileProgress : Gtk.Window {
         button_area.add(cancel_button);
         
         vbox.pack_start(button_area, false, false, 0);
-
-        set_border_width(8);
-        set_resizable(false);
-        set_transient_for(parent);        
-        set_modal(true);
-        set_title(dialog_title);     
-        
-        destroy.connect(on_destroy);
-        this.dialog_title = dialog_title;
-        
         add(vbox);
-        show_all();
+
+        set_transient_for(parent);
+        set_title(dialog_title);
+        this.dialog_title = dialog_title;
         
         provider_interface = provider;
         
@@ -89,6 +83,17 @@ public class MultiFileProgress : Gtk.Window {
     
     void on_fraction_updated(double d) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_fraction_updated");
+        if (needs_show) {
+            needs_show = false;
+            set_border_width(8);
+            set_resizable(false);
+            set_modal(true);
+            
+            destroy.connect(on_destroy);
+            
+            show_all();
+        }
+
         progress_bar.set_fraction(d);
         
         if (progress_bar.get_fraction() == 1.0)
