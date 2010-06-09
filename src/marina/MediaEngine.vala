@@ -78,10 +78,11 @@ class MediaClip : Object {
     protected void add_single_decode_bin(string filename, string caps) throws Error {
         Gst.Element sbin = new SingleDecodeBin(Gst.Caps.from_string(caps), 
                                                "singledecoder", filename);
-        bool add_result = ((Gst.Bin) file_source).add(sbin);
-        assert(add_result);
-        bool sync_result = file_source.sync_state_with_parent();
-        assert(sync_result);
+        if (((Gst.Bin) file_source).add(sbin)) {
+            if (!file_source.sync_state_with_parent()) {
+                clip.clipfile.set_online(false);
+            }
+        }
     }
 
     public bool is_equal(Model.Clip clip) {
