@@ -2,7 +2,7 @@ default: all
 
 BUILD_ROOT = 1
 
-VERSION = 0.1.0+trunk
+VERSION = 0.1.0
 FILLMORE = fillmore
 LOMBARD = lombard
 MEDIA_TEST = media_test
