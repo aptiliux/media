@@ -152,17 +152,22 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
 
     bool need_to_import(Fetcher f) {
+        //for now, use the clip as is
+        return false;
+        /*
         if (f.clipfile.is_of_type(MediaType.VIDEO)) {
             uint32 format;
             if (f.clipfile.get_video_format(out format)) {
                 foreach (string s in no_import_formats) {
-                    if (format == *(uint32*)s)
+                    if (format == *(uint32*)s) {
                         return false;
+                    }
                 }
                 return true;
             }
         }
         return false;
+        */
     }
 
     void on_fetcher_ready(Fetcher f) {
