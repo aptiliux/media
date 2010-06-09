@@ -96,6 +96,7 @@ endif
 ifndef DISABLE_DESKTOP_UPDATE
 	-update-desktop-database || :
 endif
+	mkdir -p $(DESTDIR)$(PREFIX)/share/mime/packages
 	$(INSTALL_DATA) ../../misc/$(PROGRAM_NAME).xml $(DESTDIR)$(PREFIX)/share/mime/packages
 	-update-mime-database $(DESTDIR)$(PREFIX)/share/mime
 
