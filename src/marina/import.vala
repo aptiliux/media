@@ -25,7 +25,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     Gst.Pad video_pad;
     Gst.Pad audio_pad;
     
-    Gst.Pipeline pipeline;
+    Gst.Pipeline pipeline = null;
     Gst.Element filesink;
     Gst.Element video_convert;
     Gst.Element audio_convert;
@@ -96,7 +96,9 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     void cancel() {
         all_done = true;
         import_state = ImportState.CANCELLED;
-        pipeline.set_state(Gst.State.NULL);
+        if (pipeline != null) {
+            pipeline.set_state(Gst.State.NULL);
+        }
     }
 
     public void start() throws Error {
@@ -217,7 +219,6 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
         our_fetcher = f;
         import_done = false;
-
         pipeline = new Gst.Pipeline("pipeline");
         pipeline.set_auto_flush_bus(false);
 
