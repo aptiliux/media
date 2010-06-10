@@ -313,11 +313,11 @@ public class ClipLibraryView : Gtk.EventBox {
         Gdk.Pixbuf icon;
 
         if (clip_file.is_online()) {
-            if (clip_file.thumbnail == null)
-                icon = (clip_file.is_of_type(Model.MediaType.VIDEO) ? 
+            if (clip_file.get_thumbnail() == null)
+                icon = (clip_file.get_caps(Model.MediaType.VIDEO) != null ? 
                                                         default_video_icon : default_audio_icon);
             else {
-                icon = clip_file.thumbnail;
+                icon = clip_file.get_thumbnail();
             }
         } else {
             icon = default_error_icon;

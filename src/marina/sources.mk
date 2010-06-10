@@ -2,6 +2,8 @@ $(SRC_PREFIX)SRC_FILES = \
 	AppDirs.vala \
 	AudioMeter.vala \
 	ClassFactory.vala \
+	ClipFile.vala \
+	ClipFileConcrete.vala \
 	ClipLibraryView.vala \
 	clip.vala \
 	command.vala \

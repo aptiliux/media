@@ -302,7 +302,7 @@ namespace DialogUtils {
             }
         }
 
-        if (clip_file.has_caps_structure(Model.MediaType.VIDEO)) {
+        if (clip_file.get_caps(Model.MediaType.VIDEO) != null) {
             add_label_to_table(t, "<b>Video</b>", 0, row++, 5, 0, false);
 
             int w, h;
@@ -326,7 +326,7 @@ namespace DialogUtils {
             }
         }
 
-        if (clip_file.has_caps_structure(Model.MediaType.AUDIO)) {
+        if (clip_file.get_caps(Model.MediaType.AUDIO) != null) {
             add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0, false);
 
             int rate;

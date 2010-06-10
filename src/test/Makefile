@@ -6,6 +6,7 @@ all: $(PROGRAM)
 VALA_LDFLAGS = `pkg-config --libs $(EXT_PKGS)`
 -include sources.mk
 SRC_FILES += \
+	../marina/ClipFile.vala \
 	../marina/ProjectLoader.vala \
 	../marina/Logging.vala \
 	../marina/util.vala

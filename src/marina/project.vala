@@ -494,18 +494,9 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
     protected virtual void do_append(Track track, ClipFile clipfile, string name, 
         int64 insert_time) {
-        switch(track.media_type()) {
-            case MediaType.AUDIO:
-                if (clipfile.audio_caps == null) {
-                    return;
-                }
-                break;
-            case MediaType.VIDEO:
-                if (clipfile.video_caps == null) {
-                    return;
-                }
-            break;
-        }
+            if (clipfile.get_caps(track.media_type()) == null) {
+                return;
+            }
 
         Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
         track.append_at_time(clip, insert_time, true);
@@ -688,7 +679,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
     public void _add_clipfile(ClipFile clipfile) throws Error {
         clipfiles.add(clipfile);
-        if (clipfile.is_online() && clipfile.is_of_type(MediaType.VIDEO)) {
+        if (clipfile.is_online() && clipfile.get_caps(MediaType.VIDEO) != null) {
             ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
             fetcher.ready.connect(on_thumbnail_ready);
             pending_thumbs.add(fetcher);

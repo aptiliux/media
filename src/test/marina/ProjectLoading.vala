@@ -19,12 +19,7 @@ public class ClipFetcher {
     }
     public signal void ready(ClipFetcher fetcher);
 }
-
-public class ClipFile {
-    public string filename;
 }
-}
-
 // Describes an XML Document and if the test should consider it a valid or an invalid document
 struct ValidDocument {
     public bool valid;

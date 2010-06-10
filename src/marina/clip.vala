@@ -8,11 +8,6 @@ using Logging;
 
 namespace Model {
 
-public enum MediaType {
-    AUDIO,
-    VIDEO
-}
-
 public class Gap {
     public int64 start;
     public int64 end;
@@ -28,141 +23,6 @@ public class Gap {
 
     public Gap intersect(Gap g) {
         return new Gap(int64.max(start, g.start), int64.min(end, g.end));
-    }
-}
-
-public class ClipFile : Object {
-    public string filename;
-    int64 _length;
-    public int64 length {
-        public get {
-            if (!online) {
-                warning("retrieving length while clip offline");
-            }
-            return _length;
-        }
-        
-        public set {
-            _length = value;
-        }
-    }
-
-    bool online;
-
-    public Gst.Caps video_caps;    // or null if no video
-    public Gst.Caps audio_caps;    // or null if no audio
-    public Gdk.Pixbuf thumbnail = null;
-
-    public signal void updated();
-
-    public ClipFile(string filename, int64 length = 0) {
-        this.filename = filename;
-        this.length = length;
-        online = false;
-    }
-
-    public bool is_online() {
-        return online;
-    }
-
-    public void set_online(bool o) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "set_online");
-        online = o;
-        updated();
-    }
-
-    public void set_thumbnail(Gdk.Pixbuf b) {
-        // TODO: Investigate this
-        // 56x56 - 62x62 icon size does not work for some reason when
-        // we display the thumbnail while dragging the clip.
-
-        thumbnail = b.scale_simple(64, 44, Gdk.InterpType.BILINEAR);
-    }
-
-    public bool has_caps_structure(MediaType m) {
-        if (m == MediaType.AUDIO) {
-            if (audio_caps == null || audio_caps.get_size() < 1)
-                return false;
-        } else if (m == MediaType.VIDEO) {
-            if (video_caps == null || video_caps.get_size() < 1)
-                return false;
-        }
-        return true;
-    }
-
-    public bool is_of_type(MediaType t) {
-        if (t == MediaType.VIDEO)
-            return video_caps != null;
-        return audio_caps != null;
-    }
-
-    bool get_caps_structure(MediaType m, out Gst.Structure s) {
-        if (!has_caps_structure(m))
-            return false;
-        if (m == MediaType.AUDIO) {
-            s = audio_caps.get_structure(0);
-        } else if (m == MediaType.VIDEO) {
-            s = video_caps.get_structure(0);
-        }
-        return true;
-    }
-
-    public bool get_frame_rate(out Fraction rate) {
-        Gst.Structure structure;
-        if (!get_caps_structure(MediaType.VIDEO, out structure))
-            return false;
-        return structure.get_fraction("framerate", out rate.numerator, out rate.denominator);
-    }
-
-    public bool get_dimensions(out int w, out int h) {
-        Gst.Structure s;
-
-        if (!get_caps_structure(MediaType.VIDEO, out s))
-            return false;
-
-        return s.get_int("width", out w) && s.get_int("height", out h);
-    }
-
-    public bool get_sample_rate(out int rate) {
-        Gst.Structure s;
-        if (!get_caps_structure(MediaType.AUDIO, out s))
-            return false;
-
-        return s.get_int("rate", out rate);
-    }
-
-    public bool get_video_format(out uint32 fourcc) {
-        Gst.Structure s;
-
-        if (!get_caps_structure(MediaType.VIDEO, out s))
-            return false;
-
-        return s.get_fourcc("format", out fourcc);
-    }
-
-    public bool get_num_channels(out int channels) {
-        Gst.Structure s;
-        if (!get_caps_structure(MediaType.AUDIO, out s)) {
-            return false;
-        }
-
-        return s.get_int("channels", out channels);
-    }
-
-    public bool get_num_channels_string(out string s) {
-        int i;
-        if (!get_num_channels(out i))
-            return false;
-
-        if (i == 1)
-            s = "Mono";
-        else if (i == 2)
-            s = "Stereo";
-        else if ((i % 2) == 0)
-            s = "Surround %d.1".printf(i - 1);
-        else
-            s = "%d".printf(i);
-        return true;
     }
 }
 
@@ -205,7 +65,8 @@ public class ClipFetcher : Fetcher {
     public signal void clipfile_online(bool online);
 
     public ClipFetcher(string filename) throws Error {
-        clipfile = new ClipFile(filename);
+        ClassFactory class_factory = ClassFactory.get_class_factory();
+        clipfile = class_factory.get_clip_file(filename, 0);
 
         clipfile_online.connect(clipfile.set_online);
 
@@ -290,12 +151,12 @@ public class ClipFetcher : Fetcher {
         if (new_state == Gst.State.PLAYING) {
             Gst.Pad? pad = get_pad("video");
             if (pad != null) {
-                clipfile.video_caps = pad.caps;
+                clipfile.set_caps(MediaType.VIDEO, pad.caps);
             }
 
             pad = get_pad("audio");
             if (pad != null) {
-                clipfile.audio_caps = pad.caps;
+                clipfile.set_caps(MediaType.AUDIO, pad.caps);
             }
 
             Gst.Format format = Gst.Format.TIME;

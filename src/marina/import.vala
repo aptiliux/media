@@ -242,7 +242,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
         pipeline.add_many(mux, filesink);
 
-        if (f.clipfile.is_of_type(MediaType.VIDEO)) {
+        if (f.clipfile.get_caps(MediaType.VIDEO) != null) {
             video_convert = make_element("ffmpegcolorspace");
             pipeline.add(video_convert);
 
@@ -257,7 +257,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             if (!video_convert.link(mux))
                 error("do_import: Cannot link video converter to mux!");
         }
-        if (f.clipfile.is_of_type(MediaType.AUDIO)) {
+        if (f.clipfile.get_caps(MediaType.AUDIO) != null) {
             audio_convert = make_element("audioconvert");
             pipeline.add(audio_convert);
 
@@ -341,10 +341,10 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         if (new_state == Gst.State.PAUSED) {
             if (!import_done) {
                 if (video_pad != null) {
-                    our_fetcher.clipfile.video_caps = video_pad.caps;
+                    our_fetcher.clipfile.set_caps(MediaType.VIDEO, video_pad.caps);
                 }
                 if (audio_pad != null) {
-                    our_fetcher.clipfile.audio_caps = audio_pad.caps;
+                    our_fetcher.clipfile.set_caps(MediaType.AUDIO, audio_pad.caps);
                 }
                 emit(this, Facility.IMPORT, Level.VERBOSE,
                     "Got clipfile info for: %s".printf(our_fetcher.clipfile.filename));

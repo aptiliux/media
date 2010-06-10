@@ -1082,7 +1082,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_track = track;
 
         string filename = new_audio_filename(track);
-        Model.ClipFile clip_file = new Model.ClipFile(filename);
+        ClassFactory class_factory = ClassFactory.get_class_factory();
+        Model.ClipFile clip_file = class_factory.get_clip_file(filename, 0);
         record_region = new Model.Clip(clip_file, Model.MediaType.AUDIO, "", position, 0, 1, true);
     }
 

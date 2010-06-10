@@ -32,7 +32,7 @@ class VideoProject : Project {
     public override TimeCode get_clip_time(ClipFile f) {
         TimeCode t = {};
 
-        if (f.is_of_type(MediaType.VIDEO)) {
+        if (f.get_caps(MediaType.VIDEO) != null) {
             Fraction rate;
             if (!get_framerate_fraction(out rate)) {
                 rate.numerator = 2997;

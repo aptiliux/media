@@ -26,7 +26,11 @@ public class ClassFactory {
         assert(transport_delegate != null);
         return new TrackViewConcrete(transport_delegate, track, timeline);
     }
-    
+
+    public virtual Model.ClipFile get_clip_file(string filename, int64 duration) {
+        return new Model.ClipFileConcrete(filename, duration);
+    }
+
     public static void set_class_factory(ClassFactory class_factory) {
         ClassFactory.class_factory = class_factory;
     }
