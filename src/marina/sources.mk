@@ -5,6 +5,7 @@ $(SRC_PREFIX)SRC_FILES = \
 	ClipFile.vala \
 	ClipFileConcrete.vala \
 	ClipLibraryView.vala \
+	ClipView.vala \
 	clip.vala \
 	command.vala \
 	DialogUtils.vala \
@@ -23,7 +24,6 @@ $(SRC_PREFIX)SRC_FILES = \
 	track.vala \
 	TrackView.vala \
 	TransportDelegate.vala \
-	ui_clip.vala \
 	UndoManager.vala \
 	util.vala \
 	video_track.vala
