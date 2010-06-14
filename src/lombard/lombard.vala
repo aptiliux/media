@@ -298,8 +298,6 @@ class App : Gtk.Window, TransportDelegate {
 
             h_pane = new Gtk.HPaned();
             h_pane.set_position(300);
-            h_pane.child2_resize = 1;
-            h_pane.child1_resize = 0;
 
             if (showing) {
                 h_pane.add1(library_scrolled);
@@ -321,6 +319,8 @@ class App : Gtk.Window, TransportDelegate {
 
             v_pane.child1_resize = 1;
             v_pane.child2_resize = 0;
+            v_pane.child1_shrink = 0;
+            v_pane.child2_shrink = 0;
 
             h_adjustment = timeline_scrolled.get_hadjustment();
             h_adjustment.changed.connect(on_adjustment_changed);
@@ -338,6 +338,13 @@ class App : Gtk.Window, TransportDelegate {
                 h_pane.remove(library_scrolled);
             }
         }
+        h_pane.child2_resize = 1;
+        h_pane.child1_resize = 0;
+        h_pane.child1_shrink = 0;
+        h_pane.child2_shrink = 0;
+        library_scrolled.set_size_request(50, 50);
+        drawing_area.set_size_request(50, 50);
+        h_pane.set_size_request(50, 50);
         show_all();
     }
 

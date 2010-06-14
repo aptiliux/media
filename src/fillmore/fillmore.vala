@@ -271,9 +271,13 @@ class Recorder : Gtk.Window, TransportDelegate {
         timeline_library_pane.set_position(project.library_width);
         timeline_library_pane.add1(hbox);
         timeline_library_pane.child1_resize = 1;
+        timeline_library_pane.child1_shrink = 0;
         timeline_library_pane.add2(library_scrolled);
         timeline_library_pane.child2_resize = 0;
+        timeline_library_pane.child2_shrink = 0;
         timeline_library_pane.child1.size_allocate.connect(on_library_size_allocate);
+        hbox.set_size_request(TrackHeader.width + 50, -1);
+        library_scrolled.set_size_request(50, -1);
 
         vbox.pack_start(timeline_library_pane, true, true, 0);
         add(vbox);
