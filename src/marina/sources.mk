@@ -2,8 +2,6 @@ $(SRC_PREFIX)SRC_FILES = \
 	AppDirs.vala \
 	AudioMeter.vala \
 	ClassFactory.vala \
-	ClipFile.vala \
-	ClipFileConcrete.vala \
 	ClipLibraryView.vala \
 	ClipView.vala \
 	clip.vala \
@@ -12,6 +10,8 @@ $(SRC_PREFIX)SRC_FILES = \
 	import.vala \
 	Logging.vala \
 	MediaEngine.vala \
+	MediaFile.vala \
+	MediaFileConcrete.vala \
 	MultiFileProgress.vala \
 	ProjectLoader.vala \
 	project.vala \
