@@ -13,7 +13,7 @@ public class ClipLibraryView : Gtk.EventBox {
     Gtk.TreeSelection selection;
     Gtk.Label label = null;
     Gtk.ListStore list_store;
-    int num_clipfiles;
+    int num_mediafiles;
     Gee.ArrayList<string> files_dragging = new Gee.ArrayList<string>();
 
     Gtk.IconTheme icon_theme;
@@ -58,7 +58,7 @@ public class ClipLibraryView : Gtk.EventBox {
         list_store.set_default_sort_func(name_sort);
         list_store.set_sort_column_id(name_column.get_sort_column_id(), Gtk.SortType.ASCENDING);
 
-        num_clipfiles = 0;
+        num_mediafiles = 0;
         if (drag_message != null) {
             label = new Gtk.Label(drag_message);
             label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
@@ -68,8 +68,8 @@ public class ClipLibraryView : Gtk.EventBox {
         tree_view.modify_base(Gtk.StateType.NORMAL, parse_color("#444"));
 
         tree_view.set_headers_visible(false);
-        project.clipfile_added.connect(on_clipfile_added);
-        project.clipfile_removed.connect(on_clipfile_removed);
+        project.mediafile_added.connect(on_mediafile_added);
+        project.mediafile_removed.connect(on_mediafile_removed);
         project.cleared.connect(on_remove_all_rows);
         project.time_signature_changed.connect(on_time_signature_changed);
 
@@ -309,48 +309,48 @@ public class ClipLibraryView : Gtk.EventBox {
         return column;
     }
 
-    void update_iter(Gtk.TreeIter it, Model.ClipFile clip_file) {
+    void update_iter(Gtk.TreeIter it, Model.MediaFile media_file) {
         Gdk.Pixbuf icon;
 
-        if (clip_file.is_online()) {
-            if (clip_file.get_thumbnail() == null)
-                icon = (clip_file.get_caps(Model.MediaType.VIDEO) != null ? 
+        if (media_file.is_online()) {
+            if (media_file.get_thumbnail() == null)
+                icon = (media_file.get_caps(Model.MediaType.VIDEO) != null ? 
                                                         default_video_icon : default_audio_icon);
             else {
-                icon = clip_file.get_thumbnail();
+                icon = media_file.get_thumbnail();
             }
         } else {
             icon = default_error_icon;
         }
 
         list_store.set(it, ColumnType.THUMBNAIL, icon,
-                            ColumnType.NAME, isolate_filename(clip_file.filename),
-                            ColumnType.DURATION, time_provider.get_time_duration(clip_file.length),
-                            ColumnType.FILENAME, clip_file.filename, -1);
+                            ColumnType.NAME, isolate_filename(media_file.filename),
+                            ColumnType.DURATION, time_provider.get_time_duration(media_file.length),
+                            ColumnType.FILENAME, media_file.filename, -1);
     }
 
-    void on_clipfile_added(Model.ClipFile f) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_added");
+    void on_mediafile_added(Model.MediaFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_file_added");
         Gtk.TreeIter it;
 
-        if (find_clipfile(f, out it) >= 0) {
+        if (find_mediafile(f, out it) >= 0) {
             list_store.remove(it);
         } else {
-            if (num_clipfiles == 0) {
+            if (num_mediafiles == 0) {
                 if (label != null) {
                     remove(label);
                 }
                 add(tree_view);
                 tree_view.show();
             }
-            num_clipfiles++;
+            num_mediafiles++;
         }
 
         list_store.append(out it);
         update_iter(it, f);
     }
 
-    int find_clipfile(Model.ClipFile f, out Gtk.TreeIter iter) {
+    int find_mediafile(Model.MediaFile f, out Gtk.TreeIter iter) {
         Gtk.TreeModel model = tree_view.get_model();
 
         bool b = model.get_iter_first(out iter);
@@ -369,19 +369,19 @@ public class ClipLibraryView : Gtk.EventBox {
         return -1;
     }
 
-    public void on_clipfile_removed(Model.ClipFile f) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_file_removed");
+    public void on_mediafile_removed(Model.MediaFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_media_file_removed");
         Gtk.TreeIter it;
 
-        if (find_clipfile(f, out it) >= 0) {
+        if (find_mediafile(f, out it) >= 0) {
             remove_row(ref it);
         }
     }
 
     bool remove_row(ref Gtk.TreeIter it) {
         bool b = list_store.remove(it);
-        num_clipfiles--;
-        if (num_clipfiles == 0) {
+        num_mediafiles--;
+        if (num_mediafiles == 0) {
             remove(tree_view);
             if (label != null) {
                 add(label);
@@ -410,9 +410,9 @@ public class ClipLibraryView : Gtk.EventBox {
         while (more_items) {
             string filename;
             list_store.get(iter, ColumnType.FILENAME, out filename, -1);
-            Model.ClipFile clip_file = project.find_clipfile(filename);
+            Model.MediaFile media_file = project.find_mediafile(filename);
             list_store.set(iter, ColumnType.DURATION,
-                time_provider.get_time_duration(clip_file.length), -1);
+                time_provider.get_time_duration(media_file.length), -1);
             more_items = list_store.iter_next(ref iter);
         }
     }
@@ -422,13 +422,13 @@ public class ClipLibraryView : Gtk.EventBox {
         if (list_store.get_iter(out it, path)) {
             string filename;
             model.get(it, ColumnType.FILENAME, out filename, -1);
-            if (project.clipfile_on_track(filename)) {
+            if (project.mediafile_on_track(filename)) {
                 if (DialogUtils.delete_cancel("Clip is in use.  Delete anyway?") !=
                     Gtk.ResponseType.YES)
                     return;
             }
 
-            project.remove_clipfile(filename);
+            project.remove_mediafile(filename);
 
             if (Path.get_dirname(filename) == project.get_audio_path()) {
                 if (DialogUtils.delete_keep("Delete clip from disk?  This action is not undoable.")

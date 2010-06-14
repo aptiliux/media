@@ -29,7 +29,7 @@ class VideoProject : Project {
         return App.NAME;
     }
 
-    public override TimeCode get_clip_time(ClipFile f) {
+    public override TimeCode get_clip_time(MediaFile f) {
         TimeCode t = {};
 
         if (f.get_caps(MediaType.VIDEO) != null) {

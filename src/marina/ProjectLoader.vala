@@ -31,7 +31,7 @@ public class LoaderHandler : Object {
         return true;
     }
     
-    public virtual bool commit_clipfile(string[] attr_names, string[] attr_values) {
+    public virtual bool commit_mediafile(string[] attr_names, string[] attr_values) {
         return true;
     }
 
@@ -63,7 +63,7 @@ public class LoaderHandler : Object {
     public virtual void leave_clip() {
     }
     
-    public virtual void leave_clipfile() {
+    public virtual void leave_mediafile() {
         
     }
 }
@@ -196,7 +196,7 @@ class ProjectBuilder : Object {
     void handle_library(XmlElement library) {
         if (handler.commit_library(library.attribute_names, library.attribute_values)) {
             foreach (XmlElement child in library.children) {
-                if (!handler.commit_clipfile(child.attribute_names, child.attribute_values))
+                if (!handler.commit_mediafile(child.attribute_names, child.attribute_values))
                     error_occurred("Improper library node");
             } 
             handler.leave_library();

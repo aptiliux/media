@@ -8,7 +8,7 @@ namespace Model {
 
 public class ClipFetcher {
     public string error_string;
-    public ClipFile clipfile;
+    public MediaFile mediafile;
     string filename;
     
     public ClipFetcher(string filename) {

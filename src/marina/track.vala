@@ -35,9 +35,9 @@ public abstract class Track : Object {
         track_hidden(this);
     }
 
-    public bool contains_clipfile(ClipFile f) {
+    public bool contains_mediafile(MediaFile f) {
         foreach (Clip c in clips) {
-            if (c.clipfile == f)
+            if (c.mediafile == f)
                 return true;
         }
         return false;
@@ -204,7 +204,7 @@ public abstract class Track : Object {
                 }
 
                 if (diff > 0) {
-                    Clip cl = new Clip(clips[end_index].clipfile, clips[end_index].type, 
+                    Clip cl = new Clip(clips[end_index].mediafile, clips[end_index].type, 
                                     clips[end_index].name, c.end, 
                                     clips[end_index].media_start + diff,
                                     clips[end_index].duration - diff, false);
@@ -351,7 +351,7 @@ public abstract class Track : Object {
         if (index == -1)
             error("revert_to_original: Clip not in track array!");
 
-        c.set_media_start_duration(0, c.clipfile.length);
+        c.set_media_start_duration(0, c.mediafile.length);
 
         project.media_engine.go(c.start);
     }
@@ -362,7 +362,7 @@ public abstract class Track : Object {
 
         return left_clip != null && right_clip != null && 
             left_clip != right_clip &&
-            left_clip.clipfile == right_clip.clipfile &&
+            left_clip.mediafile == right_clip.mediafile &&
             left_clip.end == right_clip.start;
     }
 
@@ -376,7 +376,7 @@ public abstract class Track : Object {
         if (c == null)
             return;
 
-        Clip cn = new Clip(c.clipfile, c.type, c.name, position,
+        Clip cn = new Clip(c.mediafile, c.type, c.name, position,
                            (position - c.start) + c.media_start, 
                            c.start + c.duration - position, false);
 
@@ -446,7 +446,7 @@ public abstract class Track : Object {
         write_attributes(f);
         f.printf(">\n");
         for (int i = 0; i < clips.size; i++)
-            clips[i].save(f, project.get_clipfile_index(clips[i].clipfile));
+            clips[i].save(f, project.get_mediafile_index(clips[i].mediafile));
         f.puts("    </track>\n");
     }
 
@@ -561,8 +561,8 @@ public class AudioTrack : Track {
             return false;
 
         foreach (Clip c in clips) {
-            if (c.clipfile.is_online()) {
-                bool can = c.clipfile.get_num_channels(out num);
+            if (c.mediafile.is_online()) {
+                bool can = c.mediafile.get_num_channels(out num);
                 assert(can);
 
                 return can;
@@ -577,13 +577,13 @@ public class AudioTrack : Track {
     }
 
     public override bool check(Clip clip) {
-        if (!clip.clipfile.is_online()) {
+        if (!clip.mediafile.is_online()) {
             return true;
         }
 
         if (clips.size == 0) {
             int number_of_channels = 0;
-            if (clip.clipfile.get_num_channels(out number_of_channels)) {
+            if (clip.mediafile.get_num_channels(out number_of_channels)) {
                 channel_count_changed(number_of_channels);
             }
             return true;
@@ -591,7 +591,7 @@ public class AudioTrack : Track {
 
         bool good = false;
         int number_of_channels;
-        if (clip.clipfile.get_num_channels(out number_of_channels)) {
+        if (clip.mediafile.get_num_channels(out number_of_channels)) {
             int track_channel_count;
             if (get_num_channels(out track_channel_count)) {
                 good = track_channel_count == number_of_channels;
@@ -613,7 +613,7 @@ public class AudioTrack : Track {
     }
 
     public override void on_clip_updated(Clip clip) {
-        if (clip.clipfile.is_online()) {
+        if (clip.mediafile.is_online()) {
             int number_of_channels = 0;
             if (get_num_channels(out number_of_channels)) {
                 channel_count_changed(number_of_channels);

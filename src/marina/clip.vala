@@ -31,7 +31,7 @@ public abstract class Fetcher : Object {
     protected Gst.Element decodebin;
     protected Gst.Pipeline pipeline;
 
-    public ClipFile clipfile;
+    public MediaFile mediafile;
     public string error_string;
 
     protected abstract void on_pad_added(Gst.Pad pad);
@@ -62,13 +62,13 @@ public abstract class Fetcher : Object {
 }
 
 public class ClipFetcher : Fetcher {  
-    public signal void clipfile_online(bool online);
+    public signal void mediafile_online(bool online);
 
     public ClipFetcher(string filename) throws Error {
         ClassFactory class_factory = ClassFactory.get_class_factory();
-        clipfile = class_factory.get_clip_file(filename, 0);
+        mediafile = class_factory.get_media_file(filename, 0);
 
-        clipfile_online.connect(clipfile.set_online);
+        mediafile_online.connect(mediafile.set_online);
 
         filesrc = make_element("filesrc");
         filesrc.set("location", filename);
@@ -95,7 +95,7 @@ public class ClipFetcher : Fetcher {
         pipeline.set_state(Gst.State.PLAYING);
     }
 
-    public string get_filename() { return clipfile.filename; }
+    public string get_filename() { return mediafile.filename; }
 
     protected override void on_pad_added(Gst.Pad pad) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pad_added");
@@ -151,12 +151,12 @@ public class ClipFetcher : Fetcher {
         if (new_state == Gst.State.PLAYING) {
             Gst.Pad? pad = get_pad("video");
             if (pad != null) {
-                clipfile.set_caps(MediaType.VIDEO, pad.caps);
+                mediafile.set_caps(MediaType.VIDEO, pad.caps);
             }
 
             pad = get_pad("audio");
             if (pad != null) {
-                clipfile.set_caps(MediaType.AUDIO, pad.caps);
+                mediafile.set_caps(MediaType.AUDIO, pad.caps);
             }
 
             Gst.Format format = Gst.Format.TIME;
@@ -166,9 +166,9 @@ public class ClipFetcher : Fetcher {
                 do_error("Can't fetch length");
                 return;
             }
-            clipfile.length = length;
+            mediafile.length = length;
 
-            clipfile_online(true);
+            mediafile_online(true);
             pipeline.set_state(Gst.State.NULL);
         } else if (new_state == Gst.State.NULL) {
             ready(this);
@@ -183,8 +183,8 @@ public class ThumbnailFetcher : Fetcher {
     bool done_seek;
     bool have_thumbnail;
 
-    public ThumbnailFetcher(ClipFile f, int64 time) throws Error {
-        clipfile = f;
+    public ThumbnailFetcher(MediaFile f, int64 time) throws Error {
+        mediafile = f;
         seek_position = time;
 
         SingleDecodeBin single_bin = new SingleDecodeBin (
@@ -221,7 +221,7 @@ public class ThumbnailFetcher : Fetcher {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_have_thumbnail");
         if (done_seek) {
             have_thumbnail = true;
-            clipfile.set_thumbnail(buf);
+            mediafile.set_thumbnail(buf);
         }
     }
 
@@ -263,7 +263,7 @@ public class ThumbnailFetcher : Fetcher {
 }
 
 public class Clip : Object {
-    public ClipFile clipfile;
+    public MediaFile mediafile;
     public MediaType type;
     // TODO: If a clip is being recorded, we don't want to set duration in the MediaClip file.
     // Address when handling multiple track recording.  This is an ugly hack.
@@ -304,9 +304,9 @@ public class Clip : Object {
             }
 
             if (!is_recording) {
-                if (value + _media_start > clipfile.length) {
+                if (value + _media_start > mediafile.length) {
                     // saturating the duration
-                    value = clipfile.length - media_start;
+                    value = mediafile.length - media_start;
                 }
             }
 
@@ -331,23 +331,23 @@ public class Clip : Object {
     public signal void start_changed(int64 start);
     public signal void removed(Clip clip);
 
-    public Clip(ClipFile clipfile, MediaType t, string name,
+    public Clip(MediaFile mediafile, MediaType t, string name,
                 int64 start, int64 media_start, int64 duration, bool is_recording) {
         this.is_recording = is_recording;
-        this.clipfile = clipfile;
+        this.mediafile = mediafile;
         this.type = t;
         this.name = name;
-        this.connected = clipfile.is_online();
+        this.connected = mediafile.is_online();
         this.set_media_start_duration(media_start, duration);
         this.start = start;
-        clipfile.updated.connect(on_clipfile_updated);
+        mediafile.updated.connect(on_mediafile_updated);
     }
 
     public void gnonlin_connect() { connected = true; }
     public void gnonlin_disconnect() { connected = false; }
 
-    void on_clipfile_updated(ClipFile f) {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clipfile_updated");
+    void on_mediafile_updated(MediaFile f) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_mediafile_updated");
         if (f.is_online()) {
             if (!connected) {
                 connected = true;
@@ -396,13 +396,13 @@ public class Clip : Object {
     }
 
     public Clip copy() {
-        return new Clip(clipfile, type, name, start, media_start, duration, false);
+        return new Clip(mediafile, type, name, start, media_start, duration, false);
     }
 
     public bool is_trimmed() {
-        if (!clipfile.is_online()) 
+        if (!mediafile.is_online()) 
             return false;
-        return duration != clipfile.length;
+        return duration != mediafile.length;
     }
 
     public void trim(int64 delta, Gdk.WindowEdge edge) {
@@ -434,9 +434,9 @@ public class Clip : Object {
             duration = 0;
         }
 
-        if (clipfile.is_online() && media_start + duration > clipfile.length) {
+        if (mediafile.is_online() && media_start + duration > mediafile.length) {
             // We are saturating the value
-            media_start = clipfile.length - duration;
+            media_start = mediafile.length - duration;
         }
 
         _media_start = media_start;

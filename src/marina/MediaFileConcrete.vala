@@ -6,7 +6,7 @@
  using Logging;
  
 namespace Model {
-public class ClipFileConcrete : ClipFile {
+public class MediaFileConcrete : MediaFile {
     public string _filename;
     public override string filename {
         public get {
@@ -37,7 +37,7 @@ public class ClipFileConcrete : ClipFile {
     public Gst.Caps audio_caps;    // or null if no audio
     public Gdk.Pixbuf thumbnail = null;
 
-    public ClipFileConcrete(string filename, int64 length = 0) {
+    public MediaFileConcrete(string filename, int64 length = 0) {
         this.filename = filename;
         this.length = length;
         online = false;

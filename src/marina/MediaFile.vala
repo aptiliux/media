@@ -10,7 +10,7 @@ public enum MediaType {
     VIDEO
 }
 
-public abstract class ClipFile : Object {
+public abstract class MediaFile : Object {
     public abstract string filename {
         get;
         set;

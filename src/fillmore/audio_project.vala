@@ -21,8 +21,8 @@ class RecordFetcherCompletion : FetcherCompletion {
 
     public override void complete(Fetcher fetch) {
         base.complete(fetch);
-        Clip the_clip = new Clip(fetch.clipfile, MediaType.AUDIO, 
-            isolate_filename(fetch.clipfile.filename), 0, 0, fetch.clipfile.length, false);
+        Clip the_clip = new Clip(fetch.mediafile, MediaType.AUDIO, 
+            isolate_filename(fetch.mediafile.filename), 0, 0, fetch.mediafile.length, false);
         project.undo_manager.start_transaction("Record");
         track.append_at_time(the_clip, position, true);
         project.undo_manager.end_transaction("Record");
@@ -45,7 +45,7 @@ class AudioProject : Project {
         }
     }
 
-    public override TimeCode get_clip_time(ClipFile f) {
+    public override TimeCode get_clip_time(MediaFile f) {
         TimeCode t = {};
         
         t.get_from_length(f.length);
@@ -93,7 +93,7 @@ class AudioProject : Project {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_completed");
         try {
             create_clip_fetcher(new Model.RecordFetcherCompletion(this, media_engine.record_track,
-                media_engine.record_region.start), media_engine.record_region.clipfile.filename);
+                media_engine.record_region.start), media_engine.record_region.mediafile.filename);
         } catch (Error e) {
             error_occurred("Could not complete recording", e.message);
         }
@@ -138,11 +138,11 @@ class AudioProject : Project {
         } while (base_name != null);
 
         // Next, update the model so that the project file is saved properly
-        foreach (ClipFile clip_file in clipfiles) {
-            if (Path.get_dirname(clip_file.filename) == audio_path) {
-                string file_name = Path.get_basename(clip_file.filename);
+        foreach (MediaFile media_file in mediafiles) {
+            if (Path.get_dirname(media_file.filename) == audio_path) {
+                string file_name = Path.get_basename(media_file.filename);
                 string destination = Path.build_filename(destination_path, file_name);
-                clip_file.filename = destination;
+                media_file.filename = destination;
             }
         }
 

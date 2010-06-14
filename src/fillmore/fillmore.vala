@@ -802,8 +802,8 @@ class Recorder : Gtk.Window, TransportDelegate {
             Gee.ArrayList<string> files = library.get_selected_files();
             if (files.size == 1) {
                 string file_name = files.get(0);
-                Model.ClipFile? clip_file = project.find_clipfile(file_name);
-                DialogUtils.show_clip_properties(this, null, clip_file, null);
+                Model.MediaFile? media_file = project.find_mediafile(file_name);
+                DialogUtils.show_clip_properties(this, null, media_file, null);
             }
         } else {
             Gee.ArrayList<ClipView> clips = timeline.selected_clips;

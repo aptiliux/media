@@ -249,11 +249,11 @@ namespace DialogUtils {
     }
 
     public void show_clip_properties(Gtk.Window parent, ClipView? selected_clip, 
-            Model.ClipFile ? clip_file, Fraction? frames_per_second) {
+            Model.MediaFile ? media_file, Fraction? frames_per_second) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
                                     Gtk.DialogFlags.MODAL, Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT);
         if (selected_clip != null) {
-            clip_file = selected_clip.clip.clipfile;
+            media_file = selected_clip.clip.mediafile;
         }
 
         d.set("has-separator", false);
@@ -274,7 +274,7 @@ namespace DialogUtils {
         }
 
         add_label_to_table(t, "<i>Location:</i>", 0, row, tab_padding, 0, false);
-        add_label_to_table(t, "%s".printf(clip_file.filename), 1, row++, 5, 0, true); 
+        add_label_to_table(t, "%s".printf(media_file.filename), 1, row++, 5, 0, true); 
 
         if (selected_clip != null) {
             add_label_to_table(t, "<i>Timeline length:</i>", 0, row, tab_padding, 0, false);
@@ -287,11 +287,11 @@ namespace DialogUtils {
                     frames_per_second), frames_per_second);
                 length_string = time.to_string();
                 time = frame_to_time(time_to_frame_with_rate(
-                    selected_clip.clip.clipfile.length, frames_per_second), frames_per_second);
+                    selected_clip.clip.mediafile.length, frames_per_second), frames_per_second);
                 actual_length = time.to_string();
             } else {
                 length_string = time_to_string(selected_clip.clip.duration);
-                actual_length = time_to_string(selected_clip.clip.clipfile.length);
+                actual_length = time_to_string(selected_clip.clip.mediafile.length);
             }
 
             add_label_to_table(t, "%s".printf(length_string), 1, row++, 5, 0, true);
@@ -302,17 +302,17 @@ namespace DialogUtils {
             }
         }
 
-        if (clip_file.get_caps(Model.MediaType.VIDEO) != null) {
+        if (media_file.get_caps(Model.MediaType.VIDEO) != null) {
             add_label_to_table(t, "<b>Video</b>", 0, row++, 5, 0, false);
 
             int w, h;
-            if (clip_file.get_dimensions(out w, out h)) {
+            if (media_file.get_dimensions(out w, out h)) {
                 add_label_to_table(t, "<i>Dimensions:</i>", 0, row, tab_padding, 0, false);
                 add_label_to_table(t, "%d x %d".printf(w, h), 1, row++, 5, 0, true);
             }
 
             Fraction r;
-            if (clip_file.get_frame_rate(out r)) {
+            if (media_file.get_frame_rate(out r)) {
                 add_label_to_table(t, "<i>Frame rate:</i>", 0, row, tab_padding, 0, false);
 
                 if (r.numerator % r.denominator != 0)
@@ -326,17 +326,17 @@ namespace DialogUtils {
             }
         }
 
-        if (clip_file.get_caps(Model.MediaType.AUDIO) != null) {
+        if (media_file.get_caps(Model.MediaType.AUDIO) != null) {
             add_label_to_table(t, "<b>Audio</b>", 0, row++, 5, 0, false);
 
             int rate;
-            if (clip_file.get_sample_rate(out rate)) {
+            if (media_file.get_sample_rate(out rate)) {
                 add_label_to_table(t, "<i>Sample rate:</i>", 0, row, tab_padding, 0, false);
                 add_label_to_table(t, "%d Hz".printf(rate), 1, row++, 5, 0, true);
             }
 
             string s;
-            if (clip_file.get_num_channels_string(out s)) {
+            if (media_file.get_num_channels_string(out s)) {
                 add_label_to_table(t, "<i>Number of channels:</i>", 0, row, tab_padding, 0, false);
                 add_label_to_table(t, "%s".printf(s), 1, row++, 5, 0, true);
             }

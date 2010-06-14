@@ -45,7 +45,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     Gee.ArrayList<string> queued_filenames = new Gee.ArrayList<string>();
     Gee.ArrayList<string> no_import_formats = new Gee.ArrayList<string>();
 
-    public signal void clip_complete(ClipFile f);
+    public signal void clip_complete(MediaFile f);
     public signal void importing_started(int num_clips);
     public signal void error_occurred(string error);
 
@@ -136,11 +136,11 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
     void do_import_complete() throws Error{
         if (import_state == ImportState.IMPORTING) {
-            our_fetcher.clipfile.filename = append_extension(
+            our_fetcher.mediafile.filename = append_extension(
                                                    queued_filenames[current_file_importing], "mov");
-            clip_complete(our_fetcher.clipfile);
+            clip_complete(our_fetcher.mediafile);
         } else
-            total_time += our_fetcher.clipfile.length;
+            total_time += our_fetcher.mediafile.length;
 
         current_file_importing++;
 
@@ -155,9 +155,9 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         //for now, use the clip as is
         return false;
         /*
-        if (f.clipfile.is_of_type(MediaType.VIDEO)) {
+        if (f.mediafile.is_of_type(MediaType.VIDEO)) {
             uint32 format;
-            if (f.clipfile.get_video_format(out format)) {
+            if (f.mediafile.get_video_format(out format)) {
                 foreach (string s in no_import_formats) {
                     if (format == *(uint32*)s) {
                         return false;
@@ -181,8 +181,8 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
             if (need_to_import(f)) {
                 string checksum;
-                if (md5_checksum_on_file(f.clipfile.filename, out checksum)) {
-                    string base_filename = import_directory + isolate_filename(f.clipfile.filename);
+                if (md5_checksum_on_file(f.mediafile.filename, out checksum)) {
+                    string base_filename = import_directory + isolate_filename(f.mediafile.filename);
 
                     int index = 0;
                     string new_filename = base_filename;
@@ -194,7 +194,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                                 filenames[current_file_importing] =
                                                             append_extension(new_filename, "mov");
                                 current_file_importing--;
-                                total_time -= f.clipfile.length;
+                                total_time -= f.mediafile.length;
                                 break;
                             }
                             index++;
@@ -208,9 +208,9 @@ public class ClipImporter : MultiFileProgressInterface, Object {
                         }
                     }
                 } else
-                    error("Cannot get md5 checksum for file %s!", f.clipfile.filename);
+                    error("Cannot get md5 checksum for file %s!", f.mediafile.filename);
             } else {
-                clip_complete(f.clipfile);
+                clip_complete(f.mediafile);
             }
             do_import_complete();
         } catch (Error e) {
@@ -219,7 +219,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
     }
 
     void do_import(ClipFetcher f) throws Error {
-        file_updated(f.clipfile.filename, current_file_importing);
+        file_updated(f.mediafile.filename, current_file_importing);
         previous_time = 0;
 
         our_fetcher = f;
@@ -242,14 +242,14 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
         pipeline.add_many(mux, filesink);
 
-        if (f.clipfile.get_caps(MediaType.VIDEO) != null) {
+        if (f.mediafile.get_caps(MediaType.VIDEO) != null) {
             video_convert = make_element("ffmpegcolorspace");
             pipeline.add(video_convert);
 
             video_decoder = new SingleDecodeBin(Gst.Caps.from_string(
                                                                "video/x-raw-yuv"),
                                                                "videodecodebin", 
-                                                               f.clipfile.filename);
+                                                               f.mediafile.filename);
             video_decoder.pad_added.connect(on_pad_added);
 
             pipeline.add(video_decoder);
@@ -257,7 +257,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             if (!video_convert.link(mux))
                 error("do_import: Cannot link video converter to mux!");
         }
-        if (f.clipfile.get_caps(MediaType.AUDIO) != null) {
+        if (f.mediafile.get_caps(MediaType.AUDIO) != null) {
             audio_convert = make_element("audioconvert");
             pipeline.add(audio_convert);
 
@@ -265,7 +265,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             // if you need to import ogg and other float flavors.  see bug 2055
             audio_decoder = new SingleDecodeBin(
                 Gst.Caps.from_string("audio/x-raw-int"),
-                                                    "audiodecodebin", f.clipfile.filename);
+                                                    "audiodecodebin", f.mediafile.filename);
             audio_decoder.pad_added.connect(on_pad_added);
 
             pipeline.add(audio_decoder);
@@ -341,13 +341,13 @@ public class ClipImporter : MultiFileProgressInterface, Object {
         if (new_state == Gst.State.PAUSED) {
             if (!import_done) {
                 if (video_pad != null) {
-                    our_fetcher.clipfile.set_caps(MediaType.VIDEO, video_pad.caps);
+                    our_fetcher.mediafile.set_caps(MediaType.VIDEO, video_pad.caps);
                 }
                 if (audio_pad != null) {
-                    our_fetcher.clipfile.set_caps(MediaType.AUDIO, audio_pad.caps);
+                    our_fetcher.mediafile.set_caps(MediaType.AUDIO, audio_pad.caps);
                 }
                 emit(this, Facility.IMPORT, Level.VERBOSE,
-                    "Got clipfile info for: %s".printf(our_fetcher.clipfile.filename));
+                    "Got mediafile info for: %s".printf(our_fetcher.mediafile.filename));
             }
         } else if (new_state == Gst.State.NULL) {
             if (import_state == ImportState.CANCELLED) {
@@ -399,23 +399,23 @@ public class LibraryImporter : Object {
         project.error_occurred("Error importing", "An error occurred importing this file.");
     }
 
-    protected virtual void append_existing_clipfile(ClipFile f) {
+    protected virtual void append_existing_mediafile(MediaFile f) {
 
     }
 
-    protected virtual void on_clip_complete(ClipFile f) {
+    protected virtual void on_clip_complete(MediaFile f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_complete");
-        ClipFile cf = project.find_clipfile(f.filename);
+        MediaFile cf = project.find_mediafile(f.filename);
         if (cf == null) {
-            project.add_clipfile(f);
+            project.add_mediafile(f);
         }
     }
 
     public void add_file(string filename) throws Error {
-        ClipFile cf = project.find_clipfile(filename);
+        MediaFile cf = project.find_mediafile(filename);
 
         if (cf != null)
-            append_existing_clipfile(cf);
+            append_existing_mediafile(cf);
         else
             importer.add_filename(filename);
     }
@@ -437,7 +437,7 @@ public class TimelineImporter : LibraryImporter {
         this.both_tracks = both_tracks;
     }
 
-    void add_to_both(ClipFile clip_file) {
+    void add_to_both(MediaFile media_file) {
         if (both_tracks) {
             Track other_track;
             if (track is Model.VideoTrack) {
@@ -446,19 +446,19 @@ public class TimelineImporter : LibraryImporter {
                 other_track = project.find_video_track();
             }
             if (other_track != null) {
-                project.add(other_track, clip_file, time_to_add);
+                project.add(other_track, media_file, time_to_add);
             }
         }
     }
 
-    protected override void append_existing_clipfile(ClipFile f) {
+    protected override void append_existing_mediafile(MediaFile f) {
         project.undo_manager.start_transaction("Create Clip");
         project.add(track, f, time_to_add);
         add_to_both(f);
         project.undo_manager.end_transaction("Create Clip");
     }
 
-    protected override void on_clip_complete(ClipFile f) {
+    protected override void on_clip_complete(MediaFile f) {
         project.undo_manager.start_transaction("Create Clip");
         base.on_clip_complete(f);
         project.add(track, f, time_to_add);

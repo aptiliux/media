@@ -103,7 +103,7 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     void get_clip_colors() {
-        if (clip.clipfile.is_online()) {
+        if (clip.mediafile.is_online()) {
             Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#d82" : "#84a", 
                 out color_selected);
             Gdk.Color.parse(clip.type == Model.MediaType.VIDEO ? "#da5" : "#b9d", 
@@ -144,8 +144,8 @@ public class ClipView : Gtk.DrawingArea {
 
         bool left_trimmed = clip.media_start != 0 && !clip.is_recording;
 
-        bool right_trimmed = clip.clipfile.is_online() ? 
-                              (clip.media_start + clip.duration != clip.clipfile.length) : false;
+        bool right_trimmed = clip.mediafile.is_online() ? 
+                              (clip.media_start + clip.duration != clip.mediafile.length) : false;
 
         if (!left_trimmed && !right_trimmed) {
             draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
@@ -186,7 +186,7 @@ public class ClipView : Gtk.DrawingArea {
         Pango.Layout layout;
         if (clip.is_recording) {
             layout = create_pango_layout("Recording");
-        } else if (!clip.clipfile.is_online()) {
+        } else if (!clip.mediafile.is_online()) {
             layout = create_pango_layout("%s (Offline)".printf(clip.name));
         }
         else {

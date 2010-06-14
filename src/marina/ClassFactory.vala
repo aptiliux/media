@@ -27,8 +27,8 @@ public class ClassFactory {
         return new TrackViewConcrete(transport_delegate, track, timeline);
     }
 
-    public virtual Model.ClipFile get_clip_file(string filename, int64 duration) {
-        return new Model.ClipFileConcrete(filename, duration);
+    public virtual Model.MediaFile get_media_file(string filename, int64 duration) {
+        return new Model.MediaFileConcrete(filename, duration);
     }
 
     public static void set_class_factory(ClassFactory class_factory) {

@@ -14,7 +14,7 @@ public class MediaLoaderHandler : LoaderHandler {
     protected Track current_track;
 
     Gee.ArrayList<ClipFetcher> clipfetchers = new Gee.ArrayList<ClipFetcher>();
-    int num_clipfiles_complete;
+    int num_mediafiles_complete;
 
     public MediaLoaderHandler(Project the_project) {
         this.the_project = the_project;
@@ -35,7 +35,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        num_clipfiles_complete = 0;
+        num_mediafiles_complete = 0;
         return true;
     }
 
@@ -185,7 +185,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        Clip clip = new Clip(clipfetchers[id].clipfile, current_track.media_type(), clip_name, 
+        Clip clip = new Clip(clipfetchers[id].mediafile, current_track.media_type(), clip_name, 
             start, media_start, duration, false);
         current_track.add(clip, start, false);
         return true;
@@ -194,17 +194,17 @@ public class MediaLoaderHandler : LoaderHandler {
     void fetcher_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
         if (f.error_string != null) {
-            load_error("Could not load %s.".printf(f.clipfile.filename));
-            warning("Could not load %s: %s", f.clipfile.filename, f.error_string);
+            load_error("Could not load %s.".printf(f.mediafile.filename));
+            warning("Could not load %s: %s", f.mediafile.filename, f.error_string);
         }
-        the_project.add_clipfile(f.clipfile);
-        num_clipfiles_complete++;
-        if (num_clipfiles_complete == clipfetchers.size) {
+        the_project.add_mediafile(f.mediafile);
+        num_mediafiles_complete++;
+        if (num_mediafiles_complete == clipfetchers.size) {
             complete();
         }
     }
 
-    public override bool commit_clipfile(string[] attr_names, string[] attr_values) {
+    public override bool commit_mediafile(string[] attr_names, string[] attr_values) {
         string filename = null;
         int id = -1;
 
@@ -333,7 +333,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public Gee.ArrayList<Track> inactive_tracks = new Gee.ArrayList<Track>();
     Gee.HashSet<ClipFetcher> pending = new Gee.HashSet<ClipFetcher>();
     Gee.ArrayList<ThumbnailFetcher> pending_thumbs = new Gee.ArrayList<ThumbnailFetcher>();
-    protected Gee.ArrayList<ClipFile> clipfiles = new Gee.ArrayList<ClipFile>();
+    protected Gee.ArrayList<MediaFile> mediafiles = new Gee.ArrayList<MediaFile>();
     // TODO: media_engine is a member of project only temporarily.  It will be
     // less work to move it to fillmore/lombard once we have a transport class.
     public View.MediaEngine media_engine;
@@ -375,11 +375,11 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public signal void track_removed(Track track);
     public signal void error_occurred(string major_message, string? minor_message);
 
-    public signal void clipfile_added(ClipFile c);
-    public signal void clipfile_removed(ClipFile clip_file);
+    public signal void mediafile_added(MediaFile c);
+    public signal void mediafile_removed(MediaFile media_file);
     public signal void cleared();
 
-    public abstract TimeCode get_clip_time(ClipFile f);
+    public abstract TimeCode get_clip_time(MediaFile f);
 
     public Project(string? filename, bool include_video) throws Error {
         undo_manager = new UndoManager();
@@ -410,16 +410,16 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         return project_file;
     }
 
-    public ClipFile? get_clipfile(int index) {
+    public MediaFile? get_mediafile(int index) {
         if (index < 0 ||
-            index >= clipfiles.size)
+            index >= mediafiles.size)
             return null;
-        return clipfiles[index];
+        return mediafiles[index];
     }
 
-    public int get_clipfile_index(ClipFile find) {
+    public int get_mediafile_index(MediaFile find) {
         int i = 0;
-        foreach (ClipFile f in clipfiles) {
+        foreach (MediaFile f in mediafiles) {
             if (f == find)
                 return i;
             i++;
@@ -492,29 +492,29 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         }
     }
 
-    protected virtual void do_append(Track track, ClipFile clipfile, string name, 
+    protected virtual void do_append(Track track, MediaFile mediafile, string name, 
         int64 insert_time) {
-            if (clipfile.get_caps(track.media_type()) == null) {
+            if (mediafile.get_caps(track.media_type()) == null) {
                 return;
             }
 
-        Clip clip = new Clip(clipfile, track.media_type(), name, 0, 0, clipfile.length, false);
+        Clip clip = new Clip(mediafile, track.media_type(), name, 0, 0, mediafile.length, false);
         track.append_at_time(clip, insert_time, true);
     }
 
-    public void append(Track track, ClipFile clipfile) {
-        string name = isolate_filename(clipfile.filename);
+    public void append(Track track, MediaFile mediafile) {
+        string name = isolate_filename(mediafile.filename);
         int64 insert_time = 0;
 
         foreach (Track temp_track in tracks) {
             insert_time = int64.max(insert_time, temp_track.get_length());
         }
-        do_append(track, clipfile, name, insert_time);
+        do_append(track, mediafile, name, insert_time);
     }
 
-    public void add(Track track, ClipFile clipfile, int64 time) {
-        string name = isolate_filename(clipfile.filename);
-        do_append(track, clipfile, name, time);
+    public void add(Track track, MediaFile mediafile, int64 time) {
+        string name = isolate_filename(mediafile.filename);
+        do_append(track, mediafile, name, time);
     }
 
     public void on_clip_removed(Track t, Clip clip) {
@@ -672,41 +672,41 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         track_removed(track);
     }
 
-    public void add_clipfile(ClipFile clipfile) {
-        Model.Command command = new Model.AddClipCommand(this, clipfile);
+    public void add_mediafile(MediaFile mediafile) {
+        Model.Command command = new Model.AddClipCommand(this, mediafile);
         do_command(command);
     }
 
-    public void _add_clipfile(ClipFile clipfile) throws Error {
-        clipfiles.add(clipfile);
-        if (clipfile.is_online() && clipfile.get_caps(MediaType.VIDEO) != null) {
-            ThumbnailFetcher fetcher = new ThumbnailFetcher(clipfile, 0);
+    public void _add_mediafile(MediaFile mediafile) throws Error {
+        mediafiles.add(mediafile);
+        if (mediafile.is_online() && mediafile.get_caps(MediaType.VIDEO) != null) {
+            ThumbnailFetcher fetcher = new ThumbnailFetcher(mediafile, 0);
             fetcher.ready.connect(on_thumbnail_ready);
             pending_thumbs.add(fetcher);
         } else {
-            clipfile_added(clipfile);
+            mediafile_added(mediafile);
         }
     }
 
     void on_thumbnail_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_thumbnail_ready");
-        clipfile_added(f.clipfile);
+        mediafile_added(f.mediafile);
         pending_thumbs.remove(f as ThumbnailFetcher);
     }
 
-    public bool clipfile_on_track(string filename) {
-        ClipFile cf = find_clipfile(filename);
+    public bool mediafile_on_track(string filename) {
+        MediaFile cf = find_mediafile(filename);
 
         foreach (Track t in tracks) {
             foreach (Clip c in t.clips) {
-                if (c.clipfile == cf)
+                if (c.mediafile == cf)
                     return true;
             }
         }
 
         foreach (Track t in inactive_tracks) {
             foreach (Clip c in t.clips) {
-                if (c.clipfile == cf)
+                if (c.mediafile == cf)
                     return true;
             }
         }
@@ -714,10 +714,10 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         return false;
     }
 
-    void delete_clipfile_from_tracks(ClipFile cf) {
+    void delete_mediafile_from_tracks(MediaFile cf) {
         foreach (Track t in tracks) {
             for (int i = 0; i < t.clips.size; i++) {
-                if (t.clips[i].clipfile == cf) {
+                if (t.clips[i].mediafile == cf) {
                     t.delete_clip(t.clips[i]);
                     i --;
                 }
@@ -726,7 +726,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
         foreach (Track t in inactive_tracks) {
             for (int i = 0; i < t.clips.size; i++) {
-                if (t.clips[i].clipfile == cf) {
+                if (t.clips[i].mediafile == cf) {
                     t.delete_clip(t.clips[i]);
                     i --;
                 }
@@ -734,28 +734,28 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         }
     }
 
-    public void _remove_clipfile(ClipFile cf) {
-        clipfiles.remove(cf);
-        clipfile_removed(cf);
+    public void _remove_mediafile(MediaFile cf) {
+        mediafiles.remove(cf);
+        mediafile_removed(cf);
     }
 
-    public void remove_clipfile(string filename) {
-        ClipFile cf = find_clipfile(filename);
+    public void remove_mediafile(string filename) {
+        MediaFile cf = find_mediafile(filename);
         if (cf != null) {
             string description = "Delete From Library";
             undo_manager.start_transaction(description);
 
-            delete_clipfile_from_tracks(cf);
+            delete_mediafile_from_tracks(cf);
 
-            Command clipfile_delete = new ClipFileDeleteCommand(this, cf);
-            do_command(clipfile_delete);
+            Command mediafile_delete = new MediaFileDeleteCommand(this, cf);
+            do_command(mediafile_delete);
 
             undo_manager.end_transaction(description);
         }
     }
     
-    public ClipFile? find_clipfile(string filename) {
-        foreach (ClipFile cf in clipfiles)
+    public MediaFile? find_mediafile(string filename) {
+        foreach (MediaFile cf in mediafiles)
             if (cf.filename == filename)
                 return cf;
         return null;
@@ -839,7 +839,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
 
         tracks.clear();
         
-        clipfiles.clear();
+        mediafiles.clear();
         set_name(null);
         cleared();
     }
@@ -921,8 +921,8 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
                                              r.denominator);
         f.printf(">\n");
 
-        for (int i = 0; i < clipfiles.size; i++) {
-            f.printf("    <clipfile filename=\"%s\" id=\"%d\"/>\n", clipfiles[i].filename, i);
+        for (int i = 0; i < mediafiles.size; i++) {
+            f.printf("    <clipfile filename=\"%s\" id=\"%d\"/>\n", mediafiles[i].filename, i);
         }
 
         f.printf("  </library>\n");
@@ -1004,8 +1004,8 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
             emit(this, Facility.DEVELOPER_WARNINGS, Level.INFO, fetcher.error_string);
             error_occurred("Error retrieving clip", fetcher.error_string);
         } else {
-            if (get_clipfile_index(fetcher.clipfile) == -1) {
-                add_clipfile(fetcher.clipfile);
+            if (get_mediafile_index(fetcher.mediafile) == -1) {
+                add_mediafile(fetcher.mediafile);
             }
             fetcher_completion.complete(fetcher);
         }

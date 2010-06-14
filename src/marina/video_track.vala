@@ -22,7 +22,7 @@ public class VideoTrack : Track {
         Fraction rate1;
         Fraction rate2;
 
-        if (!clip.clipfile.is_online())
+        if (!clip.mediafile.is_online())
             return true;
             
         if (clips.size == 0)
@@ -33,7 +33,7 @@ public class VideoTrack : Track {
             return false;
         }
         
-        if (!clip.clipfile.get_frame_rate(out rate1)) {
+        if (!clip.mediafile.get_frame_rate(out rate1)) {
             error_occurred("can't get frame rate", null);
             return false;
         }
@@ -94,8 +94,8 @@ public class VideoTrack : Track {
             return false;
     
         foreach (Clip c in clips) {
-            if (c.clipfile.is_online()) {
-                bool can = c.clipfile.get_frame_rate(out rate);
+            if (c.mediafile.is_online()) {
+                bool can = c.mediafile.get_frame_rate(out rate);
                 assert(can);
                 
                 return can;

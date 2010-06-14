@@ -202,24 +202,24 @@ public class ClipSplitCommand : Command {
     }
 }
 
-public class ClipFileDeleteCommand : Command {
-    ClipFile clipfile;
+public class MediaFileDeleteCommand : Command {
+    MediaFile mediafile;
     Project project;
     
-    public ClipFileDeleteCommand(Project p, ClipFile cf) {
-        clipfile = cf;
+    public MediaFileDeleteCommand(Project p, MediaFile cf) {
+        mediafile = cf;
         project = p;
     }
     
     public override void apply() {
-        project._remove_clipfile(clipfile);
+        project._remove_mediafile(mediafile);
     }
     
     public override void undo() {
         try {
-            project._add_clipfile(clipfile);
+            project._add_mediafile(mediafile);
         } catch (Error e) {
-            project.error_occurred("Could not add clipfile.", e.message);
+            project.error_occurred("Could not add mediafile.", e.message);
         }
     }
     
@@ -350,24 +350,24 @@ public class BpmCommand : Command {
 }
 
 public class AddClipCommand : Command {
-    ClipFile clip_file;
+    MediaFile media_file;
     Project project;
 
-    public AddClipCommand(Project project, ClipFile clip_file) {
+    public AddClipCommand(Project project, MediaFile media_file) {
         this.project = project;
-        this.clip_file = clip_file;
+        this.media_file = media_file;
     }
 
     public override void apply() {
         try {
-            project._add_clipfile(clip_file);
+            project._add_mediafile(media_file);
         } catch (GLib.Error error) {
             project.error_occurred("Error importing", "An error occurred importing this file.");
         }
     }
 
     public override void undo() {
-        project._remove_clipfile(clip_file);
+        project._remove_mediafile(media_file);
     }
 
     public override bool merge(Command command) {

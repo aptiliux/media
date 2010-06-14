@@ -80,7 +80,7 @@ class MediaClip : Object {
                                                "singledecoder", filename);
         if (((Gst.Bin) file_source).add(sbin)) {
             if (!file_source.sync_state_with_parent()) {
-                clip.clipfile.set_online(false);
+                clip.mediafile.set_online(false);
             }
         }
     }
@@ -171,13 +171,13 @@ public abstract class MediaTrack : Object {
 
     void on_clip_updated(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_updated");
-        if (clip.clipfile.is_online()) {
+        if (clip.mediafile.is_online()) {
             try {
                 MediaClip media_clip;
                 if (clip.type == Model.MediaType.AUDIO) {
-                    media_clip = new MediaAudioClip(composition, clip, clip.clipfile.filename);
+                    media_clip = new MediaAudioClip(composition, clip, clip.mediafile.filename);
                 } else {
-                    media_clip = new MediaVideoClip(composition, clip, clip.clipfile.filename);
+                    media_clip = new MediaVideoClip(composition, clip, clip.mediafile.filename);
                 }
                 media_clip.clip_removed.connect(on_media_clip_removed);
 
@@ -1083,8 +1083,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
         string filename = new_audio_filename(track);
         ClassFactory class_factory = ClassFactory.get_class_factory();
-        Model.ClipFile clip_file = class_factory.get_clip_file(filename, 0);
-        record_region = new Model.Clip(clip_file, Model.MediaType.AUDIO, "", position, 0, 1, true);
+        Model.MediaFile media_file = class_factory.get_media_file(filename, 0);
+        record_region = new Model.Clip(media_file, Model.MediaType.AUDIO, "", position, 0, 1, true);
     }
 
     public void start_record(Model.Clip region) throws Error {
@@ -1103,7 +1103,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_capsfilter = make_element("capsfilter");
         record_capsfilter.set("caps", get_record_audio_caps());
         record_sink = make_element("filesink");
-        record_sink.set("location", record_region.clipfile.filename);
+        record_sink.set("location", record_region.mediafile.filename);
         wav_encoder = make_element("wavenc");
 
         record_bin.add_many(audio_in, record_capsfilter, wav_encoder, record_sink);
