@@ -7,7 +7,11 @@
 using Logging;
 
 int debug_level;
+bool do_print_graph = false;
 const OptionEntry[] options = {
+    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
+        "Show Save Graph in help menu.  Must set environment variable GST_DEBUG_DUMP_DOT_DIR", 
+        null },
     { "debug-level", 0, 0, OptionArg.INT, &debug_level,
         "Control amount of diagnostic information",
         "[0 (minimal),5 (maximum)]" },
@@ -236,7 +240,7 @@ class App : Gtk.Window, TransportDelegate {
 
         // TODO: only destroy it if --debug is not specified on the command line
         // or conversely, only add it if --debug is specified on the command line
-        if (save_graph != null) {
+        if (!do_print_graph && save_graph != null) {
             save_graph.destroy();
         }
 

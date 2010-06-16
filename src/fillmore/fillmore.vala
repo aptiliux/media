@@ -12,7 +12,8 @@ int debug_level;
 
 const OptionEntry[] options = {
     { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
-        "Show Print Graph in help menu", null },
+        "Show Save Graph in help menu.  Must set environment variable GST_DEBUG_DUMP_DOT_DIR", 
+        null },
     { "debug-level", 0, 0, OptionArg.INT, &debug_level,
         "Control amount of diagnostic information",
         "[0 (minimal),5 (maximum)]" },
@@ -435,10 +436,12 @@ class Recorder : Gtk.Window, TransportDelegate {
 
         // Edit menu
         set_sensitive_group(main_group, "Undo", is_stopped && project.undo_manager.can_undo);
-        set_sensitive_group(main_group, "Copy", is_stopped && selected);
-        set_sensitive_group(main_group, "Cut", is_stopped && selected);
-        set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0 && is_stopped);
-        set_sensitive_group(main_group, "Delete", (selected || library_selected) && is_stopped);
+        set_sensitive_group(main_group, "Copy", is_stopped && selected && number_of_tracks > 0);
+        set_sensitive_group(main_group, "Cut", is_stopped && selected && number_of_tracks > 0);
+        set_sensitive_group(main_group, "Paste", timeline.clipboard.clips.size != 0 && is_stopped &&
+            number_of_tracks > 0);
+        set_sensitive_group(main_group, "Delete", (selected || library_selected) && is_stopped &&
+            number_of_tracks > 0);
         set_sensitive_group(main_group, "SplitAtPlayhead",
             selected && playhead_on_clip && is_stopped);
         set_sensitive_group(main_group, "TrimToPlayhead",
