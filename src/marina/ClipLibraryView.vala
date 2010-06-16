@@ -160,7 +160,7 @@ public class ClipLibraryView : Gtk.EventBox {
             context_menu.popdown();
         }
 
-        return true;
+        return false;
     }
 
     bool on_button_released(Gdk.EventButton b) {
@@ -185,7 +185,7 @@ public class ClipLibraryView : Gtk.EventBox {
         if (path == null ||
             (cell_x == 0 && cell_y == 0)) {
             selection_changed(false);
-            return true;
+            return false;
         }
 
         bool shift_pressed = (b.state & Gdk.ModifierType.SHIFT_MASK) != 0;
@@ -199,7 +199,7 @@ public class ClipLibraryView : Gtk.EventBox {
         selection.select_path(path);
         selection_changed(true);
 
-        return true;
+        return false;
     }
 
     void on_cursor_changed() {

@@ -204,7 +204,7 @@ public class ClipView : Gtk.DrawingArea {
 
     public override bool button_press_event(Gdk.EventButton event) {
         if (!transport_delegate.is_stopped()) {
-            return true;
+            return false;
         }
 
         event.x -= allocation.x;
@@ -248,12 +248,12 @@ public class ClipView : Gtk.DrawingArea {
             context_menu.popdown();
         }
 
-        return true;
+        return false;
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
         if (!transport_delegate.is_stopped()) {
-            return true;
+            return false;
         }
 
         event.x -= allocation.x;
@@ -282,7 +282,7 @@ public class ClipView : Gtk.DrawingArea {
             }
         }
         motion_mode = MotionMode.NONE;
-        return true;
+        return false;
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {

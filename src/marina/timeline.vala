@@ -558,7 +558,7 @@ public class TimeLine : Gtk.EventBox {
         }
         queue_draw();
 
-        return true;
+        return false;
     }
 
     public override bool button_release_event(Gdk.EventButton event) {
@@ -566,7 +566,7 @@ public class TimeLine : Gtk.EventBox {
             drag_widget.button_release_event(event);
             drag_widget = null;
         }
-        return true;
+        return false;
     }
 
     public override bool motion_notify_event(Gdk.EventMotion event) {
@@ -590,7 +590,7 @@ public class TimeLine : Gtk.EventBox {
                 window.set_cursor(null);
             }
         }
-        return true;
+        return false;
     }
 
     TrackView? find_video_track_view() {
