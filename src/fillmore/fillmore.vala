@@ -548,7 +548,9 @@ class Recorder : Gtk.Window, TransportDelegate {
                 if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
                     project.go_previous();
                 } else {
-                    project.media_engine.go(project.transport_get_position() - Gst.SECOND);
+                    int64 position = project.transport_get_position();
+                    int64 previous_time = provider.previous_tick(position);
+                    project.media_engine.go(previous_time);
                 }
                 page_to_time(project.transport_get_position());
                 break;
@@ -559,7 +561,9 @@ class Recorder : Gtk.Window, TransportDelegate {
                 if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
                     project.go_next();
                 } else {
-                    project.media_engine.go(project.transport_get_position() + Gst.SECOND);
+                    int64 position = project.transport_get_position();
+                    int64 next_time = provider.next_tick(position);
+                    project.media_engine.go(next_time);
                 }
                 page_to_time(project.transport_get_position());
                 break;

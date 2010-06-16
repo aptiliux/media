@@ -24,6 +24,8 @@ public interface TimeSystem : Object {
     public abstract int xsize_to_frame(int xsize);
     public abstract string get_time_string(int64 time);
     public abstract string get_time_duration(int64 time);
+    public abstract int64 next_tick(int64 time);
+    public abstract int64 previous_tick(int64 time);
 }
 
 public abstract class TimeSystemBase : Object {
@@ -78,6 +80,10 @@ public abstract class TimeSystemBase : Object {
         return (int64) ((float)(size * Gst.SECOND) / pixels_per_second);
     }
 
+    public int64 xsize_to_time_double(double size) {
+        return (int64)((size * Gst.SECOND) / pixels_per_second);
+    }
+
     public int time_to_xsize(int64 time) {
         return (int) (time * pixels_per_second / Gst.SECOND);
     }
@@ -88,6 +94,11 @@ public abstract class TimeSystemBase : Object {
         if (xpos_to_time(pos) != time)
             pos++;
         return pos;
+    }
+
+    public int64 tick_increment(int64 the_time, int64 boundary, int increment) {
+        int64 result = ((the_time / boundary) + increment) * boundary;
+        return result < 0 ? 0 : result;
     }
 }
 
@@ -130,6 +141,17 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         // Timecode is already zero-based
         return get_time_string(the_time);
     }
+
+    public int64 next_tick(int64 the_time) {
+        return tick_increment(the_time, 
+            xsize_to_time_double(large_pixel_frames * pixels_per_frame), 1);
+    }
+
+    public int64 previous_tick(int64 the_time) {
+        return tick_increment(the_time, 
+            xsize_to_time_double(large_pixel_frames * pixels_per_frame), -1);
+    }
+
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
         int pixels_per_large = 300;
         int pixels_per_medium = 50;
@@ -322,6 +344,16 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             total_beats = 1;
         }
         return beats_to_string(total_beats, true, true);
+    }
+
+    public int64 next_tick(int64 the_time) {
+        return tick_increment(the_time, 
+            xsize_to_time_double(large_pixel_sixteenth * pixels_per_sixteenth), 1);
+    }
+
+    public int64 previous_tick(int64 the_time) {
+        return tick_increment(the_time,
+            xsize_to_time_double(large_pixel_sixteenth * pixels_per_sixteenth), -1);
     }
 
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
