@@ -190,7 +190,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
         load_errors = new Gee.ArrayList<string>();
         try {
-            set_icon_from_file(
+            set_default_icon_from_file(
                 AppDirs.get_resources_dir().get_child("fillmore_icon.png").get_path());
         } catch (GLib.Error e) {
             warning("Could not load application icon: %s", e.message);

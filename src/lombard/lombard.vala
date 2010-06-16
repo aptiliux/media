@@ -168,7 +168,7 @@ class App : Gtk.Window, TransportDelegate {
 
     public App(string? project_file) throws Error {
         try {
-            set_icon_from_file(
+            set_default_icon_from_file(
                 AppDirs.get_resources_dir().get_child("lombard_icon.png").get_path());
         } catch (GLib.Error e) {
             warning("Could not load application icon: %s", e.message);
