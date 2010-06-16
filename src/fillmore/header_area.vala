@@ -103,7 +103,7 @@ class AudioTrackHeader : TrackHeader {
             AppDirs.get_resources_dir().get_child("min_speaker.png").get_path());
         volume_box.pack_start(min_speaker, false, false, 0);
         volume = new VolumeSlider();
-        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 1, 0));
+        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 0.1, 0));
         volume.value_changed.connect(on_volume_value_changed);
         volume_box.pack_start(volume, true, true, 0);
         Gtk.Image max_speaker = new Gtk.Image.from_file(
