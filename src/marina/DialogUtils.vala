@@ -248,10 +248,18 @@ namespace DialogUtils {
         t.attach(a, x, x + 1, y, y + 1, Gtk.AttachOptions.FILL, Gtk.AttachOptions.FILL, xpad, ypad);
     }
 
+    void on_dialog_response(Gtk.Dialog dialog, int response_id) {
+        if (response_id == Gtk.ResponseType.CLOSE) {
+            dialog.destroy();
+        }
+    }
+
     public void show_clip_properties(Gtk.Window parent, ClipView? selected_clip, 
             Model.MediaFile ? media_file, Fraction? frames_per_second) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
-                                    Gtk.DialogFlags.MODAL, Gtk.STOCK_OK, Gtk.ResponseType.ACCEPT);
+            Gtk.DialogFlags.NO_SEPARATOR, Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE);
+
+        d.response.connect(on_dialog_response);
         if (selected_clip != null) {
             media_file = selected_clip.clip.mediafile;
         }
@@ -345,7 +353,5 @@ namespace DialogUtils {
         d.vbox.pack_start(t, false, false, 0);
 
         d.show_all();
-        d.run();
-        d.destroy();
     }
 }
