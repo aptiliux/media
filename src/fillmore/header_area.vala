@@ -6,6 +6,10 @@
 
 using Logging;
 
+class TrackSeparator : Gtk.HSeparator {
+//this class is referenced in the resource file
+}
+
 class TrackHeader : Gtk.EventBox {
     protected weak Model.Track track;
     protected weak HeaderArea header_area;
@@ -189,7 +193,8 @@ class HeaderArea : Gtk.EventBox {
         //we are currently only supporting audio tracks.  We'll probably have
         //a separate method for adding video track, midi track, aux input, etc
 
-        TrackHeader header = new AudioTrackHeader(audio_track, this, trackview.get_track_height());
+        TrackHeader header = new AudioTrackHeader(audio_track, this, 
+            trackview.get_track_height() - 2); // - 2 allows room for TrackSeparator
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(new TrackSeparator(), false, false, 0);
         vbox.show_all();

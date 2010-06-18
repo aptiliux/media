@@ -24,6 +24,35 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         track.clip_removed.connect(on_clip_removed);
     }
 
+    public override bool expose_event(Gdk.EventExpose event) {
+        Cairo.Context context = Gdk.cairo_create(window);
+        Cairo.Antialias old_antialias = context.get_antialias();
+
+        context.set_antialias(Cairo.Antialias.NONE);
+        context.set_source_rgb(0.3, 0.3, 0.3);
+        double old_line_width = context.get_line_width();
+
+        context.set_line_width(2);
+        int64 current_time = timeline.provider.xpos_to_time(event.area.x);
+        int64 stop = timeline.provider.xpos_to_time(event.area.x + event.area.width);
+        while (current_time <= stop) {
+            current_time = timeline.provider.next_tick(current_time);
+            int x = timeline.provider.time_to_xpos(current_time);
+            context.move_to(x, allocation.y);
+            context.line_to(x, allocation.y + allocation.height - 1);
+        }
+        context.stroke();
+        context.set_line_width(1);
+        context.set_source_rgb(0.5, 0.5, 0.5);
+        context.move_to(allocation.x, allocation.y + allocation.height);
+        context.line_to(allocation.x + allocation.width, allocation.y + allocation.height - 1);
+
+        context.stroke();
+        context.set_antialias(old_antialias);
+        context.set_line_width(old_line_width);
+        return base.expose_event(event);
+    }
+
     override void size_request(out Gtk.Requisition requisition) {
         base.size_request(out requisition);
         requisition.height = TrackHeight;

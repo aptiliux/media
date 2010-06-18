@@ -1054,7 +1054,7 @@ class Recorder : Gtk.Window, TransportDelegate {
                 } catch (GLib.Error e) { }
             }
 
-            ClassFactory.set_class_factory(new FillmoreClassFactory());
+            ClassFactory.set_class_factory(new ClassFactory());
             View.MediaEngine.can_run();
 
             Recorder recorder = new Recorder(project_file);
