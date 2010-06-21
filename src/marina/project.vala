@@ -354,6 +354,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public bool library_visible = true;
     public int library_width = 600;
     public bool snap_to_clip;
+    public bool snap_to_grid;
 
     /* TODO:
      * This can't be const since the Vala compiler (0.7.7) crashes if we try to make it a const.

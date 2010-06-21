@@ -309,7 +309,7 @@ public class TimeLine : Gtk.EventBox {
         project.undo_manager.end_transaction("Trim Clip");
     }
 
-    void constrain_move(ClipView clip_view, ref int64 delta) {
+    bool constrain_move(ClipView clip_view, ref int64 delta) {
         int min_delta = clip_view.SNAP_DELTA;
         int delta_xsize = provider.time_to_xsize(delta);
         TrackView track_view = (TrackView) clip_view.parent as TrackView;
@@ -320,14 +320,34 @@ public class TimeLine : Gtk.EventBox {
             if (track.clip_is_near(clip_view.clip, range, out adjustment)) {
                 delta = adjustment;
                 clip_view.snap(provider.time_to_xsize(adjustment));
+                return true;
             }
         }
+        return false;
     }
 
     void on_clip_view_move_request(ClipView clip_view, int64 delta) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        bool snapped = false;
         if (project.snap_to_clip) {
-            constrain_move(clip_view, ref delta);
+            snapped = constrain_move(clip_view, ref delta);
+        }
+
+        if (!snapped && project.snap_to_grid) {
+            int64 range = provider.xsize_to_time(clip_view.SNAP_DELTA);
+            int64 snap_time = provider.next_tick(clip_view.clip.start);
+            int64 difference = clip_view.clip.start - snap_time;
+            if (difference.abs() < range) {
+                delta = -difference;
+                clip_view.snap(provider.time_to_xsize(difference));
+            } else {
+                snap_time = provider.previous_tick(clip_view.clip.start);
+                difference = clip_view.clip.start - snap_time;
+                if (difference.abs() < range) {
+                    delta = -difference;
+                    clip_view.snap(provider.time_to_xsize(difference));
+                }
+            }
         }
         if (move_allowed(ref delta)) {
             move_the_clips(delta);

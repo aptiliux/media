@@ -93,7 +93,8 @@ class App : Gtk.Window, TransportDelegate {
 
     const Gtk.ToggleActionEntry[] check_actions = { 
         { LibraryToggle, null, "_Library", "F9", null, on_view_library, true },
-        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, true }
+        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, true },
+        { "SnapGrid", null, "Snap to _Grid", null, null, on_snap_grid, false }
     };
 
     const string ui = """
@@ -132,6 +133,7 @@ class App : Gtk.Window, TransportDelegate {
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
         <separator/>
         <menuitem name="Snap" action="Snap"/>
+        <menuitem name="SnapGrid" action="SnapGrid"/>
     </menu>
     <menu name="GoMenu" action="Go">
       <menuitem name="GoStart" action="Start"/>
@@ -200,6 +202,7 @@ class App : Gtk.Window, TransportDelegate {
 
         project = new Model.VideoProject(project_filename);
         project.snap_to_clip = true;
+        project.snap_to_grid = false;
         project.name_changed.connect(set_project_name);
         project.load_error.connect(on_load_error);
         project.load_complete.connect(on_load_complete);
@@ -410,6 +413,11 @@ class App : Gtk.Window, TransportDelegate {
         action = main_group.get_action("Snap") as Gtk.ToggleAction;
         if (action.get_active() != project.snap_to_clip) {
             action.set_active(project.snap_to_clip);
+        }
+
+        action = main_group.get_action("SnapGrid") as Gtk.ToggleAction;
+        if (action.get_active() != project.snap_to_grid) {
+            action.set_active(project.snap_to_grid);
         }
 
         if (project.library_visible) {
@@ -691,6 +699,10 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_snap() {
         project.snap_to_clip = !project.snap_to_clip;
+    }
+
+    void on_snap_grid() {
+        project.snap_to_grid = !project.snap_to_grid;
     }
 
     void on_view_library() {

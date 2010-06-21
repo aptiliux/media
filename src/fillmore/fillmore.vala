@@ -96,7 +96,8 @@ class Recorder : Gtk.Window, TransportDelegate {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
         { "Library", null, "_Library", "F9", null, on_view_library, true },
-        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, false }
+        { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, false },
+        { "SnapGrid", null, "Snap to _Grid", null, null, on_snap_to_grid, false }
     };
 
     const string ui = """
@@ -137,6 +138,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         <menuitem name="ViewZoomProject" action="ZoomProject"/>
         <separator/>
         <menuitem name="Snap" action="Snap"/>
+        <menuitem name="SnapGrid" action="SnapGrid" />
     </menu>
     <menu name="TrackMenu" action="Track">
       <menuitem name="TrackNew" action="NewTrack"/>
@@ -197,6 +199,7 @@ class Recorder : Gtk.Window, TransportDelegate {
         }
         project = new Model.AudioProject(project_file);
         project.snap_to_clip = false;
+        project.snap_to_grid = false;
         provider = new Model.BarBeatTimeSystem(project);
 
         project.media_engine.callback_pulse.connect(on_callback_pulse);
@@ -891,6 +894,10 @@ class Recorder : Gtk.Window, TransportDelegate {
         project.snap_to_clip = !project.snap_to_clip;
     }
 
+    void on_snap_to_grid() {
+        project.snap_to_grid = !project.snap_to_grid;
+    }
+
     void on_view_library() {
         if (timeline_library_pane.child2 == library_scrolled) {
             timeline_library_pane.remove(library_scrolled);
@@ -1087,6 +1094,11 @@ class Recorder : Gtk.Window, TransportDelegate {
         action = main_group.get_action("Snap") as Gtk.ToggleAction;
         if (action.get_active() != project.snap_to_clip) {
             action.set_active(project.snap_to_clip);
+        }
+
+        action = main_group.get_action("SnapGrid") as Gtk.ToggleAction;
+        if (action.get_active() != project.snap_to_grid) {
+            action.set_active(project.snap_to_grid);
         }
 
         if (project.library_visible) {
