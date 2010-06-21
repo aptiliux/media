@@ -137,7 +137,7 @@ public class ClipFetcher : Fetcher {
 
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
-        if (message.src() != pipeline)
+        if (message.src != pipeline)
             return;
 
         Gst.State old_state;
@@ -236,7 +236,7 @@ public class ThumbnailFetcher : Fetcher {
 
     protected override void on_state_change(Gst.Bus bus, Gst.Message message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_change");
-        if (message.src() != pipeline)
+        if (message.src != pipeline)
             return;
 
         Gst.State new_state;

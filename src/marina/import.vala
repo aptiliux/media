@@ -324,7 +324,7 @@ public class ClipImporter : MultiFileProgressInterface, Object {
 
     void on_state_changed(Gst.Bus b, Gst.Message m) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_state_changed");
-        if (m.src() != pipeline) 
+        if (m.src != pipeline) 
             return;
 
         Gst.State old_state;

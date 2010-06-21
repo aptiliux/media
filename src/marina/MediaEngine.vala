@@ -823,14 +823,14 @@ public class MediaEngine : MultiFileProgressInterface, Object {
                 temp = rms.list_get_value(1);
                 level_right = temp.get_double();
             }
-            level_changed(message.src(), level_left, level_right);
+            level_changed(message.src, level_left, level_right);
         }
     }
 
     void on_state_change(Gst.Bus bus, Gst.Message message) {
-        if (message.src() != pipeline) {
+        if (message.src != pipeline) {
             emit(this, Facility.GRAPH, Level.VERBOSE, 
-                "on_state_change returning.  message from %s".printf(message.src().get_name()));
+                "on_state_change returning.  message from %s".printf(message.src.get_name()));
             return;
         }
 
