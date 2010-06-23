@@ -15,12 +15,10 @@
     <child internal-child="vbox">
       <object class="GtkVBox" id="dialog-vbox1">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <object class="GtkVBox" id="vbox1">
             <property name="visible">True</property>
-            <property name="orientation">vertical</property>
             <property name="spacing">6</property>
             <child>
               <object class="GtkLabel" id="label2">
@@ -306,5 +304,206 @@
     <property name="step_increment">0.01</property>
     <property name="page_increment">0.10000000000000001</property>
     <property name="page_size">0.10000000000000001</property>
+  </object>
+  <object class="GtkAdjustment" id="trackvolume_adjustment">
+    <property name="value">0.80000000000000004</property>
+    <property name="upper">1.5</property>
+    <property name="step_increment">0.01</property>
+    <property name="page_increment">0.10000000000000001</property>
+  </object>
+  <object class="GtkAdjustment" id="pan_adjustment">
+    <property name="lower">-1</property>
+    <property name="upper">1</property>
+    <property name="step_increment">0.10000000000000001</property>
+    <property name="page_increment">0.10000000000000001</property>
+  </object>
+  <object class="AudioTrackHeader" id="HeaderArea">
+    <property name="visible">True</property>
+    <child>
+      <object class="GtkHBox" id="hea">
+        <property name="width_request">300</property>
+        <property name="visible">True</property>
+        <child>
+          <object class="GtkVBox" id="vbox2">
+            <property name="visible">True</property>
+            <child>
+              <object class="GtkLabel" id="track_label">
+                <property name="width_request">100</property>
+                <property name="visible">True</property>
+                <property name="xalign">0</property>
+                <property name="xpad">2</property>
+                <property name="label" translatable="yes">Track 1</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkHBox" id="hbox2">
+                <property name="visible">True</property>
+                <child>
+                  <object class="HeaderToggleButton" id="solo">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="receives_default">False</property>
+                    <property name="tooltip_text" translatable="yes">Solo track</property>
+                    <property name="focus_on_click">False</property>
+                    <signal name="toggled" handler="audio_track_header_on_solo_toggled" object="HeaderArea"/>
+                    <child>
+                      <object class="GtkImage" id="image1">
+                        <property name="visible">True</property>
+                        <property name="tooltip_text" translatable="yes">Solo</property>
+                        <property name="stock">gtk-yes</property>
+                        <property name="icon-size">1</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="HeaderToggleButton" id="mute">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="receives_default">False</property>
+                    <property name="tooltip_text" translatable="yes">Mute track</property>
+                    <property name="focus_on_click">False</property>
+                    <signal name="toggled" handler="audio_track_header_on_mute_toggled" object="HeaderArea"/>
+                    <child>
+                      <object class="GtkImage" id="image2">
+                        <property name="visible">True</property>
+                        <property name="stock">gtk-delete</property>
+                        <property name="icon-size">1</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="padding">6</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkVBox" id="vbox3">
+            <property name="visible">True</property>
+            <child>
+              <object class="ViewAudioMeter" id="audiometer1">
+                <property name="width_request">150</property>
+                <property name="visible">True</property>
+              </object>
+              <packing>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkHBox" id="hbox4">
+                <property name="visible">True</property>
+                <child>
+                  <object class="GtkImage" id="image4">
+                    <property name="visible">True</property>
+                    <property name="pixbuf">min_speaker.png</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="VolumeSlider" id="track_volume">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="adjustment">trackvolume_adjustment</property>
+                    <signal name="value_changed" handler="audio_track_header_on_volume_value_changed" object="HeaderArea"/>
+                  </object>
+                  <packing>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkImage" id="image5">
+                    <property name="visible">True</property>
+                    <property name="pixbuf">max_speaker.png</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkHBox" id="hbox3">
+                <property name="visible">True</property>
+                <child>
+                  <object class="GtkLabel" id="label3">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">L</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="padding">3</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="VolumeSlider" id="track_pan">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="adjustment">pan_adjustment</property>
+                    <signal name="value_changed" handler="audio_track_header_on_pan_value_changed" object="HeaderArea"/>
+                  </object>
+                  <packing>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="label4">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">R</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="padding">2</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="position">2</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
   </object>
 </interface>

@@ -141,8 +141,34 @@ public class TimeLine : Gtk.EventBox {
         trackview_added(track_view);
         if (track.media_type() == Model.MediaType.VIDEO) {
             vbox.reorder_child(track_view, 1);
+        } else if (track.media_type() == Model.MediaType.AUDIO) {
+            Model.AudioTrack audio_track = track as Model.AudioTrack;
+            audio_track.solo_changed.connect(on_solo_changed);
+            audio_track.indirect_mute = any_track_solo();
         }
         vbox.show_all();
+    }
+
+    bool any_track_solo() {
+        foreach (TrackView track_view in tracks) {
+            Model.AudioTrack audio_track = track_view.get_track() as Model.AudioTrack;
+            if (audio_track.solo) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void on_solo_changed(Model.AudioTrack track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_solo_changed");
+
+        bool any_solo = track.solo || any_track_solo();
+        foreach (TrackView track_view in tracks) {
+            Model.AudioTrack audio_track = track_view.get_track() as Model.AudioTrack;
+            if (audio_track != null && !audio_track.solo) {
+                audio_track.indirect_mute = any_solo;
+            }
+        }
     }
 
     void on_track_removed(Model.Track track) {

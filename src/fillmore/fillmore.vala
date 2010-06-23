@@ -20,7 +20,7 @@ const OptionEntry[] options = {
     { null }
 };
 
-class Recorder : Gtk.Window, TransportDelegate {
+public class Recorder : Gtk.Window, TransportDelegate {
     public Model.AudioProject project;
     public TimeLine timeline;
     View.ClickTrack click_track;

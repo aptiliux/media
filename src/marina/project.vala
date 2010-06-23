@@ -104,6 +104,12 @@ public class MediaLoaderHandler : LoaderHandler {
                     case "channels":
                         audio_track.set_default_num_channels(attr_values[i].to_int());
                         break;
+                    case "solo":
+                        audio_track.solo = attr_values[i].to_bool();
+                        break;
+                    case "mute":
+                        audio_track.mute = attr_values[i].to_bool();
+                        break;
                     default:
                         break;
                 }

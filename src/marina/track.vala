@@ -480,6 +480,59 @@ public class AudioTrack : Track {
     int default_num_channels;
     public static const int INVALID_CHANNEL_COUNT = -1;
 
+    bool _mute;
+    public bool mute { 
+        set {
+            if (value != _mute) {
+                _mute = value;
+                mute_changed();
+                if (mute) {
+                    solo = false;
+                }
+            }
+        }
+
+        get {
+            return _mute;
+        }
+    }
+
+    bool _solo;
+    public bool solo {
+        set {
+            if (value != _solo) {
+                _solo = value;
+                solo_changed();
+                if (solo) {
+                    indirect_mute = false;
+                    mute = false;
+                }
+            }
+        }
+
+        get {
+            return _solo;
+        }
+    }
+
+    bool _indirect_mute;
+    public bool indirect_mute {
+        set {
+            if (value != _indirect_mute) {
+                _indirect_mute = value;
+                indirect_mute_changed();
+            }
+        }
+
+        get {
+            return _indirect_mute;
+        }
+    }
+
+    public signal void mute_changed();
+    public signal void solo_changed();
+    public signal void indirect_mute_changed();
+
     public signal void parameter_changed(Parameter parameter, double new_value);
     public signal void level_changed(double level_left, double level_right);
     public signal void channel_count_changed(int channel_count);
@@ -503,9 +556,11 @@ public class AudioTrack : Track {
         f.printf("volume=\"%f\" panorama=\"%f\" ", get_volume(), get_pan());
 
         int channels;
-        if (get_num_channels(out channels) &&
-            channels != INVALID_CHANNEL_COUNT)
+        if (get_num_channels(out channels) && channels != INVALID_CHANNEL_COUNT) {
             f.printf("channels=\"%d\" ", channels);
+        }
+
+        f.printf("mute=\"%s\" solo=\"%s\" ", mute.to_string(), solo.to_string());
     }
 
     public void set_pan(double new_value) {

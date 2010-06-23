@@ -10,42 +10,46 @@ class TrackSeparator : Gtk.HSeparator {
 //this class is referenced in the resource file
 }
 
-class TrackHeader : Gtk.EventBox {
+public class HeaderToggleButton : Gtk.ToggleButton {
+//this class is referenced in the resource file
+}
+
+public class TrackHeader : Gtk.EventBox {
     protected weak Model.Track track;
     protected weak HeaderArea header_area;
     protected Gtk.Label track_label;
-    
-    public const int width = 100;
-    
-    public TrackHeader(Model.Track track, HeaderArea area, int height) {
+
+    public const int width = 300;
+
+    public virtual void setup(Gtk.Builder builder, Model.Track track, HeaderArea area, int height) {
         this.track = track;
         this.header_area = area;
-        
+
         track.track_renamed.connect(on_track_renamed);
         track.track_selection_changed.connect(on_track_selection_changed);
         set_size_request(width, height);
-        modify_bg(Gtk.StateType.NORMAL, header_area.background_color);
-        modify_bg(Gtk.StateType.SELECTED, parse_color("#68a"));
-        
-        track_label = new Gtk.Label(track.display_name);
+
+        track_label = (Gtk.Label) builder.get_object("track_label");
+        track_label.set_text(track.display_name);
         track_label.modify_fg(Gtk.StateType.NORMAL, parse_color("#fff"));
     }
-    
+
     void on_track_renamed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_renamed");
         track_label.set_text(track.display_name);
     }
-    
+
     void on_track_selection_changed(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_selection_changed");
+        
         set_state(track.get_is_selected() ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL);
     }
-    
+
     public override bool button_press_event(Gdk.EventButton event) {
         header_area.select(track);
         return true;
     }
-    
+
     public Model.Track get_track() {
         return track;
     }
@@ -62,7 +66,7 @@ public class SliderBase : Gtk.HScrollbar {
             warning("Could not load resource for slider: %s", e.message);
         }
     }
-    
+
     public override bool expose_event (Gdk.EventExpose event) {
         Gdk.GC gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
         int radius = (slider_end - slider_start) / 2;
@@ -78,7 +82,7 @@ public class SliderBase : Gtk.HScrollbar {
     }
 }
 
-class PanSlider : SliderBase {
+public class PanSlider : SliderBase {
     construct {
     }
 }
@@ -88,45 +92,76 @@ public class VolumeSlider : SliderBase {
     }
 }
 
-class AudioTrackHeader : TrackHeader {
-    public PanSlider pan;
+public class AudioTrackHeader : TrackHeader {
+    public VolumeSlider pan;
     public VolumeSlider volume;
-    
-    public AudioTrackHeader(Model.AudioTrack track, HeaderArea header, int height) {
-        base(track, header, height);
-        Gtk.HBox pan_box = new Gtk.HBox(false, 0);
-        pan_box.pack_start(new Gtk.Label(" L"), false, false, 0);
-        pan = new PanSlider();
-        pan.set_adjustment(new Gtk.Adjustment(track.get_pan(), -1, 1, 0.1, 0.1, 0.0));
-        pan.value_changed.connect(on_pan_value_changed);
-        pan_box.pack_start(pan, true, true, 1);
-        pan_box.pack_start(new Gtk.Label("R "), false, false, 0);
+    HeaderToggleButton mute;
+    HeaderToggleButton solo;
 
-        Gtk.HBox volume_box = new Gtk.HBox(false, 0);
-        Gtk.Image min_speaker = new Gtk.Image.from_file(
-            AppDirs.get_resources_dir().get_child("min_speaker.png").get_path());
-        volume_box.pack_start(min_speaker, false, false, 0);
-        volume = new VolumeSlider();
-        volume.set_adjustment(new Gtk.Adjustment(track.get_volume(), 0, 1.5, 0.01, 0.1, 0));
-        volume.value_changed.connect(on_volume_value_changed);
-        volume_box.pack_start(volume, true, true, 0);
-        Gtk.Image max_speaker = new Gtk.Image.from_file(
-            AppDirs.get_resources_dir().get_child("max_speaker.png").get_path());
-        volume_box.pack_start(max_speaker, false, false, 0);
+    public override void setup(Gtk.Builder builder, Model.Track track, 
+            HeaderArea header, int height) {
+        base.setup(builder, track, header, height);
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        View.AudioMeter audio_meter = (View.AudioMeter) builder.get_object("audiometer1");
 
-        track.parameter_changed.connect(on_parameter_changed);
+        mute = (HeaderToggleButton) builder.get_object("mute");
+        solo = (HeaderToggleButton) builder.get_object("solo");
 
-        Gtk.VBox vbox = new Gtk.VBox(false, 0);
-        vbox.pack_start(track_label, true, true, 0);
-        View.AudioMeter meter = new View.AudioMeter(track);
-        vbox.add(meter);
-        
-        vbox.add(volume_box);
-        vbox.add(pan_box);
-        add(vbox);
+        pan = (VolumeSlider) builder.get_object("track_pan");
+        volume = (VolumeSlider) builder.get_object("track_volume");
+        volume.get_adjustment().set_value(audio_track.get_volume());
+        pan.get_adjustment().set_value(audio_track.get_pan());
+        audio_meter.setup(audio_track);
+        audio_track.parameter_changed.connect(on_parameter_changed);
+        audio_track.indirect_mute_changed.connect(on_indirect_mute_changed);
+        audio_track.mute_changed.connect(on_mute_changed);
+        audio_track.solo_changed.connect(on_solo_changed);
     }
 
-    void on_pan_value_changed() {
+    public void on_mute_toggled(HeaderToggleButton button) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_mute_toggled");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        audio_track.mute = button.active;
+        if (audio_track.mute) {
+            audio_track.solo = false;
+        }
+    }
+
+    public void on_solo_toggled(HeaderToggleButton button) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_solo_toggled");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        audio_track.solo = button.active;
+    }
+
+    void on_indirect_mute_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_indirect_mute_changed");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            mute.set_sensitive(!audio_track.indirect_mute);
+        }
+    }
+
+    void on_mute_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_indirect_mute_changed");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            if (audio_track.mute != mute.active) {
+                mute.set_active(audio_track.mute);
+            }
+        }
+    }
+
+    void on_solo_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_indirect_mute_changed");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            if (audio_track.solo != solo.active) {
+                solo.set_active(audio_track.solo);
+            }
+        }
+    }
+
+    public void on_pan_value_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_pan_value_changed");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         if (audio_track != null) {
@@ -134,8 +169,8 @@ class AudioTrackHeader : TrackHeader {
             audio_track.set_pan(adjustment.get_value());
         }
     }
-    
-    void on_volume_value_changed() {
+
+    public void on_volume_value_changed() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_volume_value_changed");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         if (audio_track != null) {
@@ -159,7 +194,7 @@ class AudioTrackHeader : TrackHeader {
     }
 }
 
-class HeaderArea : Gtk.EventBox {
+public class HeaderArea : Gtk.EventBox {
     weak Model.Project project;
     
     Gtk.VBox vbox;
@@ -193,8 +228,18 @@ class HeaderArea : Gtk.EventBox {
         //we are currently only supporting audio tracks.  We'll probably have
         //a separate method for adding video track, midi track, aux input, etc
 
-        TrackHeader header = new AudioTrackHeader(audio_track, this, 
-            trackview.get_track_height() - 2); // - 2 allows room for TrackSeparator
+        Gtk.Builder builder = new Gtk.Builder();
+        try {
+            builder.add_from_file(AppDirs.get_resources_dir().get_child("fillmore.glade").get_path());
+        } catch(GLib.Error e) {
+            warning("%s\n", e.message);
+            return;
+        }
+        builder.connect_signals(null);
+        AudioTrackHeader header = (AudioTrackHeader) builder.get_object("HeaderArea");
+        header.setup(builder, audio_track, this, trackview.get_track_height() - 2);
+            // - 2 allows room for TrackSeparator
+
         vbox.pack_start(header, false, false, 0);
         vbox.pack_start(new TrackSeparator(), false, false, 0);
         vbox.show_all();

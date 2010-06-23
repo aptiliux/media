@@ -375,6 +375,8 @@ public class MediaAudioTrack : MediaTrack {
     public MediaAudioTrack(MediaEngine media_engine, Model.AudioTrack track) throws Error {
         base(media_engine, track);
         track.parameter_changed.connect(on_parameter_changed);
+        track.mute_changed.connect(on_mute_changed);
+        track.indirect_mute_changed.connect(on_mute_changed);
 
         audio_convert = make_element("audioconvert");
         audio_resample = make_element("audioresample");
@@ -427,9 +429,13 @@ public class MediaAudioTrack : MediaTrack {
                 pan.set_property("panorama", new_value);
                 break;
             case Model.Parameter.VOLUME:
-                volume.set_property("volume", new_value);    
+                volume.set_property("volume", new_value);
                 break;
-        }    
+        }
+    }
+
+    void on_mute_changed(Model.AudioTrack track) {
+        volume.set_property("mute", track.mute || track.indirect_mute);
     }
 
     void on_level_changed(Gst.Object source, double level_left, double level_right) {

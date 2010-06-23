@@ -14,9 +14,26 @@ style "pan" {
 }
 
 style "hseparator" {
+    bg[NORMAL] = "#999"
+}
+
+style "togglebutton" {
+    GtkButton::child-displacement-x = 1
+    GtkButton::child-displacement-y = 1
+    bg[SELECTED] = "#79b"
+    bg[NORMAL] = "#777"
+    bg[INSENSITIVE] = "#555"
+    bg[ACTIVE] = "#557595"
+    bg[PRELIGHT] = "#888"
+}
+
+style "audiotrackheader" {
+    bg[SELECTED] = "#68a"
     bg[NORMAL] = "#666"
 }
 
 class "PanSlider" style "pan"
 class "VolumeSlider" style "pan"
 class "TrackSeparator" style "hseparator"
+class "HeaderToggleButton" style "togglebutton"
+class "AudioTrackHeader" style "audiotrackheader"

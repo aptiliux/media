@@ -16,7 +16,7 @@ public class AudioMeter : Gtk.DrawingArea {
     double current_level_right = -100;
     const double minDB = -70;
     
-    public AudioMeter(Model.AudioTrack track) {
+    public void setup(Model.AudioTrack track) {
         int number_of_channels;
         if (track.get_num_channels(out number_of_channels)) {
             stereo = number_of_channels < 1;

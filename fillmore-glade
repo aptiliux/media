@@ -1,0 +1,2 @@
+#!/bin/bash
+GLADE_CATALOG_PATH=. GLADE_MODULE_PATH=. glade resources/fillmore.glade > /dev/null 2>&1 &

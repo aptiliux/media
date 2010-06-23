@@ -29,7 +29,7 @@ class RecordFetcherCompletion : FetcherCompletion {
     }
 }
 
-class AudioProject : Project {
+public class AudioProject : Project {
     bool has_been_saved;
 
     public AudioProject(string? filename) throws Error {
