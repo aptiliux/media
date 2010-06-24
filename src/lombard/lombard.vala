@@ -846,7 +846,7 @@ class App : Gtk.Window, TransportDelegate {
 
     void on_help_contents() {
         try {
-            Gtk.show_uri(null, "http://trac.yorba.org/wiki/UsingLombard0.1", 0);
+            Gtk.show_uri(null, "http://trac.yorba.org/wiki/UsingLombard0.2", 0);
         } catch (GLib.Error e) {
         }
     }

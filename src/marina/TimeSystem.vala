@@ -42,7 +42,7 @@ public abstract class TimeSystemBase : Object {
     abstract int correct_sub_second_value(float seconds, int div, int fps);
 
     protected int correct_seconds_value (float seconds, int div, int fps) {
-        if (seconds < 1.0f) {
+        if (seconds < 1) {
             return correct_sub_second_value(seconds, div, fps);
         }
 
@@ -165,11 +165,12 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
 
         pixels_per_second = pixel_min * GLib.Math.powf(pixel_div, pixel_percentage);
         int fps = frame_rate_fraction.nearest_int();
-        large_pixel_frames = correct_seconds_value(pixels_per_large / pixels_per_second, 0, fps);
-        medium_pixel_frames = correct_seconds_value(pixels_per_medium / pixels_per_second, 
-                                                    large_pixel_frames, fps);
-        small_pixel_frames = correct_seconds_value(pixels_per_small / pixels_per_second, 
-                                                    medium_pixel_frames, fps);
+        float seconds = pixels_per_large / pixels_per_second;
+        large_pixel_frames = correct_seconds_value(seconds, 0, fps);
+        seconds = pixels_per_medium / pixels_per_second;
+        medium_pixel_frames = correct_seconds_value(seconds, large_pixel_frames, fps);
+        seconds = pixels_per_small / pixels_per_second;
+        small_pixel_frames = correct_seconds_value(seconds, medium_pixel_frames, fps);
 
         if (small_pixel_frames == medium_pixel_frames) {
             int i = medium_pixel_frames;
@@ -290,14 +291,13 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             return 1;
         }
 
-        if (sixteenths > sixteenths_per_beat) {
-            return sixteenths_per_beat;
-        }
-
-        if (sixteenths > 2) {
-            return 2;
-        }
-
+        int current_try = sixteenths_per_bar / 2;
+        do {
+            if (current_try < sixteenths) {
+                return current_try;
+            }
+            current_try = current_try / 2;
+        } while (current_try > 1);
         return 1;
     }
 
@@ -356,10 +356,37 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
             xsize_to_time_double(large_pixel_sixteenth * pixels_per_sixteenth), -1);
     }
 
+    void constrain_seconds_value(out int pixel_sixteenth, int pixels_per, int min_pixels, 
+        int max_pixels, float pixels_per_bar) {
+        float pixels_per_size = 0;
+        int count = 0;
+        do {
+            pixel_sixteenth = correct_seconds_value(
+                pixels_per / pixels_per_bar, 0, sixteenths_per_bar);
+            pixels_per_size = pixel_sixteenth * pixels_per_sixteenth;
+            if (pixels_per_size < min_pixels) {
+                pixels_per = (int) (pixels_per * 1.05);
+            } else if (pixels_per_size > max_pixels) {
+                pixels_per = (int) (pixels_per * 0.95);
+            } else {
+                break;
+            }
+            ++count;
+        } while (count < 0);
+    }
+
     public void calculate_pixel_step(float inc, float pixel_min, float pixel_div) {
-        int pixels_per_large = 80;
-        int pixels_per_medium = 40;
-        int pixels_per_small = 20;
+        int pixels_per_large = 120;
+        int min_pixels_per_large = 80;
+        int max_pixels_per_large = 160;
+
+        int pixels_per_medium = 60;
+        int min_pixels_per_medium = 30;
+        int max_pixels_per_medium = 80;
+
+        int pixels_per_small = 15;
+        int min_pixels_per_small = 10;
+        int max_pixels_per_small = 20;
 
         pixel_percentage += inc;
         if (pixel_percentage < 0.0f) {
@@ -370,25 +397,17 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
 
         pixels_per_second = pixel_min * GLib.Math.powf(pixel_div, pixel_percentage);
         float pixels_per_bar = pixels_per_second / bars_per_second;
-        large_pixel_sixteenth = correct_seconds_value(
-            pixels_per_large / pixels_per_bar, 0, sixteenths_per_bar);
-
-        medium_pixel_sixteenth = correct_seconds_value(pixels_per_medium / pixels_per_bar,
-            large_pixel_sixteenth, sixteenths_per_bar);
-        small_pixel_sixteenth = correct_seconds_value(pixels_per_small / pixels_per_bar,
-            medium_pixel_sixteenth, sixteenths_per_bar);
-        if (small_pixel_sixteenth == medium_pixel_sixteenth) {
-            int i = medium_pixel_sixteenth;
-
-            while (--i > 0) {
-                if ((medium_pixel_sixteenth % i) == 0) {
-                    small_pixel_sixteenth = i;
-                    break;
-                }
-            }
-        }
-
         pixels_per_sixteenth = pixels_per_bar / (float) sixteenths_per_bar;
+
+        constrain_seconds_value(out large_pixel_sixteenth, pixels_per_large, 
+            min_pixels_per_large, max_pixels_per_large, pixels_per_bar);
+        constrain_seconds_value(out medium_pixel_sixteenth, pixels_per_medium,
+            min_pixels_per_medium, max_pixels_per_medium, pixels_per_bar);
+        constrain_seconds_value(out small_pixel_sixteenth, pixels_per_small,
+            min_pixels_per_small, max_pixels_per_small, pixels_per_bar);
+        if (small_pixel_sixteenth * pixels_per_sixteenth < min_pixels_per_small) {
+            small_pixel_sixteenth = medium_pixel_sixteenth;
+        }
         pixel_snap_time = xsize_to_time(PIXEL_SNAP_INTERVAL);
     }
 

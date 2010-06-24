@@ -274,7 +274,7 @@
   <object class="GtkAdjustment" id="tempo_adjustment">
     <property name="value">40</property>
     <property name="lower">30</property>
-    <property name="upper">130</property>
+    <property name="upper">240</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
     <property name="page_size">10</property>

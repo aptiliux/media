@@ -63,9 +63,9 @@ public class TimeLine : Gtk.EventBox {
     public signal void trackview_added(TrackView trackview);
     public signal void trackview_removed(TrackView trackview);
 
-    float pixel_div;
-    float pixel_min = 0.1f;
-    float pixel_max = 4505.0f;
+    const float pixel_min = 0.1f;
+    const float pixel_max = 4505.0f;
+    const float pixel_div = pixel_max / pixel_min;
     Gtk.Label high_water;
 
     public const int RULER_HEIGHT = 20;
@@ -93,7 +93,6 @@ public class TimeLine : Gtk.EventBox {
         modify_bg(Gtk.StateType.NORMAL, parse_color("#444"));
         modify_fg(Gtk.StateType.NORMAL, parse_color("#f00"));
 
-        pixel_div = pixel_max / pixel_min;
         provider.calculate_pixel_step (0.5f, pixel_min, pixel_div);
         Gtk.drag_dest_set(this, Gtk.DestDefaults.ALL, drag_target_entries, actions);
     }
