@@ -41,8 +41,13 @@ public class TrackHeader : Gtk.EventBox {
 
     void on_track_selection_changed(Model.Track track) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_track_selection_changed");
-        
-        set_state(track.get_is_selected() ? Gtk.StateType.SELECTED : Gtk.StateType.NORMAL);
+        if (track.get_is_selected()) {
+            modify_bg(Gtk.StateType.NORMAL, parse_color("#68A"));
+            track_label.modify_fg(Gtk.StateType.NORMAL, parse_color("#FFF"));
+        } else {
+            modify_bg(Gtk.StateType.NORMAL, parse_color("#666"));
+            track_label.modify_fg(Gtk.StateType.NORMAL, parse_color("#222"));
+        }
     }
 
     public override bool button_press_event(Gdk.EventButton event) {
