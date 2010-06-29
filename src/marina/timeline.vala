@@ -151,7 +151,7 @@ public class TimeLine : Gtk.EventBox {
     bool any_track_solo() {
         foreach (TrackView track_view in tracks) {
             Model.AudioTrack audio_track = track_view.get_track() as Model.AudioTrack;
-            if (audio_track.solo) {
+            if (audio_track != null && audio_track.solo) {
                 return true;
             }
         }
