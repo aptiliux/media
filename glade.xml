@@ -5,14 +5,15 @@
 <glade-widget-class name="AudioTrackHeader" generic-name="audiotrackheader" title="Audio Track Header" />
 <glade-widget-class name="VolumeSlider" generic-name="volumeslider" title="Volume Slider" />
 <glade-widget-class name="ViewAudioMeter" generic-name="audiometer" title="Audio Meter" />
-<glade-widget-class name="HeaderToggleButton" 
-    generic-name="headertogglebutton" title="HeaderToggleButton" />
+<glade-widget-class name="MuteToggleButton" generic-name="mutetogglebutton" title="MuteToggleButton" />
+<glade-widget-class name="SoloToggleButton" generic-name="solotogglebutton" title="SoloToggleButton" />
 </glade-widget-classes>
 <glade-widget-group name="fillmorewidgets" title="Fillmore Widgets">
 <glade-widget-class-ref name="ProjectProperties"/>
 <glade-widget-class-ref name="VolumeSlider" />
 <glade-widget-class-ref name="ViewAudioMeter" />
 <glade-widget-class-ref name="AudioTrackHeader" />
-<glade-widget-class-ref name="HeaderToggleButton" />
+<glade-widget-class-ref name="MuteToggleButton" />
+<glade-widget-class-ref name="SoloToggleButton" />
 </glade-widget-group>
 </glade-catalog>

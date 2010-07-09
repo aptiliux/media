@@ -69,7 +69,7 @@ public class AudioMeter : Gtk.DrawingArea {
             initialize_meter();
         }
 
-        context.set_source_rgb(0, 0, 0);
+        context.set_source_rgb(0.1, 0.1, 0.1);
         context.rectangle(0, 0, allocation.width, allocation.height);
         context.fill();
 

@@ -18,13 +18,29 @@ style "hseparator" {
 }
 
 style "togglebutton" {
-    GtkButton::child-displacement-x = 1
-    GtkButton::child-displacement-y = 1
+    GtkButton::child-displacement-x = 0
+    GtkButton::child-displacement-y = 0
     bg[SELECTED] = "#79b"
     bg[NORMAL] = "#777"
     bg[INSENSITIVE] = "#555"
-    bg[ACTIVE] = "#557595"
     bg[PRELIGHT] = "#888"
+}
+
+style "mutetogglebutton" = "togglebutton" {
+    bg[ACTIVE] = "#e85"
+    bg[NORMAL] = "#987c6e"
+    bg[PRELIGHT] = "#f89665"
+    bg[INSENSITIVE] = "#cab3a6"
+}
+
+style "mutetext" {
+    fg[INSENSITIVE] = "#d5cac3"
+}
+
+style "solotogglebutton" = "togglebutton" {
+    bg[ACTIVE] = "#ed4"
+    bg[NORMAL] = "#adaf89"
+    bg[PRELIGHT] = "#fe5"
 }
 
 style "audiotrackheader" {
@@ -35,5 +51,8 @@ style "audiotrackheader" {
 class "PanSlider" style "pan"
 class "VolumeSlider" style "pan"
 class "TrackSeparator" style "hseparator"
-class "HeaderToggleButton" style "togglebutton"
+class "MuteToggleButton" style "mutetogglebutton"
+class "SoloToggleButton" style "solotogglebutton"
 class "AudioTrackHeader" style "audiotrackheader"
+widget_class "*<MuteToggleButton><GtkLabel>" style "mutetext"
+

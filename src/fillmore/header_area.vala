@@ -10,7 +10,11 @@ class TrackSeparator : Gtk.HSeparator {
 //this class is referenced in the resource file
 }
 
-public class HeaderToggleButton : Gtk.ToggleButton {
+public class MuteToggleButton : Gtk.ToggleButton {
+//this class is referenced in the resource file
+}
+
+public class SoloToggleButton : Gtk.ToggleButton {
 //this class is referenced in the resource file
 }
 
@@ -19,7 +23,7 @@ public class TrackHeader : Gtk.EventBox {
     protected weak HeaderArea header_area;
     protected Gtk.Label track_label;
 
-    public const int width = 300;
+    public const int width = 250;
 
     public virtual void setup(Gtk.Builder builder, Model.Track track, HeaderArea area, int height) {
         this.track = track;
@@ -100,8 +104,8 @@ public class VolumeSlider : SliderBase {
 public class AudioTrackHeader : TrackHeader {
     public VolumeSlider pan;
     public VolumeSlider volume;
-    HeaderToggleButton mute;
-    HeaderToggleButton solo;
+    MuteToggleButton mute;
+    SoloToggleButton solo;
 
     public override void setup(Gtk.Builder builder, Model.Track track, 
             HeaderArea header, int height) {
@@ -109,8 +113,8 @@ public class AudioTrackHeader : TrackHeader {
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         View.AudioMeter audio_meter = (View.AudioMeter) builder.get_object("audiometer1");
 
-        mute = (HeaderToggleButton) builder.get_object("mute");
-        solo = (HeaderToggleButton) builder.get_object("solo");
+        mute = (MuteToggleButton) builder.get_object("mute");
+        solo = (SoloToggleButton) builder.get_object("solo");
 
         pan = (VolumeSlider) builder.get_object("track_pan");
         volume = (VolumeSlider) builder.get_object("track_volume");
@@ -123,7 +127,7 @@ public class AudioTrackHeader : TrackHeader {
         audio_track.solo_changed.connect(on_solo_changed);
     }
 
-    public void on_mute_toggled(HeaderToggleButton button) {
+    public void on_mute_toggled(MuteToggleButton button) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_mute_toggled");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         audio_track.mute = button.active;
@@ -132,7 +136,7 @@ public class AudioTrackHeader : TrackHeader {
         }
     }
 
-    public void on_solo_toggled(HeaderToggleButton button) {
+    public void on_solo_toggled(SoloToggleButton button) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_solo_toggled");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         audio_track.solo = button.active;
