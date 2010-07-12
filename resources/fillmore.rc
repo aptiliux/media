@@ -27,9 +27,9 @@ style "togglebutton" {
 }
 
 style "mutetogglebutton" = "togglebutton" {
-    bg[ACTIVE] = "#e85"
-    bg[NORMAL] = "#987c6e"
-    bg[PRELIGHT] = "#f89665"
+    bg[ACTIVE] = "#ED773B"
+    bg[NORMAL] = "#A68574"
+    bg[PRELIGHT] = "#FF6F26"
     bg[INSENSITIVE] = "#cab3a6"
 }
 
@@ -38,9 +38,9 @@ style "mutetext" {
 }
 
 style "solotogglebutton" = "togglebutton" {
-    bg[ACTIVE] = "#ed4"
-    bg[NORMAL] = "#adaf89"
-    bg[PRELIGHT] = "#fe5"
+    bg[ACTIVE] = "#EDDB3B"
+    bg[NORMAL] = "#A6A174"
+    bg[PRELIGHT] = "#FFE926"
 }
 
 style "audiotrackheader" {
