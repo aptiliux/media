@@ -189,6 +189,7 @@ public class TimeLine : Gtk.EventBox {
         clip_view.move_commit.connect(on_clip_view_move_commit);
         clip_view.move_begin.connect(on_clip_view_move_begin);
         clip_view.trim_begin.connect(on_clip_view_trim_begin);
+        clip_view.trim_request.connect(on_clip_view_trim_request);
         clip_view.trim_commit.connect(on_clip_view_trim_commit);
     }
 
@@ -256,6 +257,31 @@ public class TimeLine : Gtk.EventBox {
         }
     }
 
+    void on_clip_view_trim_request(ClipView clip_view, Gdk.WindowEdge edge, int64 delta) {
+        bool snapped = false;
+        if (project.snap_to_clip) {
+            snapped = constrain_move(clip_view, ref delta);
+        }
+
+        if (!snapped && project.snap_to_grid) {
+            int64 range = provider.xsize_to_time(clip_view.SNAP_DELTA);
+            int64 snap_time = provider.next_tick(clip_view.clip.start);
+            int64 difference = clip_view.clip.start - snap_time;
+            if (difference.abs() < range) {
+                delta = -difference;
+                clip_view.snap(provider.time_to_xsize(difference));
+            } else {
+                snap_time = provider.previous_tick(clip_view.clip.start);
+                difference = clip_view.clip.start - snap_time;
+                if (difference.abs() < range) {
+                    delta = -difference;
+                    clip_view.snap(provider.time_to_xsize(difference));
+                }
+            }
+        }
+        clip_view.clip.trim(delta, edge);
+    }
+
     void on_clip_view_selection_request(ClipView clip_view, bool extend) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_selection_request");
 /*
@@ -291,7 +317,7 @@ public class TimeLine : Gtk.EventBox {
 
     void on_clip_view_move_commit(ClipView clip_view, int64 delta) {
         window.set_cursor(null);
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_request");
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_view_move_commit");
         Gtk.Fixed fixed = high_water.get_parent() as Gtk.Fixed;
         fixed.remove(high_water);
         high_water = null;

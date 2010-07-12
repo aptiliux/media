@@ -81,6 +81,7 @@ public class ClipView : Gtk.DrawingArea {
     public signal void move_commit(ClipView clip_view, int64 delta);
     public signal void move_begin(ClipView clip_view, bool copy);
     public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
+    public signal void trim_request(ClipView clip_view, Gdk.WindowEdge edge, int64 delta);
     public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
 
     public ClipView(TransportDelegate transport_delegate, Model.Clip clip, 
@@ -326,17 +327,18 @@ public class ClipView : Gtk.DrawingArea {
                 }
             break;
             case MotionMode.RIGHT_TRIM:
+                if (button_down) {
+                    int64 duration = clip.duration;
+                    trim_request(this, Gdk.WindowEdge.EAST, delta_time);
+                    if (duration != clip.duration) {
+                        drag_point += time_provider.time_to_xsize(clip.duration - duration);
+                    }
+                    return true;
+                }
+            break;
             case MotionMode.LEFT_TRIM:
                 if (button_down) {
-                    if (motion_mode == MotionMode.LEFT_TRIM) {
-                        clip.trim(delta_time, Gdk.WindowEdge.WEST);
-                    } else {
-                        int64 duration = clip.duration;
-                        clip.trim(delta_time, Gdk.WindowEdge.EAST);
-                        if (duration != clip.duration) {
-                            drag_point += (int)delta_pixels;
-                        }
-                    }
+                    trim_request(this, Gdk.WindowEdge.WEST, delta_time);
                 }
                 return true;
             case MotionMode.DRAGGING:
