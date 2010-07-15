@@ -1,7 +1,9 @@
 VALAC = valac
 MIN_VALAC_VERSION = 0.9.2
 # defaults that may be overridden by configure.mk
+ifndef PREFIX
 PREFIX=/usr/local
+endif
 
 INSTALL_PROGRAM = install
 INSTALL_DATA = install -m 644
