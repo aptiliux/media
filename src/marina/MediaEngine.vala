@@ -818,7 +818,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_element");
         unowned Gst.Structure structure = message.get_structure();
 
-        if (play_state == PlayState.PLAYING && structure.name.to_string() == "level") {
+        if (play_state == PlayState.PLAYING && structure.get_name() == "level") {
             Gst.Value? rms = structure.get_value("rms");
             uint size = rms.list_get_size();
             Gst.Value? temp = rms.list_get_value(0);
