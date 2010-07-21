@@ -1067,10 +1067,6 @@ public class MediaEngine : MultiFileProgressInterface, Object {
             callback_pulse();
 
             if (play_state == PlayState.PLAYING) {
-                if (position >= project.get_length()) {
-                    go(project.get_length());
-                    pause();
-                }
                 position_changed(time);
             } else if (play_state == PlayState.EXPORTING) {
                 if (time > project.get_length()) {
