@@ -376,6 +376,10 @@ public class Recorder : Gtk.Window, TransportDelegate {
         track.clip_added.connect(on_clip_added);
         track.clip_removed.connect(on_clip_removed);
         track.track_selection_changed.connect(on_track_selection_changed);
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            audio_track.record_enable_changed.connect(on_record_enable_changed);
+        }
     }
 
     void on_track_removed(Model.Track unused) {
@@ -397,12 +401,33 @@ public class Recorder : Gtk.Window, TransportDelegate {
 
     void on_track_selection_changed(Model.Track track) {
         if (track.get_is_selected()) {
+            Model.AudioTrack audio_track = track as Model.AudioTrack;
+            if (audio_track != null) {
+                audio_track.record_enable = true;
+            }
+
             foreach (Model.Track t in project.tracks) {
                 if (t != track) {
                     t.set_selected(false);
                 }
             }
         }
+    }
+
+    void on_record_enable_changed(Model.AudioTrack audio_track) {
+        bool enabled = audio_track.record_enable;
+        if (!enabled) {
+            foreach (Model.Track track in project.tracks) {
+                Model.AudioTrack another_track = track as Model.AudioTrack;
+                if (another_track != null) {
+                    if (another_track.record_enable) {
+                        enabled = true;
+                        break;
+                    }
+                }
+            }
+        }
+        set_sensitive_group(main_group, "Record", enabled);
     }
 
     void on_clip_moved(Model.Clip clip) {
@@ -965,13 +990,20 @@ public class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_record() {
+        Model.AudioTrack audio_track = null;
         if (record_button.get_active()) {
-            Model.AudioTrack audio_track = selected_track() as Model.AudioTrack;
+            foreach (Model.Track track in project.tracks) {
+                audio_track = track as Model.AudioTrack;
+                if (audio_track.record_enable) {
+                    break;
+                }
+            }
             int number_of_channels;
             if (audio_track.get_num_channels(out number_of_channels)) {
-                if (number_of_channels == 2) {
+                if (View.InputSources.get_number_of_channels("alsasrc", audio_track.device)
+                        != number_of_channels) {
+                    on_error_occurred("Unable to record", "Please select an input source");
                     record_button.set_active(false);
-                    on_error_occurred("Can not record onto a stereo track", null);
                     return;
                 }
             }

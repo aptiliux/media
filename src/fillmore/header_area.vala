@@ -10,14 +10,6 @@ class TrackSeparator : Gtk.HSeparator {
 //this class is referenced in the resource file
 }
 
-public class MuteToggleButton : Gtk.ToggleButton {
-//this class is referenced in the resource file
-}
-
-public class SoloToggleButton : Gtk.ToggleButton {
-//this class is referenced in the resource file
-}
-
 public class TrackHeader : Gtk.EventBox {
     protected weak Model.Track track;
     protected weak HeaderArea header_area;
@@ -104,8 +96,10 @@ public class VolumeSlider : SliderBase {
 public class AudioTrackHeader : TrackHeader {
     public VolumeSlider pan;
     public VolumeSlider volume;
-    MuteToggleButton mute;
-    SoloToggleButton solo;
+    Gtk.ToggleButton mute;
+    Gtk.ToggleButton solo;
+    Gtk.ToggleButton record_enable;
+    Gtk.Button input_select;
 
     public override void setup(Gtk.Builder builder, Model.Track track, 
             HeaderArea header, int height) {
@@ -113,10 +107,22 @@ public class AudioTrackHeader : TrackHeader {
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         View.AudioMeter audio_meter = (View.AudioMeter) builder.get_object("audiometer1");
 
-        mute = (MuteToggleButton) builder.get_object("mute");
-        solo = (SoloToggleButton) builder.get_object("solo");
+        input_select = (Gtk.Button) builder.get_object("input");
+
+        // We set the property name so the style can be applied.  You can't do this in
+        // glade.  There is a bug against glade/gtkbuilder already
+        // https://bugzilla.gnome.org/show_bug.cgi?id=591076
+        mute = (Gtk.ToggleButton) builder.get_object("mute");
+        mute.set("name", "mute");
+
+        solo = (Gtk.ToggleButton) builder.get_object("solo");
+        solo.set("name", "solo");
+
+        record_enable = (Gtk.ToggleButton) builder.get_object("record_enable");
+        record_enable.set("name", "record_enable");
 
         pan = (VolumeSlider) builder.get_object("track_pan");
+
         volume = (VolumeSlider) builder.get_object("track_volume");
         volume.get_adjustment().set_value(audio_track.get_volume());
         pan.get_adjustment().set_value(audio_track.get_pan());
@@ -125,9 +131,10 @@ public class AudioTrackHeader : TrackHeader {
         audio_track.indirect_mute_changed.connect(on_indirect_mute_changed);
         audio_track.mute_changed.connect(on_mute_changed);
         audio_track.solo_changed.connect(on_solo_changed);
+        audio_track.record_enable_changed.connect(on_record_enable_changed);
     }
 
-    public void on_mute_toggled(MuteToggleButton button) {
+    public void on_mute_toggled(Gtk.ToggleButton button) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_mute_toggled");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         audio_track.mute = button.active;
@@ -136,10 +143,47 @@ public class AudioTrackHeader : TrackHeader {
         }
     }
 
-    public void on_solo_toggled(SoloToggleButton button) {
+    public void on_solo_toggled(Gtk.ToggleButton button) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_solo_toggled");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
         audio_track.solo = button.active;
+    }
+
+    public void on_record_enable_toggled(Gtk.ToggleButton button) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_enable_toggled");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        audio_track.record_enable = button.active;
+    }
+
+    public void on_input_clicked() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_input_clicked");
+        Gee.ArrayList<View.InputSource> names = View.InputSources.get_input_selections("alsasrc");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        int number_of_channels = -1;
+        audio_track.get_num_channels(out number_of_channels);
+
+        int names_length = names.size;
+        if (names_length > 0) {
+            Gtk.Menu menu = new Gtk.Menu();
+            for (int i = 0; i < names_length; ++i) {
+                View.InputSource input_source = names.get(i);
+                if (number_of_channels == -1 || 
+                        input_source.number_of_channels == number_of_channels) {
+                    Gtk.CheckMenuItem item = new Gtk.CheckMenuItem.with_label(input_source.device);
+                    item.set_active(audio_track.device == input_source.device);
+                    menu.append(item);
+                    item.activate.connect(on_input_selected);
+                }
+            }
+            menu.show_all();
+            menu.popup(null, null, null, 0, 0);
+        }
+    }
+
+    void on_input_selected(Gtk.MenuItem item) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_input_selected");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        audio_track.device = item.get_label();
     }
 
     void on_indirect_mute_changed() {
@@ -166,6 +210,16 @@ public class AudioTrackHeader : TrackHeader {
         if (audio_track != null) {
             if (audio_track.solo != solo.active) {
                 solo.set_active(audio_track.solo);
+            }
+        }
+    }
+
+    void on_record_enable_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_enable_changed");
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        if (audio_track != null) {
+            if (audio_track.record_enable != record_enable.active) {
+                record_enable.set_active(audio_track.record_enable);
             }
         }
     }

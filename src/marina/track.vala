@@ -479,7 +479,7 @@ public class AudioTrack : Track {
 
     int default_num_channels;
     public static const int INVALID_CHANNEL_COUNT = -1;
-
+    public string device = null;
     bool _mute;
     public bool mute { 
         set {
@@ -529,9 +529,24 @@ public class AudioTrack : Track {
         }
     }
 
+    bool _record_enable = false;
+    public bool record_enable {
+        set {
+            if (value != _record_enable) {
+                _record_enable = value;
+                record_enable_changed();
+            }
+        }
+
+        get {
+            return _record_enable;
+        }
+    }
+
     public signal void mute_changed();
     public signal void solo_changed();
     public signal void indirect_mute_changed();
+    public signal void record_enable_changed();
 
     public signal void parameter_changed(Parameter parameter, double new_value);
     public signal void level_changed(double level_left, double level_right);

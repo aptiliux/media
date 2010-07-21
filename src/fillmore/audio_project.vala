@@ -81,12 +81,25 @@ public class AudioProject : Project {
             inactive_tracks.add(track);
             return;
         }
-        
+        Model.AudioTrack audio_track = track as Model.AudioTrack;
+        audio_track.record_enable_changed.connect(on_record_enable_changed);
         base.add_track(track);
     }
-    
+
     public void record(AudioTrack track) {
         media_engine.record(track);
+    }
+
+    void on_record_enable_changed(Model.AudioTrack changed_track) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_record_enable_changed");
+        if (changed_track.record_enable) {
+            foreach (Track track in tracks) {
+                if (track != changed_track) {
+                    Model.AudioTrack audio_track = track as Model.AudioTrack;
+                    audio_track.record_enable = false;
+                }
+            }
+        }
     }
 
     public void on_record_completed() {

@@ -43,6 +43,12 @@ style "solotogglebutton" = "togglebutton" {
     bg[PRELIGHT] = "#FFE926"
 }
 
+style "recordenabletogglebutton" = "togglebutton" {
+    bg[ACTIVE] = "#db2222"
+    bg[NORMAL] = "#854444"
+    bg[PRELIGHT] = "#ed1010"
+}
+
 style "audiotrackheader" {
     bg[SELECTED] = "#68a"
     bg[NORMAL] = "#666"
@@ -51,8 +57,9 @@ style "audiotrackheader" {
 class "PanSlider" style "pan"
 class "VolumeSlider" style "pan"
 class "TrackSeparator" style "hseparator"
-class "MuteToggleButton" style "mutetogglebutton"
-class "SoloToggleButton" style "solotogglebutton"
+widget "*.mute" style "mutetogglebutton"
+widget "*.solo" style "solotogglebutton"
+widget "*.record_enable" style "recordenabletogglebutton"
 class "AudioTrackHeader" style "audiotrackheader"
-widget_class "*<MuteToggleButton><GtkLabel>" style "mutetext"
+
 

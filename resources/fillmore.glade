@@ -353,7 +353,7 @@
                   <object class="GtkHBox" id="hbox2">
                     <property name="visible">True</property>
                     <child>
-                      <object class="MuteToggleButton" id="mute">
+                      <object class="GtkToggleButton" id="mute">
                         <property name="label" translatable="yes">M</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -368,7 +368,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="SoloToggleButton" id="solo">
+                      <object class="GtkToggleButton" id="solo">
                         <property name="label" translatable="yes">S</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -383,10 +383,34 @@
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
+                      <object class="GtkToggleButton" id="record_enable">
+                        <property name="label" translatable="yes">R</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="focus_on_click">False</property>
+                        <signal name="toggled" handler="audio_track_header_on_record_enable_toggled" object="HeaderArea"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">2</property>
+                      </packing>
                     </child>
                     <child>
-                      <placeholder/>
+                      <object class="GtkButton" id="input">
+                        <property name="label" translatable="yes">I</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="focus_on_click">False</property>
+                        <signal name="clicked" handler="audio_track_header_on_input_clicked" object="HeaderArea"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">3</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
@@ -519,9 +543,12 @@
     </child>
   </object>
   <object class="GtkSizeGroup" id="header_button_size">
+    <property name="mode">both</property>
     <widgets>
       <widget name="mute"/>
       <widget name="solo"/>
+      <widget name="record_enable"/>
+      <widget name="input"/>
     </widgets>
   </object>
 </interface>

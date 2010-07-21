@@ -17,6 +17,104 @@ public enum PlayState {
 
 namespace View {
 
+public class InputSource {
+    
+    public string device {
+        get; private set;
+    }
+
+    public string friendly_name {
+        get; private set;
+    }
+
+    public int number_of_channels {
+        get; private set;
+    }
+
+    public InputSource(string device, string friendly_name, int number_of_channels) {
+        this.device = device;
+        this.friendly_name = friendly_name;
+        this.number_of_channels = number_of_channels;
+    }
+}
+
+public class InputSources {
+    static Gee.ArrayList<InputSource> get_source_devices(Gst.Element element) {
+        GLib.Value factory_name = "";
+        element.get_factory().get_property("name", ref factory_name);
+        Gee.ArrayList<InputSource> input_sources = new Gee.ArrayList<InputSource>();
+
+        Value device = "";
+        element.get_property("device", ref device);
+        if (device.get_string() != "") {
+            if (element is Gst.PropertyProbe) {
+                ((Gst.PropertyProbe)element).probe_property_name("device");
+
+                unowned GLib.ValueArray devices = 
+                    ((Gst.PropertyProbe)element).get_values_name("device");
+                foreach (unowned Gst.Value device in devices) {
+                    set_device_name(element, device);
+                    Value nice_name = "";
+                    element.get_property("device-name", ref nice_name);
+
+                    int number_of_channels = number_of_channels_for_element(element);
+                    input_sources.add(
+                        new InputSource(device.get_string(), nice_name.get_string(),
+                        number_of_channels));
+                    element.set_state(Gst.State.NULL);
+                }
+            }
+        }
+        return input_sources;
+    }
+
+    static void set_device_name(Gst.Element element, Value device) {
+        element.set_property("device", device);
+
+        //channels don't fixate until in paused state
+        if (element.set_state(Gst.State.PAUSED) == Gst.StateChangeReturn.ASYNC) {
+            Gst.State state;
+            Gst.State pending = Gst.State.VOID_PENDING;
+            do {
+                Gtk.main_iteration();
+                element.get_state(out state, out pending, 0);
+            } while (pending != Gst.State.VOID_PENDING);
+        }
+    }
+
+    static int number_of_channels_for_element(Gst.Element input_source) {
+        Gst.Pad source_pad = input_source.get_pad("src");
+        Gst.Caps caps = source_pad.get_caps();
+
+        Gst.Structure structure = caps.get_structure(0);
+        int return_value;
+        structure.get_int("channels", out return_value);
+        return return_value;
+    }
+
+    public static Gee.ArrayList<InputSource> get_input_selections(string element) {
+        try {
+            Gst.Bin a_bin = (Gst.Bin) Gst.parse_bin_from_description(element, false);
+            Gst.Iterator<Gst.Element> sources = a_bin.iterate_sources();
+            Gst.Element input_source;
+            while (sources.next(out input_source) == Gst.IteratorResult.OK) {
+                return get_source_devices(input_source);
+            }
+        } catch {
+        
+        }
+        return new Gee.ArrayList<InputSource>();
+    }
+
+    public static int get_number_of_channels(string element_name, string device) {
+        Gst.Element element = Gst.ElementFactory.make(element_name, null);
+        set_device_name(element, device);
+        int number_of_channels = number_of_channels_for_element(element);
+        element.set_state(Gst.State.NULL);
+        return number_of_channels;
+    }
+}
+
 class MediaClip : Object {
     public Gst.Element file_source;
     weak Model.Clip clip;
@@ -777,8 +875,11 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     protected Gst.Caps build_audio_caps(int num_channels) {
-        string caps = "audio/x-raw-int,rate=%d,channels=%d,width=%d,depth=%d";
-        caps = caps.printf(get_sample_rate(), num_channels, get_sample_width(), get_sample_depth());
+        string caps = "audio/x-raw-int,rate=%d,width=%d,depth=%d";
+        caps = caps.printf(get_sample_rate(), get_sample_width(), get_sample_depth());
+        if (num_channels > 0) {
+            caps = "%s,channels=%d".printf(caps, num_channels);
+        }
         return Gst.Caps.from_string(caps);
     }
 
@@ -1000,8 +1101,39 @@ public class MediaEngine : MultiFileProgressInterface, Object {
 
     // TODO: don't expose Gst.State
     public void set_gst_state(Gst.State state) {
-        if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE)
-            error("can't set state");
+        if (pipeline.set_state(state) == Gst.StateChangeReturn.FAILURE) {
+            warning("Failed to change state");
+            string message = null;
+            switch (play_state) {
+                case PlayState.PRE_EXPORT:
+                case PlayState.CANCEL_EXPORT:
+                case PlayState.EXPORTING:
+                    message = "Error exporting";
+                break;
+                case PlayState.LOADING:
+                    message = "Error loading";
+                break;
+                case PlayState.STOPPED:
+                    message = "Error stopping";
+                break;
+                case PlayState.PRE_PLAY:
+                case PlayState.PLAYING:
+                    message = "Error playing";
+                break;
+                case PlayState.PRE_RECORD_NULL:
+                case PlayState.PRE_RECORD:
+                case PlayState.RECORDING:
+                case PlayState.POST_RECORD:
+                    message = "Error recording";
+                    play_state = PlayState.POST_RECORD;
+                    pipeline.set_state(Gst.State.PAUSED);
+                    playing = false;
+                break;
+                default:
+                    return;
+            }
+            error_occurred(message, null);
+        }
     }
 
     void seek(Gst.SeekFlags flags, int64 pos) {
@@ -1105,7 +1237,8 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         record_bin = new Gst.Bin("recordingbin");
         record_track._move(record_region, position);
         record_track.clip_added(record_region, true);
-        audio_in = make_element("gconfaudiosrc");
+        audio_in = make_element("alsasrc");
+        audio_in.set("device", record_track.device);
         record_capsfilter = make_element("capsfilter");
         record_capsfilter.set("caps", get_record_audio_caps());
         record_sink = make_element("filesink");
@@ -1122,7 +1255,9 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     protected Gst.Caps get_record_audio_caps() {
-        return build_audio_caps(1);
+        int channel_count = 0;
+        record_track.get_num_channels(out channel_count);
+        return build_audio_caps(channel_count);
     }
 
     string new_audio_filename(Model.Track track) {
