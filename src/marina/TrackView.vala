@@ -44,8 +44,8 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         context.stroke();
         context.set_line_width(1);
         context.set_source_rgb(0.5, 0.5, 0.5);
-        context.move_to(allocation.x, allocation.y + allocation.height);
-        context.line_to(allocation.x + allocation.width, allocation.y + allocation.height - 1);
+        context.move_to(event.area.x, allocation.y + allocation.height - 1);
+        context.line_to(event.area.x + event.area.width, allocation.y + allocation.height - 1);
 
         context.stroke();
         context.set_antialias(old_antialias);
