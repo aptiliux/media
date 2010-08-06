@@ -266,15 +266,15 @@ public class TimeLine : Gtk.EventBox {
         if (!snapped && project.snap_to_grid) {
             int64 range = provider.xsize_to_time(clip_view.SNAP_DELTA);
             int64 snap_time = provider.next_tick(clip_view.clip.start);
-            int64 difference = clip_view.clip.start - snap_time;
+            int64 difference = clip_view.clip.start + delta - snap_time;
             if (difference.abs() < range) {
-                delta = -difference;
+                delta = -(clip_view.clip.start - snap_time);
                 clip_view.snap(provider.time_to_xsize(difference));
             } else {
                 snap_time = provider.previous_tick(clip_view.clip.start);
-                difference = clip_view.clip.start - snap_time;
+                difference = clip_view.clip.start + delta - snap_time;
                 if (difference.abs() < range) {
-                    delta = -difference;
+                    delta = -(clip_view.clip.start - snap_time);
                     clip_view.snap(provider.time_to_xsize(difference));
                 }
             }
@@ -387,15 +387,15 @@ public class TimeLine : Gtk.EventBox {
         if (!snapped && project.snap_to_grid) {
             int64 range = provider.xsize_to_time(clip_view.SNAP_DELTA);
             int64 snap_time = provider.next_tick(clip_view.clip.start);
-            int64 difference = clip_view.clip.start - snap_time;
+            int64 difference = clip_view.clip.start + delta - snap_time;
             if (difference.abs() < range) {
-                delta = -difference;
+                delta = -(clip_view.clip.start - snap_time);
                 clip_view.snap(provider.time_to_xsize(difference));
             } else {
                 snap_time = provider.previous_tick(clip_view.clip.start);
-                difference = clip_view.clip.start - snap_time;
+                difference = clip_view.clip.start + delta - snap_time;
                 if (difference.abs() < range) {
-                    delta = -difference;
+                    delta = -(clip_view.clip.start - snap_time);
                     clip_view.snap(provider.time_to_xsize(difference));
                 }
             }

@@ -277,6 +277,9 @@ public class Clip : Object {
 
         set {
             _start = value;
+            if (_start < 0) {
+                _start = 0;
+            }
             if (connected) {
                 start_changed(_start);
             }
