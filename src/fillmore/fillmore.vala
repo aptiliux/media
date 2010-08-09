@@ -185,8 +185,6 @@ public class Recorder : Gtk.Window, TransportDelegate {
         { "Ogg Files", "ogg" }
     };
 
-    public signal void finished_closing(bool project_did_close);
-
     public Recorder(string? project_file) throws Error {
         ClassFactory.set_transport_delegate(this);
         GLib.DirUtils.create(get_fillmore_directory(), 0777);
@@ -215,7 +213,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
         project.track_added.connect(on_track_added);
         project.track_removed.connect(on_track_removed);
         project.load_complete.connect(on_load_complete);
-        project.closed.connect(on_project_close);
+        project.query_closed.connect(on_project_query_close);
 
         audio_output = new View.AudioOutput(project.media_engine.get_project_audio_caps());
         project.media_engine.connect_output(audio_output);
@@ -642,9 +640,8 @@ public class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_new_finished_closing(bool project_did_close) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_new_finished_closing");
-        project.closed.disconnect(on_project_close);
-        finished_closing.disconnect(on_project_new_finished_closing);
         if (project_did_close) {
+            project.closed.disconnect(on_project_new_finished_closing);
             project.media_engine.set_play_state(PlayState.LOADING);
             project.load(null);
             default_track_set();
@@ -655,14 +652,12 @@ public class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_new() {
         load_errors.clear();
-        project.closed.connect(on_project_close);
-        finished_closing.connect(on_project_new_finished_closing);
+        project.closed.connect(on_project_new_finished_closing);
         project.close();
     }
 
     void on_project_open_finished_closing(bool project_did_close) {
-        project.closed.disconnect(on_project_close);
-        finished_closing.disconnect(on_project_open_finished_closing);
+        project.closed.disconnect(on_project_open_finished_closing);
         if (project_did_close) {
             GLib.SList<string> filenames;
             if (DialogUtils.open(this, filters, false, false, out filenames)) {
@@ -674,8 +669,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
 
     void on_project_open() {
         load_errors.clear();
-        project.closed.connect(on_project_close);
-        finished_closing.connect(on_project_open_finished_closing);
+        project.closed.connect(on_project_open_finished_closing);
         project.close();
     }
 
@@ -688,8 +682,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_save_new_file_finished_closing(bool did_close) {
-        project.closed.disconnect(on_project_close);
-        finished_closing.disconnect(on_save_new_file_finished_closing);
+        project.closed.disconnect(on_save_new_file_finished_closing);
         project.load(project.get_project_file());
     }
 
@@ -711,8 +704,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
         if (DialogUtils.save(this, "Save Project", create_directory, filters, ref filename)) {
             project.save(filename);
             if (saving_new_file && project.get_project_file() != null) {
-                project.closed.connect(on_project_close);
-                finished_closing.connect(on_save_new_file_finished_closing);
+                project.closed.connect(on_save_new_file_finished_closing);
                 project.close();
             }
             return true;
@@ -746,8 +738,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_quit_finished_closing(bool project_did_close) {
-        project.closed.disconnect(on_project_close);
-        finished_closing.disconnect(on_quit_finished_closing);
+        project.closed.disconnect(on_quit_finished_closing);
         if (project_did_close) {
             Gtk.main_quit();
         }
@@ -755,8 +746,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
 
     void on_quit() {
         if (!project.transport_is_recording()) {
-            project.closed.connect(on_project_close);
-            finished_closing.connect(on_quit_finished_closing);
+            project.closed.connect(on_quit_finished_closing);
             project.close();
         }
     }
@@ -767,13 +757,18 @@ public class Recorder : Gtk.Window, TransportDelegate {
         return true;
     }
 
-    void on_project_close() {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_close");
+    void on_project_query_close(ref bool should_close) {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_project_query_close");
+
+        if (!should_close) {
+            return;
+        }
+
         if (project.undo_manager.is_dirty) {
             switch(DialogUtils.save_close_cancel(this, null, "Save changes before closing?")) {
                 case Gtk.ResponseType.ACCEPT:
                     if (!do_save()) {
-                        finished_closing(false);
+                        should_close = false;
                         return;
                     }
                     break;
@@ -785,14 +780,14 @@ public class Recorder : Gtk.Window, TransportDelegate {
                     break;
                 case Gtk.ResponseType.DELETE_EVENT: // when user presses escape.
                 case Gtk.ResponseType.CANCEL:
-                    finished_closing(false);
+                    should_close = false;
                     return;
                 default:
                     assert(false);
                     break;
             }
         }
-        finished_closing(true);
+        should_close = true;
     }
 
     // Edit menu

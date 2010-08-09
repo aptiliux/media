@@ -376,7 +376,8 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public virtual signal void load_complete() {
     }
 
-    public signal void closed();
+    public signal void closed(bool did_close);
+    public signal void query_closed(ref bool should_close);
 
     public signal void track_added(Track track);
     public signal void track_removed(Track track);
@@ -407,7 +408,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
                 ClearTrackMeters();
                 break;
             case PlayState.CLOSED:
-                closed();
+                closed(true);
                 break;
         }
         playstate_changed(media_engine.get_play_state());
@@ -984,7 +985,13 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     }
 
     public void close() {
-        media_engine.close();
+        bool should_close = true;
+        query_closed(ref should_close);
+        if (should_close) {
+            media_engine.close();
+        } else {
+            closed(false);
+        }
     }
 
     public void on_importer_clip_complete(ClipFetcher fetcher) {
