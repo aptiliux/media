@@ -165,19 +165,31 @@ public class AudioTrackHeader : TrackHeader {
         int names_length = names.size;
         if (names_length > 0) {
             Gtk.Menu menu = new Gtk.Menu();
+            unowned GLib.SList<Gtk.RadioMenuItem> group = null;
+            Gtk.RadioMenuItem item = new Gtk.RadioMenuItem.with_label(group, "Default");
+            group = item.get_group();
+            menu.append(item);
             for (int i = 0; i < names_length; ++i) {
                 View.InputSource input_source = names.get(i);
-                if (number_of_channels == -1 || 
-                        input_source.number_of_channels == number_of_channels) {
-                    Gtk.CheckMenuItem item = new Gtk.CheckMenuItem.with_label(input_source.device);
-                    item.set_active(audio_track.device == input_source.device);
-                    menu.append(item);
-                    item.activate.connect(on_input_selected);
-                }
+                item = new Gtk.RadioMenuItem.with_label(group, input_source.device);
+                item.set_sensitive(number_of_channels == -1 || 
+                    input_source.number_of_channels == number_of_channels);
+
+                item.set_active(audio_track.device == input_source.device);
+                menu.append(item);
+                item.activate.connect(on_input_selected);
             }
+            menu.attach_to_widget(input_select, null);
             menu.show_all();
-            menu.popup(null, null, null, 0, 0);
+            menu.popup(null, null, menu_position_function, 0, 0);
         }
+    }
+
+    void menu_position_function(Gtk.Menu menu, out int x, out int y, out bool push_in) {
+        menu.attach_widget.window.get_origin(out x, out y);
+        x += menu.attach_widget.allocation.x;
+        y += menu.attach_widget.allocation.y + menu.attach_widget.allocation.height;
+        push_in = true;
     }
 
     void on_input_selected(Gtk.MenuItem item) {
