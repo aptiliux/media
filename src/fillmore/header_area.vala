@@ -93,6 +93,16 @@ public class VolumeSlider : SliderBase {
     }
 }
 
+class InputMenuItem : Gtk.RadioMenuItem {
+    public string device_name;
+
+    public InputMenuItem(GLib.SList<Gtk.RadioMenuItem> group,
+            string nice_name, string? device_name) {
+        set_label(nice_name);
+        this.device_name = device_name;
+    }
+}
+
 public class AudioTrackHeader : TrackHeader {
     public VolumeSlider pan;
     public VolumeSlider volume;
@@ -166,13 +176,17 @@ public class AudioTrackHeader : TrackHeader {
         if (names_length > 0) {
             Gtk.Menu menu = new Gtk.Menu();
             unowned GLib.SList<Gtk.RadioMenuItem> group = null;
-            Gtk.RadioMenuItem item = new Gtk.RadioMenuItem.with_label(group, "Default");
+
+            InputMenuItem item = new InputMenuItem(group, "Default", null);
             group = item.get_group();
             item.activate.connect(on_input_selected);
+            item.set_active(audio_track.device == null);
             menu.append(item);
+
             for (int i = 0; i < names_length; ++i) {
                 View.InputSource input_source = names.get(i);
-                item = new Gtk.RadioMenuItem.with_label(group, input_source.device);
+                item = new InputMenuItem(group, 
+                    input_source.friendly_name, input_source.device);
                 item.set_sensitive(number_of_channels == -1 || 
                     input_source.number_of_channels == number_of_channels);
 
@@ -195,12 +209,10 @@ public class AudioTrackHeader : TrackHeader {
 
     void on_input_selected(Gtk.MenuItem item) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_input_selected");
+        InputMenuItem input_item = item as InputMenuItem;
+
         Model.AudioTrack audio_track = track as Model.AudioTrack;
-        if (item.get_label() == "Default") {
-            audio_track.device = null;
-        } else {
-            audio_track.device = item.get_label();
-        }
+        audio_track.device = input_item.device_name;
     }
 
     void on_indirect_mute_changed() {
