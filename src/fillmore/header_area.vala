@@ -168,6 +168,7 @@ public class AudioTrackHeader : TrackHeader {
             unowned GLib.SList<Gtk.RadioMenuItem> group = null;
             Gtk.RadioMenuItem item = new Gtk.RadioMenuItem.with_label(group, "Default");
             group = item.get_group();
+            item.activate.connect(on_input_selected);
             menu.append(item);
             for (int i = 0; i < names_length; ++i) {
                 View.InputSource input_source = names.get(i);
@@ -195,7 +196,11 @@ public class AudioTrackHeader : TrackHeader {
     void on_input_selected(Gtk.MenuItem item) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_input_selected");
         Model.AudioTrack audio_track = track as Model.AudioTrack;
-        audio_track.device = item.get_label();
+        if (item.get_label() == "Default") {
+            audio_track.device = null;
+        } else {
+            audio_track.device = item.get_label();
+        }
     }
 
     void on_indirect_mute_changed() {

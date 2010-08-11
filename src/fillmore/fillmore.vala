@@ -1001,8 +1001,9 @@ public class Recorder : Gtk.Window, TransportDelegate {
             }
             int number_of_channels;
             if (audio_track.get_num_channels(out number_of_channels)) {
-                if (View.InputSources.get_number_of_channels("alsasrc", audio_track.device)
-                        != number_of_channels) {
+                int source_channels = 
+                    View.InputSources.get_number_of_channels("alsasrc", audio_track.device);
+                if (source_channels != -1 && source_channels != number_of_channels) {
                     on_error_occurred("Unable to record", "Please select an input source");
                     record_button.set_active(false);
                     return;

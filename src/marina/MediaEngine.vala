@@ -106,7 +106,10 @@ public class InputSources {
         return new Gee.ArrayList<InputSource>();
     }
 
-    public static int get_number_of_channels(string element_name, string device) {
+    public static int get_number_of_channels(string element_name, string? device) {
+        if (device == null) {
+            return -1;
+        }
         Gst.Element element = Gst.ElementFactory.make(element_name, null);
         set_device_name(element, device);
         int number_of_channels = number_of_channels_for_element(element);
