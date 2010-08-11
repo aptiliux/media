@@ -20,6 +20,10 @@ configure_help() {
     printf "\t--prefix=PREFIX\t\tPrepend PREFIX to program installation paths.\n"
     printf "\t\t\t\t[/usr/local]\n"
     printf "\t--define=SYMBOL\t\tDefine a symbol for the Vala compiler.\n"
+    printf "\t--disable-desktop-update\n"
+    printf "\t\t\t\tDisable desktop database update.\n"
+    printf "\t--disable-icon-update\n"
+    printf "\t\t\t\tDisable icon cache update.\n"
     printf "\n"
 }
 
@@ -71,6 +75,11 @@ do
         --define)           variables="${variables}USER_VALAFLAGS+=--define=$value\n"
                             ;;
                             
+        --disable-desktop-update)         variables="${variables}DISABLE_DESKTOP_UPDATE=1\n"
+                                          ;;
+
+        --disable-icon-update)            variables="${variables}DISABLE_ICON_UPDATE=1\n"
+                                          ;;
 
         *)                  if [ ! $value ]
                             then
