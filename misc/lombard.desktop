@@ -9,6 +9,6 @@ Icon=lombard
 MimeType=application/lombard;text/yorba-media;
 Terminal=false
 Type=Application
-Categories=AudioVideo;GNOME;GTK;
+Categories=AudioVideo;Video;AudioVideoEditing;GNOME;GTK;
 X-GIO-NoFuse=true
 
