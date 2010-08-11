@@ -391,7 +391,7 @@ class App : Gtk.Window, TransportDelegate {
         DialogUtils.error(message, minor_message);
     }
 
-    public void on_load_error(string message) {
+    public void on_load_error(Model.ErrorClass error_class, string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
         load_errors.add(message);
     }

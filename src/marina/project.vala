@@ -25,13 +25,14 @@ public class MediaLoaderHandler : LoaderHandler {
         int number_of_attributes = attr_names.length;
         if (number_of_attributes != 1 ||
             attr_names[0] != "version") {
-            load_error("Missing version information");
+            load_error(ErrorClass.LoadFailure, "Missing version information");
             return false;
         }
 
         if (the_project.get_file_version() < attr_values[0].to_int()) {
-            load_error("Version mismatch! (File Version: %d, App Version: %d)".printf(
-                the_project.get_file_version(), attr_values[0].to_int()));
+            load_error(ErrorClass.LoadFailure, 
+                "Version mismatch! (File Version: %d, App Version: %d)".printf(
+                    the_project.get_file_version(), attr_values[0].to_int()));
             return false;
         }
 
@@ -45,13 +46,13 @@ public class MediaLoaderHandler : LoaderHandler {
             return true;
 
         if (attr_names[0] != "framerate") {
-            load_error("Missing framerate tag");
+            load_error(ErrorClass.FormatError, "Missing framerate tag");
             return false;
         }
 
         string[] arr = attr_values[0].split("/");
         if (arr.length != 2) {
-            load_error("Invalid framerate attribute");
+            load_error(ErrorClass.FormatError, "Invalid framerate attribute");
             return false;
         }
 
@@ -79,12 +80,12 @@ public class MediaLoaderHandler : LoaderHandler {
         }
 
         if (name == null) {
-            load_error("Missing track name");
+            load_error(ErrorClass.FormatError, "Missing track name");
             return false;
         }
 
         if (type == null) {
-            load_error("Missing track type");
+            load_error(ErrorClass.FormatError, "Missing track type");
             return false;
         }
 
@@ -156,38 +157,38 @@ public class MediaLoaderHandler : LoaderHandler {
                 break;
             default:
                 // TODO: we need a way to deal with orphaned attributes, for now, reject the file
-                load_error("Unknown attribute %s".printf(attr_names[i]));
+                load_error(ErrorClass.FormatError, "Unknown attribute %s".printf(attr_names[i]));
                 return false;
             }
         }
 
         if (id == -1) {
-            load_error("missing clip id");
+            load_error(ErrorClass.FormatError, "missing clip id");
             return false;
         }
 
         if (clip_name == null) {
-            load_error("missing clip_name");
+            load_error(ErrorClass.FormatError, "missing clip_name");
             return false;
         }
 
         if (start == -1) {
-            load_error("missing start time");
+            load_error(ErrorClass.FormatError, "missing start time");
             return false;
         }
 
         if (media_start == -1) {
-            load_error("missing media_start");
+            load_error(ErrorClass.FormatError, "missing media_start");
             return false;
         }
 
         if (duration == -1) {
-            load_error("missing duration");
+            load_error(ErrorClass.FormatError, "missing duration");
             return false;
         }
 
         if (id >= clipfetchers.size) {
-            load_error("clip file id %s was not loaded".printf(clip_name));
+            load_error(ErrorClass.FormatError, "clip file id %s was not loaded".printf(clip_name));
             return false;
         }
 
@@ -200,7 +201,7 @@ public class MediaLoaderHandler : LoaderHandler {
     void fetcher_ready(Fetcher f) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "fetcher_ready");
         if (f.error_string != null) {
-            load_error("Could not load %s.".printf(f.mediafile.filename));
+            load_error(ErrorClass.MissingFiles, "Could not load %s.".printf(f.mediafile.filename));
             warning("Could not load %s: %s", f.mediafile.filename, f.error_string);
         }
         the_project.add_mediafile(f.mediafile);
@@ -223,12 +224,12 @@ public class MediaLoaderHandler : LoaderHandler {
         }
 
         if (filename == null) {
-            load_error("Invalid clipfile filename");
+            load_error(ErrorClass.FormatError, "Invalid clipfile filename");
             return false;
         }
 
         if (id < 0) {
-            load_error("Invalid clipfile id");
+            load_error(ErrorClass.FormatError, "Invalid clipfile id");
             return false;
         }
 
@@ -237,7 +238,7 @@ public class MediaLoaderHandler : LoaderHandler {
             fetcher.ready.connect(fetcher_ready);
             clipfetchers.insert(id, fetcher);
         } catch (Error e) {
-            load_error(e.message);
+            load_error(ErrorClass.MissingFiles, e.message);
             return false;
         }
         return true;
@@ -245,7 +246,7 @@ public class MediaLoaderHandler : LoaderHandler {
 
     public override bool commit_tempo_entry(string[] attr_names, string[] attr_values) {
         if (attr_names[0] != "tempo") {
-            load_error("Invalid attribute on tempo entry");
+            load_error(ErrorClass.FormatError, "Invalid attribute on tempo entry");
             return false;
         }
 
@@ -255,7 +256,7 @@ public class MediaLoaderHandler : LoaderHandler {
 
     public override bool commit_time_signature_entry(string[] attr_names, string[] attr_values) {
         if (attr_names[0] != "signature") {
-            load_error("Invalid attribute on time signature");
+            load_error(ErrorClass.FormatError, "Invalid attribute on time signature");
             return false;
         }
 
@@ -276,7 +277,8 @@ public class MediaLoaderHandler : LoaderHandler {
                     the_project.click_volume = attr_values[i].to_double();
                 break;
                 default:
-                    load_error("unknown attribute for click '%s'".printf(attr_names[i]));
+                    load_error(ErrorClass.FormatError, 
+                        "unknown attribute for click '%s'".printf(attr_names[i]));
                     return false;
             }
         }
@@ -293,7 +295,8 @@ public class MediaLoaderHandler : LoaderHandler {
                     the_project.library_visible = attr_values[i] == "true";
                 break;
                 default:
-                    load_error("unknown attribute for library '%s'".printf(attr_names[i]));
+                    load_error(ErrorClass.FormatError, 
+                        "unknown attribute for library '%s'".printf(attr_names[i]));
                     return false;
             }
         }
@@ -372,7 +375,7 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
     public signal void playstate_changed(PlayState playstate);
 
     public signal void name_changed(string? project_file);
-    public signal void load_error(string error);
+    public signal void load_error(ErrorClass error_class, string error);
     public virtual signal void load_complete() {
     }
 
@@ -869,9 +872,9 @@ along with %s; if not, write to the Free Software Foundation, Inc.,
         project_file = filename;
     }
 
-    void on_load_error(string error) {
+    void on_load_error(ErrorClass error_class, string error) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
-        load_error(error);
+        load_error(error_class, error);
     }
 
     void on_load_complete() {

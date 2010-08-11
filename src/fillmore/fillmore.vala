@@ -45,6 +45,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
     View.OggVorbisExport audio_export;
     View.AudioOutput audio_output;
     Gee.ArrayList<string> load_errors;
+    bool invalid_project;
 
     public const string NAME = "Fillmore";
     const Gtk.ActionEntry[] entries = {
@@ -294,13 +295,18 @@ public class Recorder : Gtk.Window, TransportDelegate {
         add_accel_group(manager.get_accel_group());
         timeline.grab_focus();
         delete_event.connect(on_delete_event);
-        loading = true;
-        project.load(project_file);
+        start_load(project_file);
         if (project_file == null) {
             default_track_set();
             loading = false;
         }
         project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+    }
+
+    void start_load(string? project_file) {
+        loading = true;
+        invalid_project = false;
+        project.load(project_file);
     }
 
     void default_track_set() {
@@ -493,7 +499,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
                 return track;
             }
         }
-        error("can't find selected track");
+        warning("can't find selected track");
         return null;
     }
 
@@ -1103,41 +1109,15 @@ public class Recorder : Gtk.Window, TransportDelegate {
         DialogUtils.error(major_message, minor_message);
     }
 
-    public void on_load_error(string message) {
+    public void on_load_error(Model.ErrorClass error_class, string message) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
+        if (error_class == Model.ErrorClass.LoadFailure) {
+            invalid_project = true;
+        }
         load_errors.add(message);
     }
 
-    public void on_load_complete() {
-        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
-        project.media_engine.pipeline.set_state(Gst.State.PAUSED);
-        timeline_library_pane.set_position(project.library_width);
-
-        Gtk.ToggleAction action = main_group.get_action("Library") as Gtk.ToggleAction;
-        if (action.get_active() != project.library_visible) {
-            action.set_active(project.library_visible);
-        }
-
-        action = main_group.get_action("Snap") as Gtk.ToggleAction;
-        if (action.get_active() != project.snap_to_clip) {
-            action.set_active(project.snap_to_clip);
-        }
-
-        action = main_group.get_action("SnapGrid") as Gtk.ToggleAction;
-        if (action.get_active() != project.snap_to_grid) {
-            action.set_active(project.snap_to_grid);
-        }
-
-        if (project.library_visible) {
-            if (timeline_library_pane.child2 != library_scrolled) {
-                timeline_library_pane.add2(library_scrolled);
-            }
-        } else {
-            if (timeline_library_pane.child2 == library_scrolled) {
-                timeline_library_pane.remove(library_scrolled);
-            }
-        }
-
+    void display_errors() {
         if (load_errors.size > 0) {
             string message = "";
             foreach (string s in load_errors) {
@@ -1145,8 +1125,45 @@ public class Recorder : Gtk.Window, TransportDelegate {
             }
             do_error_dialog("An error occurred loading the project.", message);
         }
+    }
 
-        loading = false;
+    public void on_load_complete() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_complete");
+        if (!invalid_project) {
+            project.media_engine.pipeline.set_state(Gst.State.PAUSED);
+            timeline_library_pane.set_position(project.library_width);
+
+            Gtk.ToggleAction action = main_group.get_action("Library") as Gtk.ToggleAction;
+            if (action.get_active() != project.library_visible) {
+                action.set_active(project.library_visible);
+            }
+
+            action = main_group.get_action("Snap") as Gtk.ToggleAction;
+            if (action.get_active() != project.snap_to_clip) {
+                action.set_active(project.snap_to_clip);
+            }
+
+            action = main_group.get_action("SnapGrid") as Gtk.ToggleAction;
+            if (action.get_active() != project.snap_to_grid) {
+                action.set_active(project.snap_to_grid);
+            }
+
+            if (project.library_visible) {
+                if (timeline_library_pane.child2 != library_scrolled) {
+                    timeline_library_pane.add2(library_scrolled);
+                }
+            } else {
+                if (timeline_library_pane.child2 == library_scrolled) {
+                    timeline_library_pane.remove(library_scrolled);
+                }
+            }
+            display_errors();
+            loading = false;
+        } else {
+            display_errors();
+            start_load(null);
+            default_track_set();
+        }
     }
 
     void on_name_changed() {

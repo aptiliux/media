@@ -8,29 +8,36 @@ using Logging;
 
 namespace Model {
 
+public enum ErrorClass {
+    LoadFailure,
+    FormatError,
+    MissingFiles,
+    Benign
+}
+
 public class LoaderHandler : Object {
-    public signal void load_error(string error_message);
+    public signal void load_error(ErrorClass error_class, string error_message);
     public signal void complete();
-    
+
     public LoaderHandler() {
     }
-    
+
     public virtual bool commit_library(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual bool commit_marina(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual bool commit_track(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual bool commit_clip(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual bool commit_mediafile(string[] attr_names, string[] attr_values) {
         return true;
     }
@@ -46,25 +53,24 @@ public class LoaderHandler : Object {
     public virtual bool commit_click(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual bool commit_library_preference(string[] attr_names, string[] attr_values) {
         return true;
     }
-    
+
     public virtual void leave_library() {
     }
 
     public virtual void leave_marina() {
-    }    
+    }
 
     public virtual void leave_track() {
     }
-    
+
     public virtual void leave_clip() {
     }
-    
+
     public virtual void leave_mediafile() {
-        
     }
 }
 
@@ -81,19 +87,19 @@ public class XmlTreeLoader {
             context.parse(document, document.length);
         } catch (MarkupError e) {
         }
-    
-    }    
-    
+    }
+
     void xml_start_element(GLib.MarkupParseContext c, string name, 
                            string[] attr_names, string[] attr_values) {
-        Model.XmlElement new_element = new Model.XmlElement(name, attr_names, attr_values, current_element);
+        Model.XmlElement new_element = new Model.XmlElement(name, attr_names, 
+            attr_values, current_element);
         if (root == null) {
             root = new_element;
         } else {
             assert(current_element != null);
             current_element.add_child(new_element);
         }
-        
+
         current_element = new_element;
     }
 
@@ -109,8 +115,8 @@ public class XmlTreeLoader {
 class ProjectBuilder : Object {
     LoaderHandler handler;
 
-    public signal void error_occurred(string error);
-    
+    public signal void error_occurred(ErrorClass error_class, string error);
+
     public ProjectBuilder(LoaderHandler handler) {
         this.handler = handler;
     }
@@ -119,16 +125,17 @@ class ProjectBuilder : Object {
         if (node.name == expected_name) {
             return true;
         }
-        
-        error_occurred("expected %s, got %s".printf(expected_name, node.name));
+
+        error_occurred(ErrorClass.FormatError, 
+            "expected %s, got %s".printf(expected_name, node.name));
         return false;
     }
-    
+
     void handle_clip(XmlElement clip) {
         if (check_name("clip", clip)) {
             if (handler.commit_clip(clip.attribute_names, clip.attribute_values)) {
                 if (clip.children.size != 0) {
-                    error_occurred("clip cannot have children");
+                    error_occurred(ErrorClass.FormatError, "clip cannot have children");
                 }
                 handler.leave_clip();
             }
@@ -154,31 +161,31 @@ class ProjectBuilder : Object {
             handler.commit_library_preference(
                 preference.attribute_names, preference.attribute_values);
         } else {
-            error_occurred("Unknown preference: %s".printf(preference.name));
+            error_occurred(ErrorClass.Benign, "Unknown preference: %s".printf(preference.name));
         }
     }
-    
+
     void handle_time_signature(XmlElement time_signature) {
         foreach (XmlElement child in time_signature.children) {
             if (check_name("entry", child)) {
                 if (!handler.commit_time_signature_entry(child.attribute_names, 
                     child.attribute_values)) {
-                        error_occurred("Improper time signature node");
+                        error_occurred(ErrorClass.FormatError, "Improper time signature node");
                 }
             }
         }
     }
-    
+
     void handle_tempo(XmlElement tempo) {
         foreach (XmlElement child in tempo.children) {
             if (check_name("entry", child)) {
                 if (!handler.commit_tempo_entry(child.attribute_names, child.attribute_values)) {
-                    error_occurred("Improper tempo node");
+                    error_occurred(ErrorClass.FormatError, "Improper tempo node");
                 }
             }
         }
     }
-    
+
     void handle_map(XmlElement map) {
         switch (map.name) {
             case "tempo":
@@ -188,21 +195,21 @@ class ProjectBuilder : Object {
                 handle_time_signature(map);
                 break;
             default:
-                error_occurred("improper map node");
+                error_occurred(ErrorClass.FormatError, "improper map node");
                 break;
         }
     }
-    
+
     void handle_library(XmlElement library) {
         if (handler.commit_library(library.attribute_names, library.attribute_values)) {
             foreach (XmlElement child in library.children) {
                 if (!handler.commit_mediafile(child.attribute_names, child.attribute_values))
-                    error_occurred("Improper library node");
+                    error_occurred(ErrorClass.FormatError, "Improper library node");
             } 
             handler.leave_library();
         }
     }
-    
+
     void handle_tracks(XmlElement tracks) {
         foreach (XmlElement child in tracks.children) {
             handle_track(child);
@@ -214,34 +221,38 @@ class ProjectBuilder : Object {
             handle_preference(child);
         }
     }
+
     void handle_maps(XmlElement maps) {
         foreach (XmlElement child in maps.children) {
             handle_map(child);
         }
     }
+
     public bool check_project(XmlElement? root) {
         if (root == null) {
-            error_occurred("Invalid XML file!");
+            error_occurred(ErrorClass.LoadFailure, "Invalid XML file!");
             return false;
         }
-        
+
         if (check_name("marina", root) &&
             handler.commit_marina(root.attribute_names, root.attribute_values)) {
             if (root.children.size != 3 && root.children.size != 4) {
-                error_occurred("Improper number of children!");
+                error_occurred(ErrorClass.LoadFailure, "Improper number of children!");
                 return false;
             }
-            
+
             if (!check_name("library", root.children[0]) ||
                 !check_name("tracks", root.children[1]) ||
-                !check_name("preferences", root.children[2]))
+                !check_name("preferences", root.children[2])) {
                 return false;
-                
+            }
+
             if (root.children.size == 4 && !check_name("maps", root.children[3])) {
                 return false;
             }
-        } else
+        } else {
             return false;
+        }
         return true;
     }
 
@@ -252,22 +263,22 @@ class ProjectBuilder : Object {
         if (root.children.size == 4) {
             handle_maps(root.children[3]);
         }
-        
+
         handler.leave_marina();
     }
 }
 
 public class XmlElement {
     public string name { get; private set; }
-    
+
     public string[] attribute_names;
-    
+
     public string[] attribute_values;
-    
+
     public Gee.ArrayList<XmlElement> children { get { return _children; } }
-    
+
     public weak XmlElement? parent { get; private set; }
-    
+
     private Gee.ArrayList<XmlElement> _children;
     public XmlElement(string name, string[] attribute_names, string[] attribute_values, 
                         XmlElement? parent) {
@@ -278,7 +289,7 @@ public class XmlElement {
         this.parent = parent;
         this._children = new Gee.ArrayList<XmlElement>();
     }
-    
+
     public void add_child(XmlElement child_element) {
         _children.add(child_element);
     }
@@ -295,20 +306,20 @@ public class ProjectLoader : Object {
 
     public signal void load_started(string filename);
     public signal void load_complete();
-    public signal void load_error(string error);
-    
+    public signal void load_error(ErrorClass error_class, string error);
+
     public ProjectLoader(LoaderHandler loader_handler, string? file_name) {
         this.file_name = file_name;
         this.loader_handler = loader_handler;
         loader_handler.load_error.connect(on_load_error);
         loader_handler.complete.connect(on_handler_complete);
     }
-    
-    void on_load_error(string error) {
+
+    void on_load_error(ErrorClass error_class, string error) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_load_error");
-        load_error(error);
+        load_error(error_class, error);
     }
-    
+
     void on_handler_complete() {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_handler_complete");
         handler_completed = true;
@@ -317,23 +328,23 @@ public class ProjectLoader : Object {
             load_complete();
         }
     }
-    
+
     public void load() {
         try {
             FileUtils.get_contents(file_name, out text, out text_len);
         } catch (FileError e) {
             emit(this, Facility.LOADING, Level.MEDIUM, 
                 "error loading %s: %s".printf(file_name, e.message));
-            load_error(e.message);
+            load_error(ErrorClass.LoadFailure, e.message);
             load_complete();
             return;
         }
         emit(this, Facility.LOADING, Level.VERBOSE, "Building tree for %s".printf(file_name));
         XmlTreeLoader tree_loader = new XmlTreeLoader(text);
-        
+
         ProjectBuilder builder = new ProjectBuilder(loader_handler);
         builder.error_occurred.connect(on_load_error);
-        
+
         if (builder.check_project(tree_loader.root)) {
             emit(this, Facility.LOADING, Level.VERBOSE, "project checked out.  starting load");
             load_started(file_name);

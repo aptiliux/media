@@ -58,7 +58,7 @@ void state_change_fixture_teardown(void *fixture) {
 
 bool document_valid; // if a document is invalid, on_error_occurred will set this variable to false
 
-void on_error_occurred(string? message) {
+void on_error_occurred(Model.ErrorClass error_class, string? message) {
     Test.message("received error: %s", message);
     document_valid = false;
 }
