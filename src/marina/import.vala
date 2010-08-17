@@ -139,8 +139,9 @@ public class ClipImporter : MultiFileProgressInterface, Object {
             our_fetcher.mediafile.filename = append_extension(
                                                    queued_filenames[current_file_importing], "mov");
             clip_complete(our_fetcher.mediafile);
-        } else
+        } else if (our_fetcher.mediafile.is_online()) {
             total_time += our_fetcher.mediafile.length;
+        }
 
         current_file_importing++;
 
