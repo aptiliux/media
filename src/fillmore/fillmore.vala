@@ -96,7 +96,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
     const Gtk.ToggleActionEntry[] toggle_entries = {
         { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
         { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
-        { "Library", null, "_Library", "F9", null, on_view_library, true },
+        { "Library", null, "_Library", "F9", null, on_view_library, false },
         { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, false },
         { "SnapGrid", null, "Snap to _Grid", null, null, on_snap_to_grid, false }
     };
@@ -275,7 +275,6 @@ public class Recorder : Gtk.Window, TransportDelegate {
         timeline_library_pane.add1(hbox);
         timeline_library_pane.child1_resize = 1;
         timeline_library_pane.child1_shrink = 0;
-        timeline_library_pane.add2(library_scrolled);
         timeline_library_pane.child2_resize = 0;
         timeline_library_pane.child2_shrink = 0;
         timeline_library_pane.child1.size_allocate.connect(on_library_size_allocate);
@@ -312,6 +311,8 @@ public class Recorder : Gtk.Window, TransportDelegate {
     void default_track_set() {
         project.add_track(new Model.AudioTrack(project, get_default_track_name()));
         project.tracks[0].set_selected(true);
+        project.library_visible = false;
+        show_library();
     }
 
     static int default_track_number_compare(void *a, void *b) {
@@ -924,15 +925,23 @@ public class Recorder : Gtk.Window, TransportDelegate {
         project.snap_to_grid = !project.snap_to_grid;
     }
 
-    void on_view_library() {
-        if (timeline_library_pane.child2 == library_scrolled) {
+    void show_library() {
+        if (!project.library_visible && timeline_library_pane.child2 == library_scrolled) {
             timeline_library_pane.remove(library_scrolled);
-            project.library_visible = false;
-        } else {
+        }
+
+        if (project.library_visible && timeline_library_pane.child2 != library_scrolled) {
             timeline_library_pane.add2(library_scrolled);
             timeline_library_pane.show_all();
+        }
+    }
+    void on_view_library() {
+        if (timeline_library_pane.child2 == library_scrolled) {
+            project.library_visible = false;
+        } else {
             project.library_visible = true;
         }
+        show_library();
     }
 
     void on_library_size_allocate(Gdk.Rectangle rectangle) {
