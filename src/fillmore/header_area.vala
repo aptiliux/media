@@ -98,7 +98,11 @@ class InputMenuItem : Gtk.RadioMenuItem {
 
     public InputMenuItem(GLib.SList<Gtk.RadioMenuItem> group,
             string nice_name, string? device_name) {
-        set_label(nice_name);
+        if (device_name != null) {
+            set_label("%s (%s)".printf(nice_name, device_name));
+        } else {
+            set_label(nice_name);
+        }
         this.device_name = device_name;
     }
 }
