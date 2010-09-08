@@ -269,6 +269,20 @@ public class Clip : Object {
     // Address when handling multiple track recording.  This is an ugly hack.
     public bool is_recording;
     public string name;
+    bool _is_selected = false;
+    public bool is_selected {
+        get {
+            return _is_selected;
+        }
+
+        set {
+            if (value != _is_selected) {
+                _is_selected = value;
+                selection_changed();
+            }
+        }
+    }
+
     int64 _start;
     public int64 start { 
         get {
@@ -283,7 +297,7 @@ public class Clip : Object {
             if (connected) {
                 start_changed(_start);
             }
-            moved(this);
+            moved();
         }
     }
 
@@ -317,7 +331,7 @@ public class Clip : Object {
             if (connected) {
                 duration_changed(_duration);
             }
-            moved(this);
+            moved();
         }
     }
 
@@ -327,12 +341,13 @@ public class Clip : Object {
         get { return start + duration; }
     }
 
-    public signal void moved(Clip clip);
-    public signal void updated(Clip clip);
+    public signal void moved();
+    public signal void updated();
     public signal void media_start_changed(int64 media_start);
     public signal void duration_changed(int64 duration);
     public signal void start_changed(int64 start);
-    public signal void removed(Clip clip);
+    public signal void removed();
+    public signal void selection_changed();
 
     public Clip(MediaFile mediafile, MediaType t, string name,
                 int64 start, int64 media_start, int64 duration, bool is_recording) {
@@ -366,7 +381,7 @@ public class Clip : Object {
                 connected = false;
             }
         }
-        updated(this);
+        updated();
     }
 
     public bool overlap_pos(int64 start, int64 length) {
@@ -450,7 +465,7 @@ public class Clip : Object {
             duration_changed(_duration);
         }
 
-        moved(this);
+        moved();
     }
 
     public void save(FileStream f, int id) {

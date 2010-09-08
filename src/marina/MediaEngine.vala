@@ -809,7 +809,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         bus.add_signal_watch();
         bus.message["error"] += on_error;
         bus.message["warning"] += on_warning;
-        bus.message["eos"] += on_eos;    
+        bus.message["eos"] += on_eos;
         bus.message["state-changed"] += on_state_change;
         bus.message["element"] += on_element;
     }
@@ -901,6 +901,7 @@ public class MediaEngine : MultiFileProgressInterface, Object {
         string text;
         message.parse_warning(out error, out text);
         warning("%s", text);
+        project.print_graph(pipeline, "bus_warning");
     }
 
     void on_error(Gst.Bus bus, Gst.Message message) {

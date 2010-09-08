@@ -47,10 +47,15 @@ public class ClipView : Gtk.DrawingArea {
         RIGHT_TRIM
     }
 
+    public enum SelectionType {
+        NONE,
+        ADD,
+        EXTEND
+    }
+
     public Model.Clip clip;
     public int64 initial_time;
     weak Model.TimeSystem time_provider;
-    public bool is_selected;
     public int height; // TODO: We request size of height, but we aren't allocated this height.
                        // We should be using the allocated height, not the requested height. 
     public static Gtk.Menu context_menu;
@@ -64,6 +69,7 @@ public class ClipView : Gtk.DrawingArea {
     MotionMode motion_mode = MotionMode.NONE;
     bool button_down = false;
     bool pending_selection;
+    SelectionType selection_type;
     const int MIN_DRAG = 5;
     const int TRIM_WIDTH = 10;
     public const int SNAP_DELTA = 10;
@@ -75,25 +81,25 @@ public class ClipView : Gtk.DrawingArea {
     static Gdk.Cursor plus_cursor = new Gdk.Cursor.from_name(Gdk.Display.get_default(), "dnd-copy");
 
     public signal void clip_deleted(Model.Clip clip);
-    public signal void clip_moved(ClipView clip);
-    public signal void selection_request(ClipView clip_view, bool extend_selection);
-    public signal void move_request(ClipView clip_view, int64 delta);
-    public signal void move_commit(ClipView clip_view, int64 delta);
-    public signal void move_begin(ClipView clip_view, bool copy);
-    public signal void trim_begin(ClipView clip_view, Gdk.WindowEdge edge);
-    public signal void trim_request(ClipView clip_view, Gdk.WindowEdge edge, int64 delta);
-    public signal void trim_commit(ClipView clip_view, Gdk.WindowEdge edge);
-
+    public signal void clip_moved();
+    public signal void selection_request(SelectionType selection_type);
+    public signal void move_request(int64 delta);
+    public signal void move_commit(int64 delta);
+    public signal void move_begin(bool copy);
+    public signal void trim_begin(Gdk.WindowEdge edge);
+    public signal void trim_request(Gdk.WindowEdge edge, int64 delta);
+    public signal void trim_commit(Gdk.WindowEdge edge);
+    public signal void selection_changed();
     public ClipView(TransportDelegate transport_delegate, Model.Clip clip, 
             Model.TimeSystem time_provider, int height) {
         this.transport_delegate = transport_delegate;
         this.clip = clip;
         this.time_provider = time_provider;
         this.height = height;
-        is_selected = false;
 
         clip.moved.connect(on_clip_moved);
         clip.updated.connect(on_clip_updated);
+        clip.selection_changed.connect(on_selection_changed);
 
         Gdk.Color.parse("000", out color_black);
         get_clip_colors();
@@ -101,6 +107,10 @@ public class ClipView : Gtk.DrawingArea {
         set_flags(Gtk.WidgetFlags.NO_WINDOW);
 
         adjust_size(height);
+    }
+
+    public TrackView get_track_view() {
+        return get_parent() as TrackView;
     }
 
     void get_clip_colors() {
@@ -121,6 +131,11 @@ public class ClipView : Gtk.DrawingArea {
         queue_draw();
     }
 
+    void on_selection_changed() {
+        emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_selection_changed");
+        selection_changed();
+    }
+
     // Note that a view's size may vary slightly (by a single pixel) depending on its
     // starting position.  This is because the clip's length may not be an integer number of
     // pixels, and may get rounded either up or down depending on the clip position.
@@ -133,7 +148,7 @@ public class ClipView : Gtk.DrawingArea {
     public void on_clip_moved(Model.Clip clip) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_clip_moved");
         adjust_size(height);
-        clip_moved(this);
+        clip_moved();
     }
 
     public void delete_clip() {
@@ -141,7 +156,7 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     public void draw() {
-        weak Gdk.Color fill = is_selected ? color_selected : color_normal;
+        weak Gdk.Color fill = clip.is_selected ? color_selected : color_normal;
 
         bool left_trimmed = clip.media_start != 0 && !clip.is_recording;
 
@@ -217,26 +232,32 @@ public class ClipView : Gtk.DrawingArea {
             snapped = false;
         }
 
-        bool extend_selection = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
+        if ((event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+            selection_type = SelectionType.ADD;
+        } else if ((event.state & Gdk.ModifierType.SHIFT_MASK) != 0) {
+            selection_type = SelectionType.EXTEND;
+        } else {
+            selection_type = SelectionType.NONE;
+        }
         // The clip is not responsible for changing the selection state.
         // It may depend upon knowledge of multiple clips.  Let anyone who is interested
         // update our state.
         if (is_left_trim(event.x, event.y)) {
-            selection_request(this, false);
+            selection_request(SelectionType.NONE);
             if (primary_press) {
-                trim_begin(this, Gdk.WindowEdge.WEST);
+                trim_begin(Gdk.WindowEdge.WEST);
                 motion_mode = MotionMode.LEFT_TRIM;
             }
         } else if (is_right_trim(event.x, event.y)){
-            selection_request(this, false);
+            selection_request(SelectionType.NONE);
             if (primary_press) {
-                trim_begin(this, Gdk.WindowEdge.EAST);
+                trim_begin(Gdk.WindowEdge.EAST);
                 motion_mode = MotionMode.RIGHT_TRIM;
             }
         } else {
-            if (!is_selected) {
+            if (!clip.is_selected) {
                 pending_selection = false;
-                selection_request(this, extend_selection);
+                selection_request(selection_type);
             } else {
                 pending_selection = true;
             }
@@ -263,22 +284,22 @@ public class ClipView : Gtk.DrawingArea {
             switch (motion_mode) {
                 case MotionMode.NONE: {
                     if (pending_selection) {
-                        selection_request(this, true);
+                        selection_request(SelectionType.ADD);
                     }
                 }
                 break;
                 case MotionMode.DRAGGING: {
                     int64 delta = time_provider.xsize_to_time((int) event.x - drag_point);
                     if (motion_mode == MotionMode.DRAGGING) {
-                        move_commit(this, delta);
+                        move_commit(delta);
                     }
                 }
                 break;
                 case MotionMode.LEFT_TRIM:
-                    trim_commit(this, Gdk.WindowEdge.WEST);
+                    trim_commit(Gdk.WindowEdge.WEST);
                 break;
                 case MotionMode.RIGHT_TRIM:
-                    trim_commit(this, Gdk.WindowEdge.EAST);
+                    trim_commit(Gdk.WindowEdge.EAST);
                 break;
             }
         }
@@ -311,7 +332,7 @@ public class ClipView : Gtk.DrawingArea {
                     window.set_cursor(left_trim_cursor);
                 } else if (!button_down && is_right_trim(event.x, event.y)) {
                     window.set_cursor(right_trim_cursor);
-                } else if (is_selected && button_down) {
+                } else if (clip.is_selected && button_down) {
                     if (delta_pixels.abs() > MIN_DRAG) {
                         bool do_copy = (event.state & Gdk.ModifierType.CONTROL_MASK) != 0;
                         if (do_copy) {
@@ -320,7 +341,7 @@ public class ClipView : Gtk.DrawingArea {
                             window.set_cursor(hand_cursor);
                         }
                         motion_mode = MotionMode.DRAGGING;
-                        move_begin(this, do_copy);
+                        move_begin(do_copy);
                     }
                 } else {
                     window.set_cursor(null);
@@ -329,7 +350,7 @@ public class ClipView : Gtk.DrawingArea {
             case MotionMode.RIGHT_TRIM:
                 if (button_down) {
                     int64 duration = clip.duration;
-                    trim_request(this, Gdk.WindowEdge.EAST, delta_time);
+                    trim_request(Gdk.WindowEdge.EAST, delta_time);
                     if (duration != clip.duration) {
                         drag_point += time_provider.time_to_xsize(clip.duration - duration);
                     }
@@ -338,11 +359,11 @@ public class ClipView : Gtk.DrawingArea {
             break;
             case MotionMode.LEFT_TRIM:
                 if (button_down) {
-                    trim_request(this, Gdk.WindowEdge.WEST, delta_time);
+                    trim_request(Gdk.WindowEdge.WEST, delta_time);
                 }
                 return true;
             case MotionMode.DRAGGING:
-                move_request(this, delta_time);
+                move_request(delta_time);
                 return true;
         }
         return false;
@@ -362,8 +383,8 @@ public class ClipView : Gtk.DrawingArea {
     }
 
     public void select() {
-        if (!is_selected) {
-            selection_request(this, true);
+        if (!clip.is_selected) {
+            selection_request(SelectionType.ADD);
         }
     }
     

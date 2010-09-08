@@ -84,7 +84,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         timeline.track_changed();
         clip_view_added(view);
         if (select) {
-            view.selection_request(view, false);
+            view.selection_request(ClipView.SelectionType.NONE);
         }
     }
 
@@ -103,7 +103,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         clip_view.show();
     }
 
-    void on_trim_begin(ClipView clip_view) {
+    void on_trim_begin(ClipView clip_view, Gdk.WindowEdge edge) {
         emit(this, Facility.SIGNAL_HANDLERS, Level.INFO, "on_trim_begin");
         move_to_top(clip_view);
     }

@@ -274,6 +274,10 @@ public abstract class Track : Object {
         return clips[i];
     }
 
+    public int get_clip_count() {
+        return clips.size;
+    }
+
     public int get_clip_index(Clip c) {
         for (int i = 0; i < clips.size; i++) {
             if (clips[i] == c) {
@@ -316,7 +320,7 @@ public abstract class Track : Object {
         assert(index != -1);
         clips.remove_at(index);
 
-        clip.removed(clip);
+        clip.removed();
         clip_removed(clip);
     }
 
