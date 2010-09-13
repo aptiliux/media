@@ -1012,6 +1012,16 @@ public class Recorder : Gtk.Window, TransportDelegate {
                         break;
                     }
                 }
+
+                Gee.ArrayList<View.InputSource> names = 
+                    View.InputSources.get_input_selections("alsasrc");
+                if (names.size == 0) {
+                    on_error_occurred("Cannot Record", "No input devices are available.  " +
+                        "Please connect an input device");
+                    record_button.set_active(false);
+                    return;
+                }
+
                 int number_of_channels;
                 if (audio_track.get_num_channels(out number_of_channels)) {
                     int source_channels = 
@@ -1022,6 +1032,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
                         return;
                     }
                 }
+                
                 set_sensitive_group(main_group, "Record", false);
                 set_sensitive_group(main_group, "Play", false);
                 project.record(audio_track);
