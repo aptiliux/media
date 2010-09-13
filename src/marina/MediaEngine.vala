@@ -553,7 +553,7 @@ public class MediaAudioTrack : MediaTrack {
     override void link_new_pad(Gst.Pad pad, Gst.Element track_element) {
         Gst.Bin bin = (Gst.Bin) pad.get_parent_element();
         if (!bin.link_many(audio_convert, audio_resample, level, pan, volume)) {
-            stderr.printf("could not link_new_pad for audio track");
+            warning("could not link_new_pad for audio track");
         }
 
         Gst.Pad volume_pad = volume.get_pad("src");
@@ -561,7 +561,7 @@ public class MediaAudioTrack : MediaTrack {
             track_element.get_compatible_pad_template(volume_pad.get_pad_template()), null);
 
         if (volume_pad.link(adder_pad) != Gst.PadLinkReturn.OK) {
-            error("could not link to adder %s->%s\n", volume.name, track_element.name);
+            warning("could not link to adder %s->%s\n", volume.name, track_element.name);
         }
     }
 
@@ -1197,7 +1197,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void post_record() {
-        assert(gst_state == Gst.State.NULL);
+        if (gst_state != Gst.State.NULL) {
+            warning("gst_state was null");
+            return;
+        }
 
         record_track._delete_clip(record_region);
 
@@ -1214,7 +1217,10 @@ public class MediaEngine : MultiFileProgressInterface, Object {
     }
 
     public void record(Model.AudioTrack track) {
-        assert(gst_state != Gst.State.NULL);
+        if (gst_state == Gst.State.NULL) {
+            warning("gst_state was null");
+            return;
+        }
         play_state = PlayState.PRE_RECORD_NULL;
         set_gst_state(Gst.State.NULL);
         record_track = track;

@@ -35,6 +35,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
     int64 center_time = -1;
     bool loading;
     const int scroll_speed = 8;
+    bool track_record_enabled = false;
 
     Gtk.ActionGroup main_group;
 
@@ -420,19 +421,19 @@ public class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_record_enable_changed(Model.AudioTrack audio_track) {
-        bool enabled = audio_track.record_enable;
-        if (!enabled) {
+        track_record_enabled = audio_track.record_enable;
+        if (!track_record_enabled) {
             foreach (Model.Track track in project.tracks) {
                 Model.AudioTrack another_track = track as Model.AudioTrack;
                 if (another_track != null) {
                     if (another_track.record_enable) {
-                        enabled = true;
+                        track_record_enabled = true;
                         break;
                     }
                 }
             }
         }
-        set_sensitive_group(main_group, "Record", enabled);
+        set_sensitive_group(main_group, "Record", track_record_enabled);
     }
 
     void on_clip_moved(Model.Clip clip) {
@@ -490,8 +491,9 @@ public class Recorder : Gtk.Window, TransportDelegate {
         set_sensitive_group(main_group, "NewTrack", is_stopped);
 
         // toolbar
-        set_sensitive_group(main_group, "Play", true);
-        set_sensitive_group(main_group, "Record", number_of_tracks > 0 && is_stopped);
+        set_sensitive_group(main_group, "Play", !project.transport_is_recording());
+        set_sensitive_group(main_group, "Record", number_of_tracks > 0 && track_record_enabled &&
+            (!project.transport_is_playing() || project.transport_is_recording()));
     }
 
     public Model.Track? selected_track() {
@@ -988,39 +990,42 @@ public class Recorder : Gtk.Window, TransportDelegate {
     }
 
     void on_play() {
+        if (play_button.get_active()) {
+            project.media_engine.do_play(PlayState.PLAYING);
+        } else {
+            project.media_engine.pause();
+        }
+    }
+
+    void on_record() {
         if (project.transport_is_recording()) {
             set_sensitive_group(main_group, "Record", true);
             record_button.set_active(false);
             play_button.set_active(false);
             project.media_engine.pause();
-        } else if (play_button.get_active())
-            project.media_engine.do_play(PlayState.PLAYING);
-        else
-            project.media_engine.pause();
-    }
-
-    void on_record() {
-        Model.AudioTrack audio_track = null;
-        if (record_button.get_active()) {
-            foreach (Model.Track track in project.tracks) {
-                audio_track = track as Model.AudioTrack;
-                if (audio_track.record_enable) {
-                    break;
+        } else {
+            Model.AudioTrack audio_track = null;
+            if (record_button.get_active()) {
+                foreach (Model.Track track in project.tracks) {
+                    audio_track = track as Model.AudioTrack;
+                    if (audio_track.record_enable) {
+                        break;
+                    }
                 }
-            }
-            int number_of_channels;
-            if (audio_track.get_num_channels(out number_of_channels)) {
-                int source_channels = 
-                    View.InputSources.get_number_of_channels("alsasrc", audio_track.device);
-                if (source_channels != -1 && source_channels != number_of_channels) {
-                    on_error_occurred("Unable to record", "Please select an input source");
-                    record_button.set_active(false);
-                    return;
+                int number_of_channels;
+                if (audio_track.get_num_channels(out number_of_channels)) {
+                    int source_channels = 
+                        View.InputSources.get_number_of_channels("alsasrc", audio_track.device);
+                    if (source_channels != -1 && source_channels != number_of_channels) {
+                        on_error_occurred("Unable to record", "Please select an input source");
+                        record_button.set_active(false);
+                        return;
+                    }
                 }
+                set_sensitive_group(main_group, "Record", false);
+                set_sensitive_group(main_group, "Play", false);
+                project.record(audio_track);
             }
-            set_sensitive_group(main_group, "Record", false);
-            set_sensitive_group(main_group, "Play", false);
-            project.record(audio_track);
         }
     }
 
