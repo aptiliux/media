@@ -56,7 +56,7 @@ public class TrackHeader : Gtk.EventBox {
     }
 }
 
-public class SliderBase : Gtk.HScrollbar {
+public abstract class SliderBase : Gtk.HScrollbar {
     Gdk.Pixbuf slider_image;
     construct {
         can_focus = true;
@@ -67,6 +67,8 @@ public class SliderBase : Gtk.HScrollbar {
             warning("Could not load resource for slider: %s", e.message);
         }
     }
+
+    protected abstract void control_click();
 
     public override bool expose_event (Gdk.EventExpose event) {
         Gdk.GC gc = style.fg_gc[(int) Gtk.StateType.NORMAL];
@@ -81,15 +83,34 @@ public class SliderBase : Gtk.HScrollbar {
             slider_image.get_width(), slider_image.get_height(), Gdk.RgbDither.NORMAL, 0, 0);
         return true;
     }
+
+    public override bool button_press_event (Gdk.EventButton event) {
+        if (event.button == 1 && (event.state & Gdk.ModifierType.CONTROL_MASK) != 0) {
+            control_click();
+            return true;
+        } else {
+            return base.button_press_event(event);
+        }
+    }
 }
 
 public class PanSlider : SliderBase {
     construct {
     }
+
+    override void control_click() {
+        // control click centers panorama
+        set_value(0);
+    }
 }
 
 public class VolumeSlider : SliderBase {
     construct {
+    }
+
+    override void control_click() {
+        // control click sets to unity gain
+        set_value(1);
     }
 }
 
@@ -108,7 +129,7 @@ class InputMenuItem : Gtk.RadioMenuItem {
 }
 
 public class AudioTrackHeader : TrackHeader {
-    public VolumeSlider pan;
+    public PanSlider pan;
     public VolumeSlider volume;
     Gtk.ToggleButton mute;
     Gtk.ToggleButton solo;
@@ -135,7 +156,7 @@ public class AudioTrackHeader : TrackHeader {
         record_enable = (Gtk.ToggleButton) builder.get_object("record_enable");
         record_enable.set("name", "record_enable");
 
-        pan = (VolumeSlider) builder.get_object("track_pan");
+        pan = (PanSlider) builder.get_object("track_pan");
 
         volume = (VolumeSlider) builder.get_object("track_volume");
         volume.get_adjustment().set_value(audio_track.get_volume());

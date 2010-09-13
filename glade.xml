@@ -4,11 +4,13 @@
 <glade-widget-class name="ProjectProperties" generic-name="projectproperties" title="Project Properties" />
 <glade-widget-class name="AudioTrackHeader" generic-name="audiotrackheader" title="Audio Track Header" />
 <glade-widget-class name="VolumeSlider" generic-name="volumeslider" title="Volume Slider" />
+<glade-widget-class name="PanSlider" generic-name="panslider" title="Pan Slider" />
 <glade-widget-class name="ViewAudioMeter" generic-name="audiometer" title="Audio Meter" />
 </glade-widget-classes>
 <glade-widget-group name="fillmorewidgets" title="Fillmore Widgets">
 <glade-widget-class-ref name="ProjectProperties"/>
 <glade-widget-class-ref name="VolumeSlider" />
+<glade-widget-class-ref name="PanSlider" />
 <glade-widget-class-ref name="ViewAudioMeter" />
 <glade-widget-class-ref name="AudioTrackHeader" />
 </glade-widget-group>
