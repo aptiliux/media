@@ -550,7 +550,7 @@ public class MediaAudioTrack : MediaTrack {
         return media_engine.get_audio_silence();
     }
 
-    override void link_new_pad(Gst.Pad pad, Gst.Element track_element) {
+    protected override void link_new_pad(Gst.Pad pad, Gst.Element track_element) {
         Gst.Bin bin = (Gst.Bin) pad.get_parent_element();
         if (!bin.link_many(audio_convert, audio_resample, level, pan, volume)) {
             warning("could not link_new_pad for audio track");

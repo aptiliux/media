@@ -53,7 +53,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
         return base.expose_event(event);
     }
 
-    override void size_request(out Gtk.Requisition requisition) {
+    protected override void size_request(out Gtk.Requisition requisition) {
         base.size_request(out requisition);
         requisition.height = TrackHeight;
         requisition.width += TimeLine.BORDER;    // right margin
@@ -150,7 +150,7 @@ class TrackViewConcrete : TrackView, Gtk.Fixed {
     }
 */
 
-    override bool button_press_event(Gdk.EventButton e) {
+    protected override bool button_press_event(Gdk.EventButton e) {
         if (e.type != Gdk.EventType.BUTTON_PRESS &&
             e.type != Gdk.EventType.2BUTTON_PRESS &&
             e.type != Gdk.EventType.3BUTTON_PRESS)

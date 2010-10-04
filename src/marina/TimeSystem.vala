@@ -38,8 +38,8 @@ public abstract class TimeSystemBase : Object {
     const int BORDER = 4;  // TODO: should use same value as timeline.  will happen when this gets
                            // refactored back into view code.
 
-    abstract int[] get_timeline_seconds();
-    abstract int correct_sub_second_value(float seconds, int div, int fps);
+    protected abstract int[] get_timeline_seconds();
+    protected abstract int correct_sub_second_value(float seconds, int div, int fps);
 
     protected int correct_seconds_value (float seconds, int div, int fps) {
         if (seconds < 1) {
@@ -111,7 +111,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
 
     public Fraction frame_rate_fraction = Fraction(30000, 1001);
 
-    override int correct_sub_second_value(float seconds, int div, int fps) {
+    protected override int correct_sub_second_value(float seconds, int div, int fps) {
         int frames = (int)(fps * seconds);
         if (frames == 0) {
             return 1;
@@ -226,7 +226,7 @@ public class TimecodeTimeSystem : TimeSystem, TimeSystemBase {
         }
     }
 
-    override int[] get_timeline_seconds() {
+    protected override int[] get_timeline_seconds() {
         return { 1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600, 900, 1200, 1800, 3600 };
     }
 }
@@ -284,7 +284,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         geometry_changed();
     }
 
-    override int correct_sub_second_value(float bars, int div, int unused) {
+    protected override int correct_sub_second_value(float bars, int div, int unused) {
         int sixteenths = (int)(sixteenths_per_bar * bars);
 
         if (sixteenths == 0) {
@@ -450,7 +450,7 @@ public class BarBeatTimeSystem : TimeSystem, TimeSystemBase {
         }
     }
 
-    override int[] get_timeline_seconds() {
+    protected override int[] get_timeline_seconds() {
         return timeline_bars;
     }
 }

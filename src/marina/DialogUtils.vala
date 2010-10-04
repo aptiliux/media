@@ -48,12 +48,12 @@ namespace DialogUtils {
 
         Gtk.FileChooserDialog d = new Gtk.FileChooserDialog("Open Files", parent, 
                                                             Gtk.FileChooserAction.OPEN,
-                                                            Gtk.STOCK_CANCEL, 
+                                                            Gtk.Stock.CANCEL, 
                                                             Gtk.ResponseType.CANCEL,
-                                                            Gtk.STOCK_OPEN, 
+                                                            Gtk.Stock.OPEN, 
                                                             Gtk.ResponseType.ACCEPT, null);
         d.set_current_folder(GLib.Environment.get_home_dir());
-        Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();    
+        Gee.ArrayList<Gtk.FileFilter> filters = new Gee.ArrayList<Gtk.FileFilter>();
         add_filters(filter_descriptions, d, filters, allow_all);
         d.set_select_multiple(allow_multiple);
         if (d.run() == Gtk.ResponseType.ACCEPT) {
@@ -68,8 +68,8 @@ namespace DialogUtils {
             filter_description_struct[] filter_descriptions, ref string filename) {
         bool return_value = false;
         Gtk.FileChooserDialog d = new Gtk.FileChooserDialog(title, parent, 
-            Gtk.FileChooserAction.SAVE, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-            Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT, null);
+            Gtk.FileChooserAction.SAVE, Gtk.Stock.CANCEL, Gtk.ResponseType.CANCEL,
+            Gtk.Stock.SAVE, Gtk.ResponseType.ACCEPT, null);
         if (filename != null) {
             d.set_current_folder(Path.get_dirname(filename));
         } else {
@@ -186,15 +186,15 @@ namespace DialogUtils {
     }
 
     public Gtk.ResponseType delete_keep(string message) {
-        return two_button_dialog(message, "Keep", Gtk.STOCK_DELETE);
+        return two_button_dialog(message, "Keep", Gtk.Stock.DELETE);
     }
 
     public Gtk.ResponseType add_cancel(string message) {
-        return two_button_dialog(message, Gtk.STOCK_CANCEL, Gtk.STOCK_ADD);
+        return two_button_dialog(message, Gtk.Stock.CANCEL, Gtk.Stock.ADD);
     }
 
     public Gtk.ResponseType delete_cancel(string message) {
-        return two_button_dialog(message, Gtk.STOCK_CANCEL, Gtk.STOCK_DELETE);
+        return two_button_dialog(message, Gtk.Stock.CANCEL, Gtk.Stock.DELETE);
     }
 
     public bool confirm_replace(Gtk.Window? parent, string filename) {
@@ -202,7 +202,7 @@ namespace DialogUtils {
             parent, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.NONE,
             "<big><b>A file named \"%s\" already exists.  Do you want to replace it?</b></big>",
             Path.get_basename(filename));
-        md.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        md.add_buttons(Gtk.Stock.CANCEL, Gtk.ResponseType.CANCEL,
                        "Replace", Gtk.ResponseType.ACCEPT);
         int response = md.run();
         md.destroy();
@@ -222,8 +222,8 @@ namespace DialogUtils {
     public Gtk.ResponseType save_close_cancel(Gtk.Window? parent, string? title, string message) {
         ButtonStruct[] buttons = {
             ButtonStruct("Close _without saving", Gtk.ResponseType.CLOSE),
-            ButtonStruct(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL),
-            ButtonStruct(Gtk.STOCK_SAVE, Gtk.ResponseType.ACCEPT)
+            ButtonStruct(Gtk.Stock.CANCEL, Gtk.ResponseType.CANCEL),
+            ButtonStruct(Gtk.Stock.SAVE, Gtk.ResponseType.ACCEPT)
         };
 
         return run_dialog(parent, Gtk.MessageType.WARNING, title, message, buttons);
@@ -257,7 +257,7 @@ namespace DialogUtils {
     public void show_clip_properties(Gtk.Window parent, ClipView? selected_clip, 
             Model.MediaFile ? media_file, Fraction? frames_per_second) {
         Gtk.Dialog d = new Gtk.Dialog.with_buttons("Clip Properties", parent, 
-            Gtk.DialogFlags.NO_SEPARATOR, Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE);
+            Gtk.DialogFlags.NO_SEPARATOR, Gtk.Stock.CLOSE, Gtk.ResponseType.CLOSE);
 
         d.response.connect(on_dialog_response);
         if (selected_clip != null) {

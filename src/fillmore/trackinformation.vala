@@ -12,8 +12,8 @@ namespace UI {
         construct {
             set_title("New Track");
             set_modal(true);
-            add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                        Gtk.STOCK_OK, Gtk.ResponseType.OK,
+            add_buttons(Gtk.Stock.CANCEL, Gtk.ResponseType.CANCEL,
+                        Gtk.Stock.OK, Gtk.ResponseType.OK,
                         null);
             Gtk.Label label = new Gtk.Label("Track name:");
             entry = new Gtk.Entry();

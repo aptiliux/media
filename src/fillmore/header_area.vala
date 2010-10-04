@@ -98,7 +98,7 @@ public class PanSlider : SliderBase {
     construct {
     }
 
-    override void control_click() {
+    protected override void control_click() {
         // control click centers panorama
         set_value(0);
     }
@@ -108,7 +108,7 @@ public class VolumeSlider : SliderBase {
     construct {
     }
 
-    override void control_click() {
+    protected override void control_click() {
         // control click sets to unity gain
         set_value(1);
     }
