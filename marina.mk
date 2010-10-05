@@ -1,5 +1,5 @@
 VALAC = valac
-MIN_VALAC_VERSION = 0.9.3
+MIN_VALAC_VERSION = 0.11.0
 # defaults that may be overridden by configure.mk
 ifndef PREFIX
 PREFIX=/usr/local
