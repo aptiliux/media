@@ -259,121 +259,119 @@ const double LINE_WIDTH = 1.0;
 const double RADIUS = 15.0;
 const Cairo.Antialias ANTIALIAS = Cairo.Antialias.DEFAULT; // NONE/DEFAULT
 
-public void draw_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_rounded_rectangle(Cairo.Context context, Gdk.Color color, bool filled, 
                             int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
 
     double x1 = x0 + width;
     double y1 = y0 + height;
-    
-    Cairo.Context cairo_window = Gdk.cairo_create(window);
-    Gdk.cairo_set_source_color(cairo_window, color);
-    cairo_window.set_antialias(ANTIALIAS);
+
+    Gdk.cairo_set_source_color(context, color);
+    context.set_antialias(ANTIALIAS);
         
     if ((width / 2) < RADIUS) {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, ((y0 + y1) / 2));
-            cairo_window.curve_to(x0, y0, x0, y0, (x0 + x1) / 2, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
-            cairo_window.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
+            context.move_to(x0, ((y0 + y1) / 2));
+            context.curve_to(x0, y0, x0, y0, (x0 + x1) / 2, y0);
+            context.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
+            context.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
+            context.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
         } else {
-            cairo_window.move_to(x0, y0 + RADIUS);
-            cairo_window.curve_to(x0,y0, x0, y0, (x0 + x1) / 2, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
-            cairo_window.line_to(x1, y1 - RADIUS);
-            cairo_window.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
+            context.move_to(x0, y0 + RADIUS);
+            context.curve_to(x0,y0, x0, y0, (x0 + x1) / 2, y0);
+            context.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
+            context.line_to(x1, y1 - RADIUS);
+            context.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
+            context.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
         }
     } else {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, (y0 + y1) / 2);
-            cairo_window.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
-            cairo_window.line_to(x1 - RADIUS, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
-            cairo_window.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
-            cairo_window.line_to(x0 + RADIUS, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
+            context.move_to(x0, (y0 + y1) / 2);
+            context.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
+            context.line_to(x1 - RADIUS, y0);
+            context.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
+            context.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
+            context.line_to(x0 + RADIUS, y1);
+            context.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
         } else {
-            cairo_window.move_to(x0, y0 + RADIUS);
-            cairo_window.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
-            cairo_window.line_to(x1 - RADIUS, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
-            cairo_window.line_to(x1, y1 - RADIUS);
-            cairo_window.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
-            cairo_window.line_to(x0 + RADIUS, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
+            context.move_to(x0, y0 + RADIUS);
+            context.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
+            context.line_to(x1 - RADIUS, y0);
+            context.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
+            context.line_to(x1, y1 - RADIUS);
+            context.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
+            context.line_to(x0 + RADIUS, y1);
+            context.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
         }
     }
-    cairo_window.close_path();
+    context.close_path();
 
     if (filled) {
-        cairo_window.fill();
+        context.fill();
     } else {
-        cairo_window.set_line_width(LINE_WIDTH);
-        cairo_window.stroke();
+        context.set_line_width(LINE_WIDTH);
+        context.stroke();
     }
 }
 
-public void draw_right_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_right_rounded_rectangle(Cairo.Context context, Gdk.Color color, bool filled, 
                                   int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
 
     double x1 = x0 + width;
     double y1 = y0 + height;
-    
-    Cairo.Context cairo_window = Gdk.cairo_create(window);
-    Gdk.cairo_set_source_color(cairo_window, color);
-    cairo_window.set_antialias(ANTIALIAS);
+
+    Gdk.cairo_set_source_color(context, color);
+    context.set_antialias(ANTIALIAS);
 
     if ((width / 2) < RADIUS) {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, y0);
-            cairo_window.line_to((x0 + x1) / 2, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
-            cairo_window.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
-            cairo_window.line_to(x0, y1);
-            cairo_window.line_to(x0, y0);
+            context.move_to(x0, y0);
+            context.line_to((x0 + x1) / 2, y0);
+            context.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
+            context.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
+            context.line_to(x0, y1);
+            context.line_to(x0, y0);
         } else {
-            cairo_window.move_to(x0, y0);
-            cairo_window.line_to((x0 + x1) / 2, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
-            cairo_window.line_to(x1, y1 - RADIUS);
-            cairo_window.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
-            cairo_window.line_to(x0, y1);
-            cairo_window.line_to(x0, y0);
+            context.move_to(x0, y0);
+            context.line_to((x0 + x1) / 2, y0);
+            context.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
+            context.line_to(x1, y1 - RADIUS);
+            context.curve_to(x1, y1, x1, y1, (x1 + x0) / 2, y1);
+            context.line_to(x0, y1);
+            context.line_to(x0, y0);
         }
     } else {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, y0);
-            cairo_window.line_to(x1 - RADIUS, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
-            cairo_window.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
-            cairo_window.line_to(x0, y1);
-            cairo_window.line_to(x0, y0);
+            context.move_to(x0, y0);
+            context.line_to(x1 - RADIUS, y0);
+            context.curve_to(x1, y0, x1, y0, x1, (y0 + y1) / 2);
+            context.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
+            context.line_to(x0, y1);
+            context.line_to(x0, y0);
         } else {
-            cairo_window.move_to(x0, y0);
-            cairo_window.line_to(x1 - RADIUS, y0);
-            cairo_window.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
-            cairo_window.line_to(x1, y1 - RADIUS);
-            cairo_window.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
-            cairo_window.line_to(x0, y1);
-            cairo_window.line_to(x0, y0);
+            context.move_to(x0, y0);
+            context.line_to(x1 - RADIUS, y0);
+            context.curve_to(x1, y0, x1, y0, x1, y0 + RADIUS);
+            context.line_to(x1, y1 - RADIUS);
+            context.curve_to(x1, y1, x1, y1, x1 - RADIUS, y1);
+            context.line_to(x0, y1);
+            context.line_to(x0, y0);
         }
     }
-    cairo_window.close_path();
+    context.close_path();
 
     if (filled) {
-        cairo_window.fill();
+        context.fill();
     } else {
-        cairo_window.set_line_width(LINE_WIDTH);
-        cairo_window.stroke();
+        context.set_line_width(LINE_WIDTH);
+        context.stroke();
     }
 }
 
-public void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_left_rounded_rectangle(Cairo.Context context, Gdk.Color color, bool filled, 
                                  int x0, int y0, int width, int height) {
     if (width == 0 || height == 0)
         return;
@@ -381,69 +379,67 @@ public void draw_left_rounded_rectangle(Gdk.Window window, Gdk.Color color, bool
     double x1 = x0 + width;
     double y1 = y0 + height;
 
-    Cairo.Context cairo_window = Gdk.cairo_create(window);
-    Gdk.cairo_set_source_color(cairo_window, color);
-    cairo_window.set_antialias(ANTIALIAS);
+    Gdk.cairo_set_source_color(context, color);
+    context.set_antialias(ANTIALIAS);
 
     if ((width / 2) < RADIUS) {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, ((y0 + y1) / 2));
-            cairo_window.curve_to(x0, y0, x0, y0, (x0 + x1) / 2, y0);
-            cairo_window.line_to(x1, y0);
-            cairo_window.line_to(x1, y1);
-            cairo_window.line_to((x1 + x0) / 2, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
+            context.move_to(x0, ((y0 + y1) / 2));
+            context.curve_to(x0, y0, x0, y0, (x0 + x1) / 2, y0);
+            context.line_to(x1, y0);
+            context.line_to(x1, y1);
+            context.line_to((x1 + x0) / 2, y1);
+            context.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
         } else {
-            cairo_window.move_to(x0, y0 + RADIUS);
-            cairo_window.curve_to(x0,y0, x0, y0, (x0 + x1) / 2, y0);
-            cairo_window.line_to(x1, y0);
-            cairo_window.line_to(x1, y1);
-            cairo_window.line_to((x1 + x0) / 2, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
+            context.move_to(x0, y0 + RADIUS);
+            context.curve_to(x0,y0, x0, y0, (x0 + x1) / 2, y0);
+            context.line_to(x1, y0);
+            context.line_to(x1, y1);
+            context.line_to((x1 + x0) / 2, y1);
+            context.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
         }
     } else {
         if ((height / 2) < RADIUS) {
-            cairo_window.move_to(x0, (y0 + y1) / 2);
-            cairo_window.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
-            cairo_window.line_to(x1, y0);
-            cairo_window.line_to(x1, y1);
-            cairo_window.line_to(x0 + RADIUS, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
+            context.move_to(x0, (y0 + y1) / 2);
+            context.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
+            context.line_to(x1, y0);
+            context.line_to(x1, y1);
+            context.line_to(x0 + RADIUS, y1);
+            context.curve_to(x0, y1, x0, y1, x0, (y0 + y1) / 2);
         } else {
-            cairo_window.move_to(x0, y0 + RADIUS);
-            cairo_window.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
-            cairo_window.line_to(x1, y0);
-            cairo_window.line_to(x1, y1);
-            cairo_window.line_to(x0 + RADIUS, y1);
-            cairo_window.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
+            context.move_to(x0, y0 + RADIUS);
+            context.curve_to(x0, y0, x0, y0, x0 + RADIUS, y0);
+            context.line_to(x1, y0);
+            context.line_to(x1, y1);
+            context.line_to(x0 + RADIUS, y1);
+            context.curve_to(x0, y1, x0, y1, x0, y1 - RADIUS);
         }
     }
-    cairo_window.close_path();
+    context.close_path();
 
     if (filled) {
-        cairo_window.fill();
+        context.fill();
     } else {
-        cairo_window.set_line_width(LINE_WIDTH);
-        cairo_window.stroke();
+        context.set_line_width(LINE_WIDTH);
+        context.stroke();
     }
 }
 
-public void draw_square_rectangle(Gdk.Window window, Gdk.Color color, bool filled, 
+public void draw_square_rectangle(Cairo.Context context, Gdk.Color color, bool filled, 
                            int x, int y, int width, int height) {
     if (width == 0 || height == 0)
         return;
 
-    Cairo.Context cairo_window = Gdk.cairo_create(window);
-    Gdk.cairo_set_source_color(cairo_window, color);
-    cairo_window.set_antialias(ANTIALIAS);
+    Gdk.cairo_set_source_color(context, color);
+    context.set_antialias(ANTIALIAS);
 
-    cairo_window.rectangle(x, y, width, height);
+    context.rectangle(x, y, width, height);
 
     if (filled) {
-        cairo_window.fill();
+        context.fill();
     } else {
-        cairo_window.set_line_width(LINE_WIDTH);
-        cairo_window.stroke();
+        context.set_line_width(LINE_WIDTH);
+        context.stroke();
     }
 }
 

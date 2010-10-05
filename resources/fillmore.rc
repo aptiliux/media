@@ -54,6 +54,10 @@ style "audiotrackheader" {
     bg[NORMAL] = "#666"
 }
 
+style "clipview" {
+    text[NORMAL] = "black"
+}
+
 class "PanSlider" style "pan"
 class "VolumeSlider" style "pan"
 class "TrackSeparator" style "hseparator"
@@ -61,5 +65,5 @@ widget "*.mute" style "mutetogglebutton"
 widget "*.solo" style "solotogglebutton"
 widget "*.record_enable" style "recordenabletogglebutton"
 class "AudioTrackHeader" style "audiotrackheader"
-
+class "ClipView" style "clipview"
 

@@ -22,7 +22,7 @@ public class Ruler : Gtk.DrawingArea {
         int frame = provider.get_start_token(x);
 
         Cairo.Context context = Gdk.cairo_create(window);
-
+        context.save();
         Gdk.cairo_set_source_color(context, parse_color("#777"));
         context.rectangle(event.area.x, event.area.y, event.area.width, event.area.height);
         context.fill();
@@ -42,7 +42,8 @@ public class Ruler : Gtk.DrawingArea {
 
             string? display_string = provider.get_display_string(frame);
             if (display_string != null) {
-                Pango.Layout layout = create_pango_layout(display_string);
+                Pango.Layout layout = Pango.cairo_create_layout(context);
+                layout.set_text(display_string, (int) display_string.length);
 
                 int w;
                 int h;
@@ -52,8 +53,9 @@ public class Ruler : Gtk.DrawingArea {
                 if (text_pos < 0) {
                     text_pos = 0;
                 }
-
-                Gdk.draw_layout(window, style.white_gc, text_pos, 7, layout);
+                context.move_to(text_pos, 7);
+                context.set_source_rgb(1, 1, 1);
+                Pango.cairo_show_layout(context, layout);
             }
 
             frame = provider.get_next_position(frame);
@@ -61,6 +63,7 @@ public class Ruler : Gtk.DrawingArea {
         context.set_antialias(old_antialias);
         context.set_line_width(1.0);
         context.stroke();
+        context.restore();
         return true;
     }
 

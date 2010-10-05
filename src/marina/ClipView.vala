@@ -33,7 +33,8 @@ public class GapView : Gtk.DrawingArea {
     }
 
     public override bool expose_event(Gdk.EventExpose e) {
-        draw_rounded_rectangle(window, fill_color, true, allocation.x, allocation.y, 
+        Cairo.Context context = Gdk.cairo_create(window);
+        draw_rounded_rectangle(context, fill_color, true, allocation.x, allocation.y, 
                                 allocation.width - 1, allocation.height - 1);
         return true;
     }
@@ -155,7 +156,8 @@ public class ClipView : Gtk.DrawingArea {
         clip_deleted(clip);
     }
 
-    public void draw() {
+    public void draw(Cairo.Context context) {
+        context.save();
         weak Gdk.Color fill = clip.is_selected ? color_selected : color_normal;
 
         bool left_trimmed = clip.media_start != 0 && !clip.is_recording;
@@ -164,57 +166,58 @@ public class ClipView : Gtk.DrawingArea {
                               (clip.media_start + clip.duration != clip.mediafile.length) : false;
 
         if (!left_trimmed && !right_trimmed) {
-            draw_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+            draw_rounded_rectangle(context, fill, true, allocation.x + 1, allocation.y + 1,
                                    allocation.width - 2, allocation.height - 2);
-            draw_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+            draw_rounded_rectangle(context, color_black, false, allocation.x, allocation.y,
                                    allocation.width - 1, allocation.height - 1);
 
         } else if (!left_trimmed && right_trimmed) {
-            draw_left_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+            draw_left_rounded_rectangle(context, fill, true, allocation.x + 1, allocation.y + 1,
                                         allocation.width - 2, allocation.height - 2);
-            draw_left_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+            draw_left_rounded_rectangle(context, color_black, false, allocation.x, allocation.y,
                                    allocation.width - 1, allocation.height - 1);
 
         } else if (left_trimmed && !right_trimmed) {
-            draw_right_rounded_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+            draw_right_rounded_rectangle(context, fill, true, allocation.x + 1, allocation.y + 1,
                                          allocation.width - 2, allocation.height - 2);
-            draw_right_rounded_rectangle(window, color_black, false, allocation.x, allocation.y,
+            draw_right_rounded_rectangle(context, color_black, false, allocation.x, allocation.y,
                                          allocation.width - 1, allocation.height - 1);
 
         } else {
-            draw_square_rectangle(window, fill, true, allocation.x + 1, allocation.y + 1,
+            draw_square_rectangle(context, fill, true, allocation.x + 1, allocation.y + 1,
                                   allocation.width - 2, allocation.height - 2);
-            draw_square_rectangle(window, color_black, false, allocation.x, allocation.y,
+            draw_square_rectangle(context, color_black, false, allocation.x, allocation.y,
                                   allocation.width - 1, allocation.height - 1);
         }
 
-        Gdk.GC gc = new Gdk.GC(window);
-        Gdk.Rectangle r = { 0, 0, 0, 0 };
+        context.rectangle(allocation.x, allocation.y, allocation.width, allocation.height);
+        context.clip();
+        Pango.Layout layout = Pango.cairo_create_layout(context);
+        Gdk.Color color = style.text[Gtk.StateType.NORMAL];
 
-        // Due to a Vala compiler bug, we have to do this initialization here...
-        r.x = allocation.x;
-        r.y = allocation.y;
-        r.width = allocation.width;
-        r.height = allocation.height;
-
-        gc.set_clip_rectangle(r);
-
-        Pango.Layout layout;
+        context.set_source_rgb(color.red, color.green, color.blue);
+        layout.set_font_description(style.font_desc);
+        string s;
         if (clip.is_recording) {
-            layout = create_pango_layout("Recording");
+            s = "Recording";
         } else if (!clip.mediafile.is_online()) {
-            layout = create_pango_layout("%s (Offline)".printf(clip.name));
+            s = "%s (Offline)".printf(clip.name);
         }
         else {
-            layout = create_pango_layout("%s".printf(clip.name));
+            s = "%s".printf(clip.name);
         }
+        layout.set_text(s, (int) s.length);
+
         int width, height;
         layout.get_pixel_size(out width, out height);
-        Gdk.draw_layout(window, gc, allocation.x + 10, allocation.y + height, layout);
+        context.move_to(allocation.x + 10, allocation.y + height);
+        Pango.cairo_show_layout(context, layout);
+        context.restore();
     }
 
     public override bool expose_event(Gdk.EventExpose event) {
-        draw();
+        Cairo.Context context = Gdk.cairo_create(window);
+        draw(context);
         return true;
     }
 

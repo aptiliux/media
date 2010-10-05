@@ -30,11 +30,19 @@ public class StatusBar : Gtk.DrawingArea {
         window.draw_rectangle(style.bg_gc[(int) Gtk.StateType.NORMAL], true, 
                               allocation.x, allocation.y, allocation.width, allocation.height);  
 
-        string time = provider.get_time_string(current_position);
+        Cairo.Context context = Gdk.cairo_create(window);
+        context.save();
+        Pango.Layout layout = Pango.cairo_create_layout(context);
 
-        Pango.Layout layout = create_pango_layout(time);         
-        Gdk.draw_layout(window, style.white_gc, allocation.x + 4, allocation.y + 2, layout);
-                                
+        string time = provider.get_time_string(current_position);
+        Gdk.Color color = style.text[Gtk.StateType.NORMAL];
+        context.set_source_rgb(color.red, color.green, color.blue);
+
+        layout.set_font_description(style.font_desc);
+        layout.set_text(time, (int)time.length);
+        context.move_to(allocation.x + 4, allocation.y + 2);
+        Pango.cairo_show_layout(context, layout);
+        context.restore();
         return true;
     }
 }

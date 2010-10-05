@@ -560,9 +560,16 @@ public class TimeLine : Gtk.EventBox {
         base.expose_event(event);
 
         int xpos = provider.time_to_xpos(project.transport_get_position());
-        Gdk.draw_line(window, style.fg_gc[(int) Gtk.StateType.NORMAL],
-                      xpos, 0,
-                      xpos, allocation.height);
+        Cairo.Context context = Gdk.cairo_create(window);
+        context.save();
+        Gdk.Color color = style.fg[Gtk.StateType.NORMAL];
+        context.set_source_rgb(color.red, color.green, color.blue);
+        context.set_antialias(Cairo.Antialias.NONE);
+        context.set_line_width(1.0);
+        context.move_to(xpos, 0);
+        context.line_to(xpos, allocation.height);
+        context.stroke();
+        context.restore();
 
         return true;
     }

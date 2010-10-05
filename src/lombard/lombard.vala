@@ -903,6 +903,9 @@ void main(string[] args) {
         GLib.Environment.set_application_name("Lombard");
 
         AppDirs.init(args[0], _PROGRAM_NAME);
+        string rc_file = AppDirs.get_resources_dir().get_child("lombard.rc").get_path();
+
+        Gtk.rc_parse(rc_file);
         Gst.init(ref args);
 
         if (args.length > 2) {
