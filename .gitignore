@@ -1,0 +1,11 @@
+*.a
+*.c
+*.o
+*.so
+*~
+.stamp
+/fillmore
+/lombard
+/src/marina/marina.h
+/src/marina/marina/marina.vapi
+/media_test
