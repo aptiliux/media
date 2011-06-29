@@ -29,10 +29,10 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        if (the_project.get_file_version() < attr_values[0].to_int()) {
+        if (the_project.get_file_version() < int.parse(attr_values[0])) {
             load_error(ErrorClass.LoadFailure, 
                 "Version mismatch! (File Version: %d, App Version: %d)".printf(
-                    the_project.get_file_version(), attr_values[0].to_int()));
+                    the_project.get_file_version(), int.parse(attr_values[0]) ));
             return false;
         }
 
@@ -56,7 +56,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        the_project.set_default_framerate(Fraction(arr[0].to_int(), arr[1].to_int()));
+        the_project.set_default_framerate(Fraction(int.parse(arr[0]), int.parse(arr[1])));
         return true;
     }
 
@@ -97,19 +97,19 @@ public class MediaLoaderHandler : LoaderHandler {
             for (int i = 0; i < number_of_attributes; ++i) {
                 switch(attr_names[i]) {
                     case "panorama":
-                        audio_track._set_pan(attr_values[i].to_double());
+                        audio_track._set_pan(double.parse(attr_values[i]));
                         break;
                     case "volume":
-                        audio_track._set_volume(attr_values[i].to_double());
+                        audio_track._set_volume(double.parse(attr_values[i]));
                         break;
                     case "channels":
-                        audio_track.set_default_num_channels(attr_values[i].to_int());
+                        audio_track.set_default_num_channels(int.parse(attr_values[i]));
                         break;
                     case "solo":
-                        audio_track.solo = attr_values[i].to_bool();
+                        audio_track.solo = bool.parse(attr_values[i]);
                         break;
                     case "mute":
-                        audio_track.mute = attr_values[i].to_bool();
+                        audio_track.mute = bool.parse(attr_values[i]);
                         break;
                     default:
                         break;
@@ -141,19 +141,19 @@ public class MediaLoaderHandler : LoaderHandler {
         for (int i = 0; i < number_of_attributes; i++) {
         switch (attr_names[i]) {
             case "id":
-                id = attr_values[i].to_int();
+                id = int.parse(attr_values[i]);
                 break;
             case "name":
                 clip_name = attr_values[i];
                 break;
             case "start":
-                start = attr_values[i].to_int64();
+                start = int64.parse(attr_values[i]);
                 break;
             case "media-start":
-                media_start = attr_values[i].to_int64();
+                media_start = int64.parse(attr_values[i]);
                 break;
             case "duration":
-                duration = attr_values[i].to_int64();
+                duration = int64.parse(attr_values[i]);
                 break;
             default:
                 // TODO: we need a way to deal with orphaned attributes, for now, reject the file
@@ -219,7 +219,7 @@ public class MediaLoaderHandler : LoaderHandler {
             if (attr_names[i] == "filename") {
                 filename = attr_values[i];
             } else if (attr_names[i] == "id") {
-                id = attr_values[i].to_int();
+                id = int.parse(attr_values[i]);
             }
         }
 
@@ -250,7 +250,7 @@ public class MediaLoaderHandler : LoaderHandler {
             return false;
         }
 
-        the_project._set_bpm(attr_values[0].to_int());
+        the_project._set_bpm(int.parse(attr_values[0]));
         return true;
     }
 
@@ -274,7 +274,7 @@ public class MediaLoaderHandler : LoaderHandler {
                     the_project.click_during_record = attr_values[i] == "true";
                 break;
                 case "volume":
-                    the_project.click_volume = attr_values[i].to_double();
+                    the_project.click_volume = double.parse(attr_values[i]);
                 break;
                 default:
                     load_error(ErrorClass.FormatError, 
@@ -289,7 +289,7 @@ public class MediaLoaderHandler : LoaderHandler {
         for (int i = 0; i < attr_names.length; ++i) {
             switch (attr_names[i]) {
                 case "width":
-                    the_project.library_width = attr_values[i].to_int();
+                    the_project.library_width = int.parse(attr_values[i]);
                 break;
                 case "visible":
                     the_project.library_visible = attr_values[i] == "true";

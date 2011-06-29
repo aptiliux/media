@@ -44,7 +44,7 @@ public class MultiFileProgress : Gtk.Window {
         Gtk.HButtonBox button_area = new Gtk.HButtonBox();
         button_area.set("layout-style", Gtk.ButtonBoxStyle.CENTER); 
         
-        cancel_button = new Gtk.Button.from_stock(Gtk.STOCK_CANCEL);
+        cancel_button = new Gtk.Button.from_stock(Gtk.Stock.CANCEL);
         cancel_button.clicked.connect(on_cancel_clicked);
         
         button_area.add(cancel_button);

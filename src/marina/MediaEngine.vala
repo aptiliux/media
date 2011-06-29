@@ -52,14 +52,14 @@ public class InputSources {
 
                 unowned GLib.ValueArray devices = 
                     ((Gst.PropertyProbe)element).get_values_name("device");
-                foreach (unowned Gst.Value device in devices) {
-                    set_device_name(element, device);
+                foreach (unowned Gst.Value d in devices) {
+                    set_device_name(element, d);
                     Value nice_name = "";
                     element.get_property("device-name", ref nice_name);
 
                     int number_of_channels = number_of_channels_for_element(element);
                     input_sources.add(
-                        new InputSource(device.get_string(), nice_name.get_string(),
+                        new InputSource(d.get_string(), nice_name.get_string(),
                         number_of_channels));
                     element.set_state(Gst.State.NULL);
                 }

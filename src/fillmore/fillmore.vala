@@ -10,15 +10,27 @@ extern const string _PROGRAM_NAME;
 bool do_print_graph = false;
 int debug_level;
 
-const OptionEntry[] options = {
-    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
+private OptionEntry[]? entries = null;
+
+public OptionEntry[] get_options() {
+    if (entries != null)
+        return entries;
+
+    OptionEntry print_graph = { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
         "Show Save Graph in help menu.  Must set environment variable GST_DEBUG_DUMP_DOT_DIR", 
-        null },
-    { "debug-level", 0, 0, OptionArg.INT, &debug_level,
+        null };
+    entries += print_graph;
+    
+    OptionEntry debug_level = { "debug-level", 0, 0, OptionArg.INT, &debug_level,
         "Control amount of diagnostic information",
-        "[0 (minimal),5 (maximum)]" },
-    { null }
-};
+        "[0 (minimal),5 (maximum)]" };
+    entries += debug_level;
+    
+    OptionEntry terminator = { null };
+    entries += terminator;
+
+    return entries;
+}
 
 public class Recorder : Gtk.Window, TransportDelegate {
     public Model.AudioProject project;
@@ -51,52 +63,52 @@ public class Recorder : Gtk.Window, TransportDelegate {
     public const string NAME = "Fillmore";
     const Gtk.ActionEntry[] entries = {
         { "Project", null, "_Project", null, null, null },
-        { "Open", Gtk.STOCK_OPEN, "_Open...", null, "Open a project", on_project_open },
-        { "NewProject", Gtk.STOCK_NEW, "_New", null, "Create new project", on_project_new },
-        { "Save", Gtk.STOCK_SAVE, "_Save", "<Control>S", "Save project", on_project_save },
-        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Control><Shift>S", 
+        { "Open", Gtk.Stock.OPEN, "_Open...", null, "Open a project", on_project_open },
+        { "NewProject", Gtk.Stock.NEW, "_New", null, "Create new project", on_project_new },
+        { "Save", Gtk.Stock.SAVE, "_Save", "<Control>S", "Save project", on_project_save },
+        { "SaveAs", Gtk.Stock.SAVE_AS, "Save _As...", "<Control><Shift>S", 
             "Save project with new name", on_project_save_as },
-        { "Export", Gtk.STOCK_JUMP_TO, "_Export...", "<Control>E", null, on_export },
-        { "Settings", Gtk.STOCK_PROPERTIES, "Se_ttings", "<Control><Alt>Return", null, on_properties },
-        { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
+        { "Export", Gtk.Stock.JUMP_TO, "_Export...", "<Control>E", null, on_export },
+        { "Settings", Gtk.Stock.PROPERTIES, "Se_ttings", "<Control><Alt>Return", null, on_properties },
+        { "Quit", Gtk.Stock.QUIT, null, null, null, on_quit },
 
         { "Edit", null, "_Edit", null, null, null },
-        { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
-        { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
-        { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
-        { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
-        { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
-        { "SelectAll", Gtk.STOCK_SELECT_ALL, null, "<Control>A", null, on_select_all },
+        { "Undo", Gtk.Stock.UNDO, null, "<Control>Z", null, on_undo },
+        { "Cut", Gtk.Stock.CUT, null, null, null, on_cut },
+        { "Copy", Gtk.Stock.COPY, null, null, null, on_copy },
+        { "Paste", Gtk.Stock.PASTE, null, null, null, on_paste },
+        { "Delete", Gtk.Stock.DELETE, null, "Delete", null, on_delete },
+        { "SelectAll", Gtk.Stock.SELECT_ALL, null, "<Control>A", null, on_select_all },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
-        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
+        { "ClipProperties", Gtk.Stock.PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
             
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.Stock.ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
+        { "ZoomOut", Gtk.Stock.ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
         { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Track", null, "_Track", null, null, null },
-        { "NewTrack", Gtk.STOCK_ADD, "_New...", "<Control><Shift>N", 
+        { "NewTrack", Gtk.Stock.ADD, "_New...", "<Control><Shift>N", 
             "Create new track", on_track_new },
         { "Rename", null, "_Rename...", null, "Rename Track", on_track_rename },
         { "DeleteTrack", null, "_Delete", "<Control><Shift>Delete", 
             "Delete track", on_track_remove },
             
         { "Help", null, "_Help", null, null, null },
-        { "Contents", Gtk.STOCK_HELP, "_Contents", "F1", 
+        { "Contents", Gtk.Stock.HELP, "_Contents", "F1", 
             "More information on Fillmore", on_help_contents},
-        { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
+        { "About", Gtk.Stock.ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph },
 
-        { "Rewind", Gtk.STOCK_MEDIA_PREVIOUS, "Rewind", "Home", "Go to beginning", on_rewind },
-        { "End", Gtk.STOCK_MEDIA_NEXT, "End", "End", "Go to end", on_end }
+        { "Rewind", Gtk.Stock.MEDIA_PREVIOUS, "Rewind", "Home", "Go to beginning", on_rewind },
+        { "End", Gtk.Stock.MEDIA_NEXT, "End", "End", "Go to end", on_end }
     };
 
     const Gtk.ToggleActionEntry[] toggle_entries = {
-        { "Play", Gtk.STOCK_MEDIA_PLAY, null, "space", "Play", on_play },
-        { "Record", Gtk.STOCK_MEDIA_RECORD, null, "r", "Record", on_record },
+        { "Play", Gtk.Stock.MEDIA_PLAY, null, "space", "Play", on_play },
+        { "Record", Gtk.Stock.MEDIA_RECORD, null, "r", "Record", on_record },
         { "Library", null, "_Library", "F9", null, on_view_library, false },
         { "Snap", null, "_Snap to Clip Edges", null, null, on_snap, false },
         { "SnapGrid", null, "Snap to _Grid", null, null, on_snap_to_grid, false }
@@ -339,7 +351,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
                 default_track_names.append(track.display_name);
             }
         }
-        default_track_names.sort(default_track_number_compare);
+        default_track_names.sort((CompareFunc) default_track_number_compare);
 
         int i = 1;
         foreach(string s in default_track_names) {
@@ -1087,7 +1099,7 @@ public class Recorder : Gtk.Window, TransportDelegate {
         debug_level = -1;
         OptionContext context = new OptionContext(
             " [project file] - Record and edit multitrack audio");
-        context.add_main_entries(options, null);
+        context.add_main_entries(get_options(), null);
         context.add_group(Gst.init_get_option_group());
 
         try {

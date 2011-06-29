@@ -69,8 +69,8 @@ public struct Fraction {
             numerator = 0;
             denominator = 0;
         } else {
-            numerator = elements[0].to_int();
-            denominator = elements[1].to_int();
+            numerator = int.parse(elements[0]);
+            denominator = int.parse(elements[1]);
         }
     }
     
@@ -155,8 +155,8 @@ public bool version_at_least(string v, string w) {
     for (int i = 0 ; i < wa.length ; ++i) {
         if (i >= va.length)
             return false;
-        int vi = va[i].to_int();
-        int wi = wa[i].to_int();
+        int vi = int.parse(va[i]);
+        int wi = int.parse(wa[i]);
         if (vi > wi)
             return true;
         if (wi > vi)

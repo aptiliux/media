@@ -8,15 +8,28 @@ using Logging;
 
 int debug_level;
 bool do_print_graph = false;
-const OptionEntry[] options = {
-    { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
+
+private OptionEntry[]? entries = null;
+
+public OptionEntry[] get_options() {
+    if (entries != null)
+        return entries;
+
+    OptionEntry print_graph = { "print-graph", 0, 0, OptionArg.NONE, &do_print_graph,
         "Show Save Graph in help menu.  Must set environment variable GST_DEBUG_DUMP_DOT_DIR", 
-        null },
-    { "debug-level", 0, 0, OptionArg.INT, &debug_level,
+        null };
+    entries += print_graph;
+    
+    OptionEntry debug_level = { "debug-level", 0, 0, OptionArg.INT, &debug_level,
         "Control amount of diagnostic information",
-        "[0 (minimal),5 (maximum)]" },
-    { null }
-};
+        "[0 (minimal),5 (maximum)]" };
+    entries += debug_level;
+    
+    OptionEntry terminator = { null };
+    entries += terminator;
+
+    return entries;
+}
 
 class App : Gtk.Window, TransportDelegate {
     Gtk.DrawingArea drawing_area;
@@ -56,38 +69,38 @@ class App : Gtk.Window, TransportDelegate {
 
     const Gtk.ActionEntry[] entries = {
         { "Project", null, "_Project", null, null, null },
-        { "Open", Gtk.STOCK_OPEN, "_Open...", null, null, on_open },
-        { "Save", Gtk.STOCK_SAVE, null, null, null, on_save },
-        { "SaveAs", Gtk.STOCK_SAVE_AS, "Save _As...", "<Shift><Control>S", null, on_save_as },
-        { "Play", Gtk.STOCK_MEDIA_PLAY, "_Play / Pause", "space", null, on_play_pause },
+        { "Open", Gtk.Stock.OPEN, "_Open...", null, null, on_open },
+        { "Save", Gtk.Stock.SAVE, null, null, null, on_save },
+        { "SaveAs", Gtk.Stock.SAVE_AS, "Save _As...", "<Shift><Control>S", null, on_save_as },
+        { "Play", Gtk.Stock.MEDIA_PLAY, "_Play / Pause", "space", null, on_play_pause },
         { "Export", null, "_Export...", "<Control>E", null, on_export },
-        { "Quit", Gtk.STOCK_QUIT, null, null, null, on_quit },
+        { "Quit", Gtk.Stock.QUIT, null, null, null, on_quit },
 
         { "Edit", null, "_Edit", null, null, null },
-        { "Undo", Gtk.STOCK_UNDO, null, "<Control>Z", null, on_undo },
-        { "Cut", Gtk.STOCK_CUT, null, null, null, on_cut },
-        { "Copy", Gtk.STOCK_COPY, null, null, null, on_copy },
-        { "Paste", Gtk.STOCK_PASTE, null, null, null, on_paste },
-        { "Delete", Gtk.STOCK_DELETE, null, "Delete", null, on_delete },
-        { "SelectAll", Gtk.STOCK_SELECT_ALL, null, "<Control>A", null, on_select_all },
+        { "Undo", Gtk.Stock.UNDO, null, "<Control>Z", null, on_undo },
+        { "Cut", Gtk.Stock.CUT, null, null, null, on_cut },
+        { "Copy", Gtk.Stock.COPY, null, null, null, on_copy },
+        { "Paste", Gtk.Stock.PASTE, null, null, null, on_paste },
+        { "Delete", Gtk.Stock.DELETE, null, "Delete", null, on_delete },
+        { "SelectAll", Gtk.Stock.SELECT_ALL, null, "<Control>A", null, on_select_all },
         { "SplitAtPlayhead", null, "_Split at Playhead", "<Control>P", null, on_split_at_playhead },
         { "TrimToPlayhead", null, "Trim to Play_head", "<Control>H", null, on_trim_to_playhead },
-        { "ClipProperties", Gtk.STOCK_PROPERTIES, "Properti_es", "<Alt>Return", 
+        { "ClipProperties", Gtk.Stock.PROPERTIES, "Properti_es", "<Alt>Return", 
             null, on_clip_properties },
 
         { "View", null, "_View", null, null, null },
-        { "ZoomIn", Gtk.STOCK_ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
-        { "ZoomOut", Gtk.STOCK_ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
+        { "ZoomIn", Gtk.Stock.ZOOM_IN, "Zoom _In", "<Control>plus", null, on_zoom_in },
+        { "ZoomOut", Gtk.Stock.ZOOM_OUT, "Zoom _Out", "<Control>minus", null, on_zoom_out },
         { "ZoomProject", null, "Fit to _Window", "<Shift>Z", null, on_zoom_to_project },
 
         { "Go", null, "_Go", null, null, null },
-        { "Start", Gtk.STOCK_GOTO_FIRST, "_Start", "Home", null, on_go_start },
-        { "End", Gtk.STOCK_GOTO_LAST, "_End", "End", null, on_go_end },
+        { "Start", Gtk.Stock.GOTO_FIRST, "_Start", "Home", null, on_go_start },
+        { "End", Gtk.Stock.GOTO_LAST, "_End", "End", null, on_go_end },
 
         { "Help", null, "_Help", null, null, null },
-        { "Contents", Gtk.STOCK_HELP, "_Contents", "F1", 
+        { "Contents", Gtk.Stock.HELP, "_Contents", "F1", 
             "More information on Lombard", on_help_contents},
-        { "About", Gtk.STOCK_ABOUT, null, null, null, on_about },
+        { "About", Gtk.Stock.ABOUT, null, null, null, on_about },
         { "SaveGraph", null, "Save _Graph", null, "Save graph", on_save_graph }
     };
 
@@ -887,7 +900,7 @@ void main(string[] args) {
     debug_level = -1;
     OptionContext context = new OptionContext(
         " [project file] - Create and edit movies");
-    context.add_main_entries(options, null);
+    context.add_main_entries(get_options(), null);
     context.add_group(Gst.init_get_option_group());
 
     try {
